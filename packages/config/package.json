@@ -1,0 +1,10 @@
+{
+  "name": "@atlas/config",
+  "version": "0.0.1",
+  "description": "Shared configuration files for Atlas ERP",
+  "private": true,
+  "license": "MIT",
+  "files": [
+    "tsconfig"
+  ]
+}

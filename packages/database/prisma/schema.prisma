@@ -1,0 +1,1184 @@
+// This is your Prisma schema file
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum GlobalRole {
+  SUPERADMIN
+  ADMIN
+  USER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  BLOCKED
+  DELETED
+}
+
+enum WorkspaceStatus {
+  ACTIVE
+  SUSPENDED
+  TRIAL
+  CANCELLED
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MANAGER
+  USER
+  VIEWER
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  ON_LEAVE
+  TERMINATED
+  RESIGNED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  HALF_DAY
+  ON_LEAVE
+  HOLIDAY
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum PayrollRunStatus {
+  DRAFT
+  PROCESSING
+  COMPLETED
+  CANCELLED
+}
+
+enum PayrollEntryStatus {
+  PENDING
+  PROCESSED
+  PAID
+}
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  INCOME
+  EXPENSE
+}
+
+enum InvoiceType {
+  SALES
+  PURCHASE
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum PaymentType {
+  RECEIVED
+  PAID
+}
+
+enum PaymentStatus {
+  DRAFT
+  SUBMITTED
+  RECONCILED
+  CANCELLED
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  SUBMITTED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+}
+
+enum ProjectStatus {
+  PLANNING
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+  CANCELLED
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SMS
+  WEBHOOK
+}
+
+enum ActivityAction {
+  CREATE
+  UPDATE
+  DELETE
+  VIEW
+}
+
+// ============================================
+// AUTHENTICATION
+// ============================================
+
+model AuthUser {
+  id            String      @id @default(uuid())
+  email         String      @unique
+  password      String
+  username      String?     @unique
+  globalRole    GlobalRole  @default(USER)
+  verified      Boolean     @default(false)
+  status        UserStatus  @default(ACTIVE)
+  tokenVersion  Int         @default(0)
+  provider      String      @default("local")
+  providerId    String?
+  
+  deletedAt     DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  security      AuthSecurity?
+  profile       UserProfile?
+  workspaces    WorkspaceMember[]
+  employees     Employee[]
+  
+  @@index([email])
+  @@index([status])
+  @@map("auth_users")
+}
+
+model AuthSecurity {
+  id                  String    @id @default(uuid())
+  authId              String    @unique
+  auth                AuthUser  @relation(fields: [authId], references: [id], onDelete: Cascade)
+  
+  failedAttempts      Int       @default(0)
+  lastFailedAt        DateTime?
+  lockExpiresAt       DateTime?
+  
+  mfaEnabled          Boolean   @default(false)
+  mfaMethod           String?
+  mfaSecret           String?
+  
+  lastPasswordChange  DateTime  @default(now())
+  
+  @@map("auth_security")
+}
+
+model UserProfile {
+  id        String   @id @default(uuid())
+  authId    String   @unique
+  auth      AuthUser @relation(fields: [authId], references: [id], onDelete: Cascade)
+  
+  firstName String?
+  lastName  String?
+  avatarUrl String?
+  phone     String?
+  timezone  String   @default("UTC")
+  language  String   @default("en")
+  
+  @@map("user_profiles")
+}
+
+// ============================================
+// WORKSPACE (Multi-tenancy)
+// ============================================
+
+model Workspace {
+  id          String          @id @default(uuid())
+  name        String
+  subdomain   String          @unique
+  domain      String?
+  status      WorkspaceStatus @default(TRIAL)
+  trialEndsAt DateTime?
+  
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  
+  members     WorkspaceMember[]
+  settings    WorkspaceSettings?
+  
+  @@index([subdomain])
+  @@index([status])
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id          String        @id @default(uuid())
+  workspaceId String
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String
+  user        AuthUser      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  role        WorkspaceRole @default(USER)
+  department  String?
+  isActive    Boolean       @default(true)
+  
+  joinedAt    DateTime      @default(now())
+  lastAccessAt DateTime?
+  
+  @@unique([workspaceId, userId])
+  @@index([workspaceId, role])
+  @@map("workspace_members")
+}
+
+model WorkspaceSettings {
+  id               String    @id @default(uuid())
+  workspaceId      String    @unique
+  workspace        Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  baseCurrency     String    @default("USD")
+  dateFormat       String    @default("YYYY-MM-DD")
+  timeFormat       String    @default("HH:mm:ss")
+  fiscalYearStart  String    @default("01-01")
+  
+  customSettings   Json?
+  
+  @@map("workspace_settings")
+}
+
+// ============================================
+// PERMISSIONS (3-Tier Model)
+// ============================================
+
+model Permission {
+  id          String   @id @default(uuid())
+  workspaceId String?  // null = global permission
+  
+  resource    String   // "leads", "deals", "payroll", "invoices"
+  action      String   // "create", "read", "update", "delete", "approve"
+  scope       String   // "own", "department", "all"
+  description String?
+  
+  createdAt   DateTime @default(now())
+  
+  rolePermissions RolePermission[]
+  userPermissions UserPermission[]
+  
+  @@unique([workspaceId, resource, action, scope])
+  @@index([workspaceId, resource])
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String        @id @default(uuid())
+  workspaceId  String
+  role         WorkspaceRole
+  permissionId String
+  permission   Permission    @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  
+  createdAt    DateTime      @default(now())
+  
+  @@unique([workspaceId, role, permissionId])
+  @@index([workspaceId, role])
+  @@map("role_permissions")
+}
+
+model UserPermission {
+  id           String     @id @default(uuid())
+  workspaceId  String
+  userId       String
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  
+  grantedBy    String
+  grantedAt    DateTime   @default(now())
+  expiresAt    DateTime?
+  
+  @@unique([workspaceId, userId, permissionId])
+  @@index([workspaceId, userId])
+  @@map("user_permissions")
+}
+
+// ============================================
+// CRM MODULE
+// ============================================
+
+model Organization {
+  id              String    @id @default(uuid())
+  workspaceId     String
+  name            String
+  website         String?
+  industry        String?
+  territory       String?
+  noOfEmployees   String?
+  annualRevenue   Decimal?
+  currencyCode    String    @default("USD")
+  exchangeRate    Decimal   @default(1.0)
+  logoUrl         String?
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  createdBy       String?
+  updatedBy       String?
+  deletedAt       DateTime?
+  version         Int       @default(1)
+  
+  leads           Lead[]
+  deals           Deal[]
+  contacts        Contact[]
+  
+  @@index([workspaceId, deletedAt])
+  @@map("organizations")
+}
+
+model Lead {
+  id                  String    @id @default(uuid())
+  workspaceId         String
+  leadNumber          String    @unique
+  
+  salutation          String?
+  firstName           String
+  middleName          String?
+  lastName            String?
+  fullName            String
+  email               String?
+  mobileNo            String?
+  phone               String?
+  gender              String?
+  jobTitle            String?
+  
+  organizationId      String?
+  organization        Organization? @relation(fields: [organizationId], references: [id])
+  statusId            String?
+  leadOwnerId         String?
+  
+  annualRevenue       Decimal?
+  noOfEmployees       String?
+  converted           Boolean   @default(false)
+  convertedDealId     String?
+  convertedDeal       Deal?     @relation("LeadToDeal", fields: [convertedDealId], references: [id])
+  
+  total               Decimal?
+  netTotal            Decimal?
+  
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  createdBy           String?
+  updatedBy           String?
+  deletedAt           DateTime?
+  version             Int       @default(1)
+  
+  products            LeadProduct[]
+  deals               Deal[]    @relation("DealFromLead")
+  
+  @@index([workspaceId, statusId, deletedAt])
+  @@index([workspaceId, leadOwnerId])
+  @@index([workspaceId, email])
+  @@map("leads")
+}
+
+model Deal {
+  id                  String    @id @default(uuid())
+  workspaceId         String
+  dealNumber          String    @unique
+  
+  organizationId      String?
+  organization        Organization? @relation(fields: [organizationId], references: [id])
+  statusId            String?
+  dealOwnerId         String?
+  leadId              String?
+  lead                Lead?     @relation("DealFromLead", fields: [leadId], references: [id])
+  
+  nextStep            String?
+  probability         Int?
+  dealValue           Decimal?
+  expectedDealValue   Decimal?
+  currencyCode        String    @default("USD")
+  exchangeRate        Decimal   @default(1.0)
+  expectedClosureDate DateTime?
+  closedDate          DateTime?
+  
+  total               Decimal?
+  netTotal            Decimal?
+  
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  createdBy           String?
+  updatedBy           String?
+  deletedAt           DateTime?
+  version             Int       @default(1)
+  
+  products            DealProduct[]
+  contacts            DealContact[]
+  convertedLeads      Lead[]    @relation("LeadToDeal")
+  
+  @@index([workspaceId, statusId, deletedAt])
+  @@index([workspaceId, dealOwnerId])
+  @@index([workspaceId, organizationId])
+  @@map("deals")
+}
+
+model Contact {
+  id              String    @id @default(uuid())
+  workspaceId     String
+  
+  salutation      String?
+  firstName       String
+  middleName      String?
+  lastName        String?
+  fullName        String
+  email           String    @unique
+  mobileNo        String?
+  phone           String?
+  gender          String?
+  jobTitle        String?
+  
+  organizationId  String?
+  organization    Organization? @relation(fields: [organizationId], references: [id])
+  avatarUrl       String?
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  createdBy       String?
+  updatedBy       String?
+  deletedAt       DateTime?
+  
+  deals           DealContact[]
+  
+  @@index([workspaceId, organizationId, deletedAt])
+  @@map("contacts")
+}
+
+model Product {
+  id           String    @id @default(uuid())
+  workspaceId  String
+  productCode  String    @unique
+  name         String
+  description  String?
+  unitPrice    Decimal
+  currencyCode String    @default("USD")
+  category     String?
+  isActive     Boolean   @default(true)
+  
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  
+  leadProducts LeadProduct[]
+  dealProducts DealProduct[]
+  inventoryItems InventoryItem[]
+  
+  @@index([workspaceId, isActive])
+  @@map("products")
+}
+
+model LeadProduct {
+  id        String  @id @default(uuid())
+  leadId    String
+  lead      Lead    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  
+  quantity  Int
+  unitPrice Decimal
+  discount  Decimal @default(0)
+  amount    Decimal
+  
+  @@index([leadId])
+  @@map("lead_products")
+}
+
+model DealProduct {
+  id        String  @id @default(uuid())
+  dealId    String
+  deal      Deal    @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  
+  quantity  Int
+  unitPrice Decimal
+  discount  Decimal @default(0)
+  amount    Decimal
+  
+  @@index([dealId])
+  @@map("deal_products")
+}
+
+model DealContact {
+  id        String  @id @default(uuid())
+  dealId    String
+  deal      Deal    @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  contactId String
+  contact   Contact @relation(fields: [contactId], references: [id])
+  isPrimary Boolean @default(false)
+  
+  @@unique([dealId, contactId])
+  @@map("deal_contacts")
+}
+
+// ============================================
+// HR MODULE
+// ============================================
+
+model Department {
+  id               String      @id @default(uuid())
+  workspaceId      String
+  name             String
+  code             String      @unique
+  parentDepartmentId String?
+  parentDepartment Department? @relation("DepartmentHierarchy", fields: [parentDepartmentId], references: [id])
+  childDepartments Department[] @relation("DepartmentHierarchy")
+  managerId        String?
+  isActive         Boolean     @default(true)
+  
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  
+  employees        Employee[]
+  
+  @@index([workspaceId, isActive])
+  @@map("departments")
+}
+
+model Designation {
+  id          String    @id @default(uuid())
+  workspaceId String
+  title       String
+  description String?
+  level       Int
+  isActive    Boolean   @default(true)
+  
+  employees   Employee[]
+  
+  @@index([workspaceId, isActive])
+  @@map("designations")
+}
+
+model Employee {
+  id              String         @id @default(uuid())
+  workspaceId     String
+  employeeNumber  String         @unique
+  
+  firstName       String
+  middleName      String?
+  lastName        String?
+  fullName        String
+  email           String         @unique
+  mobileNo        String?
+  phone           String?
+  dateOfBirth     DateTime?
+  gender          String?
+  maritalStatus   String?
+  
+  departmentId    String?
+  department      Department?    @relation(fields: [departmentId], references: [id])
+  designationId   String?
+  designation     Designation?   @relation(fields: [designationId], references: [id])
+  reportingToId   String?
+  reportingTo     Employee?      @relation("EmployeeHierarchy", fields: [reportingToId], references: [id])
+  subordinates    Employee[]     @relation("EmployeeHierarchy")
+  
+  dateOfJoining   DateTime
+  dateOfLeaving   DateTime?
+  status          EmployeeStatus @default(ACTIVE)
+  
+  userId          String?
+  user            AuthUser?      @relation(fields: [userId], references: [id])
+  avatarUrl       String?
+  emergencyContact Json?
+  bankDetails     Json?
+  
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  createdBy       String?
+  updatedBy       String?
+  deletedAt       DateTime?
+  
+  attendances     Attendance[]
+  leaveApplications LeaveApplication[]
+  payrollEntries  PayrollEntry[]
+  taskAssignments TaskAssignment[]
+  
+  @@index([workspaceId, status, deletedAt])
+  @@index([workspaceId, departmentId])
+  @@map("employees")
+}
+
+model Attendance {
+  id             String           @id @default(uuid())
+  workspaceId    String
+  employeeId     String
+  employee       Employee         @relation(fields: [employeeId], references: [id])
+  attendanceDate DateTime         @db.Date
+  checkIn        DateTime?        @db.Time
+  checkOut       DateTime?        @db.Time
+  workingHours   Decimal?
+  status         AttendanceStatus
+  remarks        String?
+  
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  
+  @@unique([workspaceId, employeeId, attendanceDate])
+  @@index([workspaceId, attendanceDate])
+  @@map("attendances")
+}
+
+model LeaveType {
+  id               String    @id @default(uuid())
+  workspaceId      String
+  name             String
+  maxDaysAllowed   Int
+  requiresApproval Boolean   @default(true)
+  isPaid           Boolean   @default(true)
+  isActive         Boolean   @default(true)
+  
+  leaveApplications LeaveApplication[]
+  
+  @@index([workspaceId, isActive])
+  @@map("leave_types")
+}
+
+model LeaveApplication {
+  id              String      @id @default(uuid())
+  workspaceId     String
+  employeeId      String
+  employee        Employee    @relation(fields: [employeeId], references: [id])
+  leaveTypeId     String
+  leaveType       LeaveType   @relation(fields: [leaveTypeId], references: [id])
+  
+  fromDate        DateTime    @db.Date
+  toDate          DateTime    @db.Date
+  totalDays       Decimal
+  reason          String
+  status          LeaveStatus @default(PENDING)
+  
+  approvedBy      String?
+  approvedAt      DateTime?
+  approverRemarks String?
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  @@index([workspaceId, employeeId, status])
+  @@map("leave_applications")
+}
+
+// ============================================
+// PAYROLL MODULE
+// ============================================
+
+model PayrollRun {
+  id              String            @id @default(uuid())
+  workspaceId     String
+  runNumber       String            @unique
+  name            String
+  periodStart     DateTime          @db.Date
+  periodEnd       DateTime          @db.Date
+  paymentDate     DateTime          @db.Date
+  status          PayrollRunStatus  @default(DRAFT)
+  
+  totalEmployees  Int               @default(0)
+  totalGross      Decimal           @default(0)
+  totalDeductions Decimal           @default(0)
+  totalNet        Decimal           @default(0)
+  
+  processedBy     String?
+  processedAt     DateTime?
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  entries         PayrollEntry[]
+  
+  @@index([workspaceId, status])
+  @@map("payroll_runs")
+}
+
+model PayrollEntry {
+  id              String              @id @default(uuid())
+  workspaceId     String
+  payrollRunId    String
+  payrollRun      PayrollRun          @relation(fields: [payrollRunId], references: [id])
+  employeeId      String
+  employee        Employee            @relation(fields: [employeeId], references: [id])
+  
+  basicSalary     Decimal
+  grossSalary     Decimal
+  totalDeductions Decimal
+  netSalary       Decimal
+  salaryBreakdown Json?
+  
+  status          PayrollEntryStatus  @default(PENDING)
+  paidAt          DateTime?
+  payslipUrl      String?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  deductions      PayrollDeduction[]
+  earnings        PayrollEarning[]
+  
+  @@index([payrollRunId, employeeId])
+  @@map("payroll_entries")
+}
+
+model PayrollDeduction {
+  id              String        @id @default(uuid())
+  payrollEntryId  String
+  payrollEntry    PayrollEntry  @relation(fields: [payrollEntryId], references: [id], onDelete: Cascade)
+  
+  deductionType   String
+  name            String
+  amount          Decimal
+  remarks         String?
+  
+  @@map("payroll_deductions")
+}
+
+model PayrollEarning {
+  id              String        @id @default(uuid())
+  payrollEntryId  String
+  payrollEntry    PayrollEntry  @relation(fields: [payrollEntryId], references: [id], onDelete: Cascade)
+  
+  earningType     String
+  name            String
+  amount          Decimal
+  remarks         String?
+  
+  @@map("payroll_earnings")
+}
+
+// ============================================
+// FINANCE MODULE
+// ============================================
+
+model Account {
+  id            String      @id @default(uuid())
+  workspaceId   String
+  accountNumber String      @unique
+  accountName   String
+  accountType   AccountType
+  parentAccountId String?
+  parentAccount Account?    @relation("AccountHierarchy", fields: [parentAccountId], references: [id])
+  childAccounts Account[]   @relation("AccountHierarchy")
+  currencyCode  String      @default("USD")
+  isGroup       Boolean     @default(false)
+  isActive      Boolean     @default(true)
+  balance       Decimal     @default(0)
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  journalEntryLines JournalEntryLine[]
+  
+  @@index([workspaceId, accountType, isActive])
+  @@map("accounts")
+}
+
+model JournalEntry {
+  id            String    @id @default(uuid())
+  workspaceId   String
+  entryNumber   String    @unique
+  postingDate   DateTime  @db.Date
+  referenceType String?
+  referenceId   String?
+  description   String?
+  status        String    @default("DRAFT")
+  totalDebit    Decimal   @default(0)
+  totalCredit   Decimal   @default(0)
+  
+  createdBy     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  lines         JournalEntryLine[]
+  
+  @@index([workspaceId, postingDate, status])
+  @@map("journal_entries")
+}
+
+model JournalEntryLine {
+  id              String        @id @default(uuid())
+  journalEntryId  String
+  journalEntry    JournalEntry  @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  accountId       String
+  account         Account       @relation(fields: [accountId], references: [id])
+  
+  debit           Decimal       @default(0)
+  credit          Decimal       @default(0)
+  description     String?
+  
+  @@index([journalEntryId])
+  @@map("journal_entry_lines")
+}
+
+model Invoice {
+  id             String        @id @default(uuid())
+  workspaceId    String
+  invoiceNumber  String        @unique
+  invoiceType    InvoiceType
+  customerId     String?
+  vendorId       String?
+  invoiceDate    DateTime      @db.Date
+  dueDate        DateTime      @db.Date
+  currencyCode   String        @default("USD")
+  exchangeRate   Decimal       @default(1.0)
+  
+  subtotal       Decimal       @default(0)
+  taxAmount      Decimal       @default(0)
+  discountAmount Decimal       @default(0)
+  total          Decimal       @default(0)
+  
+  status         InvoiceStatus @default(DRAFT)
+  paidAt         DateTime?
+  terms          String?
+  notes          String?
+  
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  createdBy      String?
+  
+  items          InvoiceItem[]
+  payments       Payment[]
+  
+  @@index([workspaceId, status, dueDate])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id              String   @id @default(uuid())
+  invoiceId       String
+  invoice         Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  productId       String?
+  description     String
+  quantity        Int
+  unitPrice       Decimal
+  taxRate         Decimal  @default(0)
+  discountPercent Decimal  @default(0)
+  amount          Decimal
+  
+  @@index([invoiceId])
+  @@map("invoice_items")
+}
+
+model Payment {
+  id              String        @id @default(uuid())
+  workspaceId     String
+  paymentNumber   String        @unique
+  paymentType     PaymentType
+  partyId         String?
+  invoiceId       String?
+  invoice         Invoice?      @relation(fields: [invoiceId], references: [id])
+  paymentDate     DateTime      @db.Date
+  amount          Decimal
+  currencyCode    String        @default("USD")
+  paymentMethod   String
+  referenceNumber String?
+  status          PaymentStatus @default(DRAFT)
+  remarks         String?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  @@index([workspaceId, paymentDate, status])
+  @@map("payments")
+}
+
+// ============================================
+// SUPPLY CHAIN MODULE
+// ============================================
+
+model Vendor {
+  id            String    @id @default(uuid())
+  workspaceId   String
+  vendorCode    String    @unique
+  vendorName    String
+  email         String?
+  phone         String?
+  website       String?
+  contactPerson String?
+  currencyCode  String    @default("USD")
+  status        String    @default("ACTIVE")
+  paymentTerms  Json?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  purchaseOrders PurchaseOrder[]
+  
+  @@index([workspaceId, status])
+  @@map("vendors")
+}
+
+model PurchaseOrder {
+  id                    String              @id @default(uuid())
+  workspaceId           String
+  poNumber              String              @unique
+  vendorId              String
+  vendor                Vendor              @relation(fields: [vendorId], references: [id])
+  orderDate             DateTime            @db.Date
+  expectedDeliveryDate  DateTime            @db.Date
+  currencyCode          String              @default("USD")
+  exchangeRate          Decimal             @default(1.0)
+  
+  subtotal              Decimal             @default(0)
+  taxAmount             Decimal             @default(0)
+  total                 Decimal             @default(0)
+  
+  status                PurchaseOrderStatus @default(DRAFT)
+  terms                 String?
+  notes                 String?
+  
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  createdBy             String?
+  
+  items                 PurchaseOrderItem[]
+  goodsReceipts         GoodsReceipt[]
+  
+  @@index([workspaceId, vendorId, status])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id              String        @id @default(uuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  productId       String
+  description     String
+  quantity        Int
+  receivedQuantity Int          @default(0)
+  unitPrice       Decimal
+  taxRate         Decimal       @default(0)
+  amount          Decimal
+  
+  @@index([purchaseOrderId])
+  @@map("purchase_order_items")
+}
+
+model GoodsReceipt {
+  id              String        @id @default(uuid())
+  workspaceId     String
+  grNumber        String        @unique
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  warehouseId     String
+  warehouse       Warehouse     @relation(fields: [warehouseId], references: [id])
+  receiptDate     DateTime      @db.Date
+  status          String        @default("DRAFT")
+  remarks         String?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  @@index([workspaceId, purchaseOrderId])
+  @@map("goods_receipts")
+}
+
+model Warehouse {
+  id            String    @id @default(uuid())
+  workspaceId   String
+  warehouseCode String    @unique
+  warehouseName String
+  isActive      Boolean   @default(true)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  inventoryItems InventoryItem[]
+  goodsReceipts  GoodsReceipt[]
+  
+  @@index([workspaceId, isActive])
+  @@map("warehouses")
+}
+
+model InventoryItem {
+  id                String    @id @default(uuid())
+  workspaceId       String
+  productId         String
+  product           Product   @relation(fields: [productId], references: [id])
+  warehouseId       String
+  warehouse         Warehouse @relation(fields: [warehouseId], references: [id])
+  
+  quantityOnHand    Int       @default(0)
+  quantityReserved  Int       @default(0)
+  quantityAvailable Int       @default(0)
+  averageCost       Decimal   @default(0)
+  reorderLevel      Int       @default(0)
+  reorderQuantity   Int       @default(0)
+  lastRestockedAt   DateTime?
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  @@unique([workspaceId, productId, warehouseId])
+  @@index([workspaceId, warehouseId])
+  @@map("inventory_items")
+}
+
+// ============================================
+// PROJECT MANAGEMENT MODULE
+// ============================================
+
+model Project {
+  id              String        @id @default(uuid())
+  workspaceId     String
+  projectCode     String        @unique
+  projectName     String
+  description     String?
+  startDate       DateTime      @db.Date
+  endDate         DateTime?     @db.Date
+  status          ProjectStatus @default(PLANNING)
+  projectManagerId String?
+  budgetAmount    Decimal?
+  actualCost      Decimal       @default(0)
+  progressPercent Int           @default(0)
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  createdBy       String?
+  
+  tasks           Task[]
+  milestones      Milestone[]
+  
+  @@index([workspaceId, status])
+  @@map("projects")
+}
+
+model Milestone {
+  id            String    @id @default(uuid())
+  projectId     String
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name          String
+  description   String?
+  targetDate    DateTime  @db.Date
+  completedDate DateTime? @db.Date
+  status        String    @default("PENDING")
+  
+  @@index([projectId, status])
+  @@map("milestones")
+}
+
+model Task {
+  id              String       @id @default(uuid())
+  workspaceId     String
+  projectId       String
+  project         Project      @relation(fields: [projectId], references: [id])
+  taskNumber      String       @unique
+  title           String
+  description     String?
+  priority        TaskPriority @default(MEDIUM)
+  status          TaskStatus   @default(TODO)
+  
+  startDate       DateTime?    @db.Date
+  dueDate         DateTime?    @db.Date
+  completedDate   DateTime?    @db.Date
+  estimatedHours  Int?
+  actualHours     Int          @default(0)
+  
+  dependsOnTaskId String?
+  dependsOnTask   Task?        @relation("TaskDependency", fields: [dependsOnTaskId], references: [id])
+  dependentTasks  Task[]       @relation("TaskDependency")
+  
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  createdBy       String?
+  
+  assignments     TaskAssignment[]
+  
+  @@index([workspaceId, projectId, status])
+  @@map("tasks")
+}
+
+model TaskAssignment {
+  id             String    @id @default(uuid())
+  taskId         String
+  task           Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  employeeId     String
+  employee       Employee  @relation(fields: [employeeId], references: [id])
+  
+  allocatedHours Int       @default(0)
+  workedHours    Int       @default(0)
+  assignedAt     DateTime  @default(now())
+  
+  @@unique([taskId, employeeId])
+  @@map("task_assignments")
+}
+
+// ============================================
+// NOTIFICATION & AUDIT
+// ============================================
+
+model Notification {
+  id          String              @id @default(uuid())
+  workspaceId String
+  userId      String
+  title       String
+  message     String
+  type        NotificationType    @default(INFO)
+  channel     NotificationChannel @default(IN_APP)
+  isRead      Boolean             @default(false)
+  readAt      DateTime?
+  metadata    Json?
+  
+  createdAt   DateTime            @default(now())
+  
+  @@index([workspaceId, userId, isRead])
+  @@map("notifications")
+}
+
+model ActivityLog {
+  id         String         @id @default(uuid())
+  workspaceId String
+  userId     String
+  entityType String
+  entityId   String
+  action     ActivityAction
+  changes    Json?
+  ipAddress  String?
+  userAgent  String?
+  
+  createdAt  DateTime       @default(now())
+  
+  @@index([workspaceId, entityType, entityId])
+  @@index([workspaceId, userId, createdAt])
+  @@map("activity_logs")
+}
