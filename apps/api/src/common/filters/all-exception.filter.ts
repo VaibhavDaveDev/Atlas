@@ -28,7 +28,6 @@ export class AllExceptionsFilter implements ExceptionFilter {
       return;
     }
 
-    console.log('all exceptions', exception);
 
     let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = 'Internal Server Error';

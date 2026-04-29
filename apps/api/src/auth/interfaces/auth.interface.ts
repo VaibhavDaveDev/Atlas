@@ -17,6 +17,9 @@ export interface IAccessTokenPayload {
   userId: string;
   role: UserRole;
   tokenVersion: number; // Incremented on security events (block, password change, etc.)
+  workspaceId?: string; // Optional workspace context
+  workspaceRole?: string; // Optional workspace role (OWNER, ADMIN, MANAGER, USER, VIEWER)
+  department?: string | null; // Optional department
   iat?: number;
   exp?: number;
 }
@@ -70,5 +73,13 @@ export interface ILoginResponse {
     role: string;
     verified: boolean;
   };
+  workspaces?: Array<{
+    workspaceId: string;
+    workspaceName: string;
+    subdomain: string;
+    status: string;
+    role: string;
+    department: string | null;
+  }>;
   expiresIn: number;
 }

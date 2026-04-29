@@ -1,2 +1,3 @@
-export * from '@prisma/client';
-export { PrismaClient } from '@prisma/client';
+// Export Prisma Client from the generated location
+export * from './node_modules/.prisma/client/index.js';
+export { PrismaClient } from './node_modules/.prisma/client/index.js';

@@ -1,457 +1,839 @@
-# Atlas ERP - Permission System
+# Atlas ERP - Developer Documentation
 
-## 3-Tier Permission Model
+## Auth Module
 
-Atlas ERP uses a flexible 3-tier permission system that provides both role-based and fine-grained access control.
+### Overview
+The Auth module provides complete authentication and authorization functionality with workspace (multi-tenancy) support. It includes JWT-based authentication with refresh token rotation, email verification, rate limiting, and account lockout protection.
 
-## Architecture
+### Architecture
 
+#### Authentication Flow
+1. **Registration** → User creates account → Email verification sent
+2. **Email Verification** → User verifies email with 6-digit code
+3. **Login** → User logs in → Receives JWT tokens + workspace list
+4. **Workspace Selection** → User selects workspace → Receives new JWT with workspace context
+5. **Protected Routes** → JWT validated → Workspace membership checked → Permission verified
+
+#### JWT Token Structure
+
+**Access Token** (Short-lived: 1 hour)
+```typescript
+{
+  userId: string;
+  role: GlobalRole; // SUPERADMIN, ADMIN, USER
+  tokenVersion: number; // For immediate revocation
+  workspaceId?: string; // Set after workspace selection
+  workspaceRole?: string; // OWNER, ADMIN, MANAGER, USER, VIEWER
+  department?: string | null;
+}
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    TIER 1: GLOBAL LEVEL                     │
-│  GlobalRole: SUPERADMIN (IT Admin - full system access)     │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│                  TIER 2: WORKSPACE LEVEL                    │
-│  WorkspaceRole: OWNER, ADMIN, MANAGER, USER, VIEWER         │
-│  (Inherited permissions via RolePermission)                 │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│                  TIER 3: RESOURCE LEVEL                     │
-│  Custom permissions per user (UserPermission)               │
-│  (Overrides or extends role permissions)                    │
-└─────────────────────────────────────────────────────────────┘
+
+**Refresh Token** (Long-lived: 7 days)
+```typescript
+{
+  userId: string;
+  jti: string; // Unique token ID for revocation
+}
 ```
 
-## Database Models
+### API Endpoints
 
-### 1. Permission (Permission Definition)
+#### 1. Register
+**POST** `/api/v1/auth`
 
-Defines what actions can be performed on which resources.
+**Request:**
+```json
+{
+  "email": "user@example.com",
+  "password": "SecurePass@123",
+  "username": "johndoe"
+}
+```
 
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Registration successful. Please check your email for verification code."
+}
+```
+
+**Password Requirements:**
+- Minimum 8 characters
+- At least 1 uppercase letter
+- At least 1 lowercase letter
+- At least 1 number
+- At least 1 special character
+
+**Rate Limit:** 5 requests per 15 minutes
+
+---
+
+#### 2. Verify Email
+**POST** `/api/v1/auth/verify-email`
+
+**Request:**
+```json
+{
+  "email": "user@example.com",
+  "code": "A1B2C3"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Email verified successfully"
+}
+```
+
+**Rate Limit:** 5 requests per 15 minutes
+
+---
+
+#### 3. Resend Verification Email
+**POST** `/api/v1/auth/resend-verification-email`
+
+**Request:**
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Verification email sent successfully"
+}
+```
+
+**Rate Limit:** 3 requests per 15 minutes
+
+---
+
+#### 4. Login
+**POST** `/api/v1/auth/login`
+
+**Request:**
+```json
+{
+  "email": "user@example.com",
+  "password": "SecurePass@123"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Login successful",
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "user": {
+      "id": "uuid",
+      "email": "user@example.com",
+      "username": "johndoe",
+      "role": "USER",
+      "verified": true
+    },
+    "workspaces": [
+      {
+        "workspaceId": "uuid",
+        "workspaceName": "Acme Corporation",
+        "subdomain": "acme",
+        "status": "ACTIVE",
+        "role": "ADMIN",
+        "department": "Sales"
+      }
+    ],
+    "expiresIn": 3600
+  }
+}
+```
+
+**Rate Limit:** 5 requests per 15 minutes
+
+**Account Lockout:** 5 failed attempts = 15 minutes lockout
+
+---
+
+#### 5. Get User Workspaces
+**GET** `/api/v1/auth/workspaces`
+
+**Headers:**
+```
+Authorization: Bearer <accessToken>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "workspaceId": "uuid",
+      "workspaceName": "Acme Corporation",
+      "subdomain": "acme",
+      "status": "ACTIVE",
+      "role": "ADMIN",
+      "department": "Sales",
+      "joinedAt": "2024-01-01T00:00:00.000Z"
+    }
+  ]
+}
+```
+
+---
+
+#### 6. Select Workspace
+**POST** `/api/v1/auth/select-workspace`
+
+**Headers:**
+```
+Authorization: Bearer <accessToken>
+```
+
+**Request:**
+```json
+{
+  "workspaceId": "uuid"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Workspace selected successfully",
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "workspace": {
+      "id": "uuid",
+      "name": "Acme Corporation",
+      "subdomain": "acme",
+      "status": "ACTIVE",
+      "role": "ADMIN",
+      "department": "Sales"
+    }
+  }
+}
+```
+
+**Note:** This returns a NEW access token with workspace context embedded.
+
+---
+
+#### 7. Refresh Token
+**POST** `/api/v1/auth/refresh-token`
+
+**Request:**
+```json
+{
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Token refreshed successfully",
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "expiresIn": 3600
+  }
+}
+```
+
+**Note:** Implements token rotation - old refresh token is invalidated, new one issued.
+
+---
+
+#### 8. Logout
+**POST** `/api/v1/auth/logout`
+
+**Request:**
+```json
+{
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "userId": "uuid"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Logged out successfully"
+}
+```
+
+---
+
+#### 9. Logout All Devices
+**POST** `/api/v1/auth/logout-all`
+
+**Request:**
+```json
+{
+  "userId": "uuid"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Logged out from all devices successfully"
+}
+```
+
+**Note:** Revokes ALL refresh tokens and increments tokenVersion to invalidate all access tokens.
+
+---
+
+#### 10. Get Current User
+**GET** `/api/v1/auth/me`
+
+**Headers:**
+```
+Authorization: Bearer <accessToken>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "userId": "uuid",
+    "role": "USER",
+    "tokenVersion": 0,
+    "workspaceId": "uuid",
+    "workspaceRole": "ADMIN",
+    "department": "Sales"
+  }
+}
+```
+
+---
+
+### Guards & Decorators
+
+#### 1. AuthGuard
+Validates JWT access token and checks tokenVersion.
+
+**Usage:**
+```typescript
+@UseGuards(AuthGuard)
+@Get('protected')
+async protectedRoute() {
+  // Only authenticated users can access
+}
+```
+
+---
+
+#### 2. WorkspaceGuard
+Checks if user is a member of the workspace and workspace is active.
+
+**Usage:**
+```typescript
+@UseGuards(AuthGuard, WorkspaceGuard)
+@Get('workspace-data')
+async getWorkspaceData() {
+  // User must be authenticated AND workspace member
+}
+```
+
+---
+
+#### 3. PermissionGuard
+Checks role-based and user-specific permissions.
+
+**Usage:**
+```typescript
+@UseGuards(AuthGuard, WorkspaceGuard, PermissionGuard)
+@RequirePermission('leads', 'create', 'all')
+@Post('leads')
+async createLead() {
+  // User must have permission to create leads
+}
+```
+
+**Permission Bypass:**
+- SUPERADMIN (global role) bypasses all permission checks
+- OWNER (workspace role) bypasses workspace permission checks
+
+---
+
+#### 4. @CurrentUser() Decorator
+Extracts user from JWT payload.
+
+**Usage:**
+```typescript
+@Get('profile')
+async getProfile(@CurrentUser() user: IAccessTokenPayload) {
+  return { userId: user.userId, role: user.role };
+}
+```
+
+---
+
+#### 5. @CurrentWorkspace() Decorator
+Extracts workspace ID from JWT payload.
+
+**Usage:**
+```typescript
+@Get('workspace-info')
+async getWorkspaceInfo(@CurrentWorkspace() workspaceId: string) {
+  return { workspaceId };
+}
+```
+
+---
+
+#### 6. @Public() Decorator
+Marks route as public (no authentication required).
+
+**Usage:**
+```typescript
+@Public()
+@Get('public-data')
+async getPublicData() {
+  // Anyone can access
+}
+```
+
+---
+
+### Security Features
+
+#### 1. Rate Limiting
+- **Registration:** 5 requests per 15 minutes
+- **Login:** 5 requests per 15 minutes per IP
+- **Email Verification:** 5 requests per 15 minutes
+- **Resend Verification:** 3 requests per 15 minutes
+
+#### 2. Account Lockout
+- **Max Failed Attempts:** 5
+- **Lockout Duration:** 15 minutes
+- **Auto-unlock:** After lockout duration expires
+
+#### 3. Token Rotation
+- Refresh tokens are rotated on every refresh
+- Old refresh token is immediately invalidated
+- Prevents token replay attacks
+
+#### 4. Token Revocation
+- **Immediate:** Increment tokenVersion to invalidate all access tokens
+- **Selective:** Delete specific refresh token from Redis
+- **Global:** Revoke all refresh tokens for a user
+
+#### 5. Password Security
+- Bcrypt hashing with 12 salt rounds
+- Password strength validation
+- Timing attack prevention (constant-time comparison)
+
+#### 6. Session Management
+- Max 5 devices per user
+- Oldest sessions automatically removed
+- Session tracking in Redis
+
+---
+
+### Database Models
+
+#### AuthUser
 ```prisma
-model Permission {
-  id          String   @id @default(uuid())
-  workspaceId String?  // null = global permission
+model AuthUser {
+  id            String      @id @default(uuid())
+  email         String      @unique
+  password      String
+  username      String?     @unique
+  globalRole    GlobalRole  @default(USER)
+  verified      Boolean     @default(false)
+  status        UserStatus  @default(ACTIVE)
+  tokenVersion  Int         @default(0)
+  provider      String      @default("local")
+  providerId    String?
   
-  resource    String   // "leads", "deals", "payroll", "invoices"
-  action      String   // "create", "read", "update", "delete", "approve"
-  scope       String   // "own", "department", "all"
-  description String?
-  
-  rolePermissions RolePermission[]
-  userPermissions UserPermission[]
+  security      AuthSecurity?
+  profile       UserProfile?
+  workspaces    WorkspaceMember[]
 }
 ```
 
-**Fields:**
-- `workspaceId`: null for global permissions, specific ID for workspace-specific
-- `resource`: The entity/module (e.g., "leads", "employees", "invoices")
-- `action`: What can be done (e.g., "create", "read", "update", "delete", "approve")
-- `scope`: Access scope (e.g., "own", "department", "all")
-
-### 2. RolePermission (Role-Based Permissions)
-
-Maps permissions to workspace roles. This is the **default permission set** for each role.
-
+#### WorkspaceMember
 ```prisma
-model RolePermission {
-  id           String        @id @default(uuid())
-  workspaceId  String
-  role         WorkspaceRole // OWNER, ADMIN, MANAGER, USER, VIEWER
-  permissionId String
-  permission   Permission    @relation(...)
+model WorkspaceMember {
+  id          String        @id @default(uuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole @default(USER)
+  department  String?
+  isActive    Boolean       @default(true)
+  
+  joinedAt    DateTime      @default(now())
+  lastAccessAt DateTime?
 }
 ```
 
-**Purpose:**
-- Define default permissions for each role
-- Users automatically inherit these permissions based on their workspace role
-- Easier to manage than individual user permissions
-
-### 3. UserPermission (User-Specific Permissions)
-
-Grants or revokes specific permissions for individual users.
-
+#### LoginHistory
 ```prisma
-model UserPermission {
-  id           String     @id @default(uuid())
-  workspaceId  String
-  userId       String
-  permissionId String
-  permission   Permission @relation(...)
+model LoginHistory {
+  id             String    @id @default(uuid())
+  authId         String
+  ipAddress      String
+  userAgent      String
+  success        Boolean
+  failureReason  String?
+  attemptNumber  Int       @default(1)
   
-  grantedBy    String
-  grantedAt    DateTime
-  expiresAt    DateTime?  // Optional expiration
+  createdAt      DateTime  @default(now())
 }
 ```
 
-**Purpose:**
-- Override role permissions for specific users
-- Grant additional permissions beyond role defaults
-- Temporary access (via expiresAt)
+#### EmailHistory
+```prisma
+model EmailHistory {
+  id           String    @id @default(uuid())
+  authId       String
+  emailTo      String
+  emailType    String
+  subject      String
+  emailStatus  String    @default("pending")
+  
+  createdAt    DateTime  @default(now())
+}
+```
 
-## Permission Scopes
+---
 
-### 1. Own
-User can only access their own records.
+### Environment Variables
 
-**Example:** Sales rep can only view their own leads.
+```env
+# Database
+DATABASE_URL="postgresql://postgres:password@localhost:5432/atlas_erp"
+
+# JWT Secrets
+JWT_ACCESS_SECRET="your-super-secret-access-key-change-in-production"
+JWT_REFRESH_SECRET="your-super-secret-refresh-key-change-in-production"
+
+# Redis
+REDIS_HOST="localhost"
+REDIS_PORT=6379
+REDIS_PASSWORD=""
+REDIS_CACHE_KEY_PREFIX="atlas"
+
+# Email (for verification emails)
+SMTP_HOST="smtp.gmail.com"
+SMTP_PORT=587
+SMTP_USER="your-email@gmail.com"
+SMTP_PASSWORD="your-app-password"
+```
+
+---
+
+### Testing with Swagger UI
+
+1. Start the API server:
+```bash
+cd Atlas
+pnpm dev
+```
+
+2. Open Swagger UI:
+```
+http://localhost:4000/api/docs
+```
+
+3. Test the flow:
+   - Register a new user
+   - Verify email with code
+   - Login to get tokens
+   - Use access token in "Authorize" button
+   - Test protected endpoints
+
+---
+## 🔧 Email Service Architecture
+
+### Nodemailer Configuration
+
+Located in: `Atlas/apps/api/src/common/services/email.service.ts`
 
 ```typescript
+this.transporter = nodemailer.createTransport({
+  host: String(config.email_host),      // sandbox.smtp.mailtrap.io
+  port: Number(config.email_port),      // 2525
+  secure: config.email_port === 465,    // false for port 2525
+  auth: {
+    user: String(config.email_user),    // Your Mailtrap username
+    pass: String(config.email_pass),    // Your Mailtrap password
+  },
+});
+```
+
+### Email Queue System
+
+Emails are sent asynchronously using **BullMQ** queues:
+
+1. User registers → Email job added to queue
+2. Background worker processes the job
+3. Email sent via Nodemailer
+4. Result logged to database
+
+**Benefits:**
+- Non-blocking API responses
+- Automatic retries on failure
+- Email history tracking
+- Better performance
+
+## 📊 Email Monitoring
+
+### Check Email History
+
+```sql
+-- Connect to database
+psql -U postgres -d atlas_erp
+
+-- View recent emails
+SELECT * FROM email_history ORDER BY "createdAt" DESC LIMIT 10;
+```
+
+### Check Email Queue
+
+```bash
+# Connect to Redis
+docker exec -it atlas-redis redis-cli
+
+# List email jobs
+KEYS bull:email:*
+
+# Get job details
+HGETALL bull:email:1
+```
+---
+## 📝 OAuth API Endpoints
+
+### 1. Initiate OAuth Flow
+
+```
+GET /api/v1/auth/google
+```
+
+**Optional Query Parameters:**
+- `redirectUrl` - Where to redirect after successful login
+
+**Response:**
+```json
 {
-  resource: "leads",
-  action: "read",
-  scope: "own"
+  "url": "https://accounts.google.com/o/oauth2/v2/auth?...",
+  "state": "random-state-token",
+  "message": "Redirect to the provided URL to authenticate with Google"
 }
 ```
 
-### 2. Department
-User can access records within their department.
+### 2. OAuth Callback (GET)
 
-**Example:** Sales manager can view all leads in the sales department.
+```
+GET /api/v1/auth/google/callback?code=...&state=...
+```
 
-```typescript
+**Response:**
+```json
 {
-  resource: "leads",
-  action: "read",
-  scope: "department"
+  "success": true,
+  "message": "Signed in successfully via Google",
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "user": {
+      "id": "uuid",
+      "email": "user@gmail.com",
+      "username": "user",
+      "verified": true
+    },
+    "isNewUser": false
+  }
 }
 ```
 
-### 3. All
-User can access all records in the workspace.
+### 3. OAuth Callback (POST)
 
-**Example:** Admin can view all leads across all departments.
+```
+POST /api/v1/auth/google/callback
+```
 
-```typescript
+**Request Body:**
+```json
 {
-  resource: "leads",
-  action: "read",
-  scope: "all"
+  "code": "authorization-code-from-google",
+  "state": "state-token"
 }
 ```
 
-## Default Role Permissions
+**Response:** Same as GET callback
 
-### OWNER
-- Full access to everything in the workspace
-- Can manage workspace settings
-- Can assign/revoke any permissions
+**URLs for Google Cloud Console:**
 
-### ADMIN
-- Full access to all modules
-- Can manage users and roles
-- Cannot delete workspace
+1. **Create Project**: https://console.cloud.google.com/projectcreate
+2. **OAuth Consent Screen**: https://console.cloud.google.com/apis/credentials/consent
+3. **Credentials**: https://console.cloud.google.com/apis/credentials
+---
+### Next Steps
 
-### MANAGER
-- Full access within their department
-- Can approve department-level actions
-- Can view reports for their department
+1. ✅ Auth Module (Backend) - COMPLETED
+2. 🔄 Auth Module (Frontend) - IN PROGRESS
+   - Login page
+   - Workspace selection page
+   - Protected route wrapper
+   - Token refresh logic
+3. ⏳ CRM Module (Backend)
+4. ⏳ CRM Module (Frontend)
+5. ⏳ HR Module
+6. ⏳ Payroll Module
+7. ⏳ Finance Module
+8. ⏳ Supply Chain Module
+9. ⏳ Projects Module
 
-### USER
-- Can create and edit their own records
-- Can view department records (read-only)
-- Cannot approve or delete
+---
 
-### VIEWER
-- Read-only access to assigned modules
-- Cannot create, edit, or delete
-- Useful for auditors, stakeholders
+### Common Issues & Solutions
 
-## Example Permission Setup
+#### Issue: "Token has been revoked"
+**Solution:** User's tokenVersion was incremented (password change, admin action, etc.). User must login again.
 
-### 1. Create Permissions
+#### Issue: "Account is temporarily locked"
+**Solution:** Too many failed login attempts. Wait 15 minutes or contact admin.
 
-```typescript
-// CRM Permissions
-await prisma.permission.createMany({
-  data: [
-    // Lead permissions
-    { workspaceId, resource: 'leads', action: 'create', scope: 'own' },
-    { workspaceId, resource: 'leads', action: 'read', scope: 'own' },
-    { workspaceId, resource: 'leads', action: 'read', scope: 'department' },
-    { workspaceId, resource: 'leads', action: 'read', scope: 'all' },
-    { workspaceId, resource: 'leads', action: 'update', scope: 'own' },
-    { workspaceId, resource: 'leads', action: 'update', scope: 'all' },
-    { workspaceId, resource: 'leads', action: 'delete', scope: 'all' },
-    { workspaceId, resource: 'leads', action: 'approve', scope: 'department' },
-    
-    // Deal permissions
-    { workspaceId, resource: 'deals', action: 'create', scope: 'own' },
-    { workspaceId, resource: 'deals', action: 'read', scope: 'department' },
-    { workspaceId, resource: 'deals', action: 'approve', scope: 'all' },
-  ]
-});
+#### Issue: "You are not a member of this workspace"
+**Solution:** User doesn't have access to the workspace. Contact workspace owner.
+
+#### Issue: "Email already exists"
+**Solution:** Email is already registered. Use "Forgot Password" or login.
+
+---
+
+### Sample Users (from seed data)
+
+```
+Super Admin:
+Email: superadmin@atlas.com
+Password: Admin@123
+
+Workspace Owner (Acme Corporation):
+Email: owner@acme.com
+Password: Admin@123
+
+Workspace Admin:
+Email: admin@acme.com
+Password: Admin@123
+
+Sales Manager:
+Email: sales.manager@acme.com
+Password: Admin@123
+
+Sales Rep:
+Email: sales.rep@acme.com
+Password: Admin@123
 ```
 
-### 2. Assign Permissions to Roles
+---
 
-```typescript
-// ADMIN role gets full access to leads
-await prisma.rolePermission.createMany({
-  data: [
-    { workspaceId, role: 'ADMIN', permissionId: 'leads-read-all' },
-    { workspaceId, role: 'ADMIN', permissionId: 'leads-update-all' },
-    { workspaceId, role: 'ADMIN', permissionId: 'leads-delete-all' },
-  ]
-});
+### API Response Format
 
-// MANAGER role gets department access
-await prisma.rolePermission.createMany({
-  data: [
-    { workspaceId, role: 'MANAGER', permissionId: 'leads-read-department' },
-    { workspaceId, role: 'MANAGER', permissionId: 'leads-approve-department' },
-  ]
-});
-
-// USER role gets own access
-await prisma.rolePermission.createMany({
-  data: [
-    { workspaceId, role: 'USER', permissionId: 'leads-create-own' },
-    { workspaceId, role: 'USER', permissionId: 'leads-read-own' },
-    { workspaceId, role: 'USER', permissionId: 'leads-update-own' },
-  ]
-});
-```
-
-### 3. Grant Special Permission to Specific User
-
-```typescript
-// Give a specific USER the ability to approve leads (exception)
-await prisma.userPermission.create({
-  data: {
-    workspaceId,
-    userId: 'user-123',
-    permissionId: 'leads-approve-department',
-    grantedBy: 'admin-456',
-    expiresAt: new Date('2026-12-31'), // Temporary access
-  }
-});
-```
-
-## Permission Check Logic
-
-### NestJS Guard Example
-
-```typescript
-@Injectable()
-export class PermissionGuard implements CanActivate {
-  async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
-    const user = request.user;
-    const { resource, action, scope } = this.extractPermission(context);
-    
-    // 1. Check if SUPERADMIN (bypass all checks)
-    if (user.globalRole === 'SUPERADMIN') {
-      return true;
-    }
-    
-    // 2. Check workspace membership
-    const membership = await this.getWorkspaceMembership(user.id, workspaceId);
-    if (!membership) {
-      return false;
-    }
-    
-    // 3. Check if OWNER (full workspace access)
-    if (membership.role === 'OWNER') {
-      return true;
-    }
-    
-    // 4. Check role permissions (inherited from role)
-    const hasRolePermission = await this.checkRolePermission(
-      workspaceId,
-      membership.role,
-      resource,
-      action,
-      scope
-    );
-    
-    if (hasRolePermission) {
-      return true;
-    }
-    
-    // 5. Check user-specific permissions (overrides)
-    const hasUserPermission = await this.checkUserPermission(
-      workspaceId,
-      user.id,
-      resource,
-      action,
-      scope
-    );
-    
-    return hasUserPermission;
-  }
-}
-```
-
-## Use Cases
-
-### Use Case 1: Sales Team
-
-**Scenario:** Sales team with reps, managers, and director.
-
-**Setup:**
-- Sales Reps (USER role):
-  - Create/edit their own leads
-  - View department leads (read-only)
-  
-- Sales Managers (MANAGER role):
-  - View/edit all department leads
-  - Approve deals in their department
-  
-- Sales Director (ADMIN role):
-  - Full access to all sales data
-  - Can reassign leads
-  - Can approve all deals
-
-### Use Case 2: HR Department
-
-**Scenario:** HR team managing employee data.
-
-**Setup:**
-- HR Assistants (USER role):
-  - Create employee records
-  - Update attendance
-  - Cannot access payroll
-  
-- HR Managers (MANAGER role):
-  - Approve leave applications
-  - View department payroll
-  - Cannot modify salary structures
-  
-- HR Director (ADMIN role):
-  - Full access to all HR data
-  - Can modify salary structures
-  - Can approve payroll runs
-
-### Use Case 3: Finance Team
-
-**Scenario:** Finance team with accountants and CFO.
-
-**Setup:**
-- Accountants (USER role):
-  - Create invoices and journal entries
-  - Cannot approve payments
-  
-- Finance Manager (MANAGER role):
-  - Approve payments up to $10,000
-  - View all financial reports
-  
-- CFO (ADMIN role):
-  - Approve all payments
-  - Access to all financial data
-  - Can modify chart of accounts
-
-## Best Practices
-
-### 1. Start with Role Permissions
-Define comprehensive role permissions first. Only use user permissions for exceptions.
-
-### 2. Use Descriptive Resource Names
-```typescript
-// Good
-resource: "payroll_runs"
-resource: "employee_salary"
-
-// Bad
-resource: "payroll"  // Too broad
-```
-
-### 3. Implement Scope Checks
-Always check scope in your business logic:
-
-```typescript
-async getLeads(userId: string, scope: string) {
-  if (scope === 'own') {
-    return prisma.lead.findMany({ where: { leadOwnerId: userId } });
-  }
-  if (scope === 'department') {
-    const user = await this.getUserDepartment(userId);
-    return prisma.lead.findMany({ where: { department: user.department } });
-  }
-  if (scope === 'all') {
-    return prisma.lead.findMany();
-  }
-}
-```
-
-### 4. Audit Permission Changes
-Log all permission grants/revokes in ActivityLog:
-
-```typescript
-await prisma.activityLog.create({
-  data: {
-    workspaceId,
-    userId: grantedBy,
-    entityType: 'UserPermission',
-    entityId: userPermission.id,
-    action: 'CREATE',
-    changes: { userId, permissionId, expiresAt },
-  }
-});
-```
-
-### 5. Use Temporary Permissions
-For temporary access, always set `expiresAt`:
-
-```typescript
+**Success Response:**
+```json
 {
-  expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+  "success": true,
+  "message": "Operation successful",
+  "data": { ... }
 }
 ```
 
-## Migration Strategy
-
-### Phase 1: Define Core Permissions
-Create permissions for all resources and actions.
-
-### Phase 2: Set Up Role Permissions
-Map permissions to each workspace role.
-
-### Phase 3: Implement Guards
-Add permission checks to all protected routes.
-
-### Phase 4: UI Integration
-Show/hide UI elements based on user permissions.
-
-### Phase 5: Audit & Refine
-Monitor permission usage and adjust as needed.
-
-## API Endpoints
-
-### Check Permission
-```
-GET /api/v1/permissions/check?resource=leads&action=read&scope=all
-Response: { hasPermission: true }
+**Error Response:**
+```json
+{
+  "statusCode": 400,
+  "message": "Error message",
+  "error": "Bad Request"
+}
 ```
 
-### List User Permissions
+---
+
+### Redis Keys Structure
+
 ```
-GET /api/v1/users/:userId/permissions
-Response: [{ resource, action, scope, source: 'role' | 'user' }]
+atlas:token_version:{userId} → tokenVersion (number)
+atlas:refresh_token:{userId}:{jti} → IStoredRefreshToken
+atlas:user_sessions:{userId} → string[] (array of JTIs)
+atlas:verification_token:{email} → verification code data
+atlas:rate_limit:login:email:{email} → attempt count
+atlas:rate_limit:login:ip:{ip} → attempt count
+atlas:lock:login:{userId} → lock flag
 ```
 
-### Grant User Permission
-```
-POST /api/v1/users/:userId/permissions
-Body: { permissionId, expiresAt? }
+---
+
+### Permission System
+
+See `PERMISSIONS.md` for detailed permission system documentation.
+
+**Quick Reference:**
+- **Global Level:** SUPERADMIN (bypasses all checks)
+- **Workspace Level:** OWNER, ADMIN, MANAGER, USER, VIEWER
+- **Resource Level:** Custom permissions (leads:create:all, deals:read:own, etc.)
+
+---
+
+### Development Workflow
+
+1. **Make schema changes** in `packages/database/prisma/schema.prisma`
+2. **Generate Prisma client:** `pnpm db:generate`
+3. **Push to database:** `pnpm db:push`
+4. **Update services** to use new models
+5. **Test with Swagger UI**
+6. **Update frontend** to consume new APIs
+
+---
+
+### Useful Commands
+
+```bash
+# Generate Prisma client
+pnpm db:generate
+
+# Push schema to database
+pnpm db:push
+
+# Run migrations (production)
+pnpm db:migrate
+
+# Seed database
+pnpm db:seed
+
+# Open Prisma Studio
+pnpm db:studio
+
+# Start development servers
+pnpm dev
+
+# Build all packages
+pnpm build
+
+# Run linter
+pnpm lint
+
+# Format code
+pnpm format
 ```
 
-### Revoke User Permission
-```
-DELETE /api/v1/users/:userId/permissions/:permissionId
-```
+---
 
-## Summary
+## Contact
 
-The 3-tier permission model provides:
-
-✅ **Flexibility:** Role-based defaults + user-specific overrides  
-✅ **Scalability:** Easy to manage large teams  
-✅ **Security:** Fine-grained access control  
-✅ **Auditability:** Track all permission changes  
-✅ **Simplicity:** Intuitive role hierarchy
+For questions or issues, please contact the development team.

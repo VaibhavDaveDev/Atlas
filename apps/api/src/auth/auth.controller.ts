@@ -7,12 +7,21 @@ import {
   Query,
   Res,
   Logger,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiTags, ApiBody, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { GoogleOAuthService } from './services/google-oauth.service';
+import { AuthGuard } from '../common/guards/auth.guard';
 import { CreateAuthDto } from './dto/create-auth.dto';
+import { LoginDto } from './dto/login.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
+import { ResendVerificationDto } from './dto/resend-verification.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { LogoutDto } from './dto/logout.dto';
+import { LogoutAllDto } from './dto/logout-all.dto';
+import { SelectWorkspaceDto } from './dto/select-workspace.dto';
 // import { UpdateAuthDto } from './dto/update-auth.dto';
 import {
   GoogleOAuthInitDto,
@@ -33,7 +42,30 @@ export class AuthController {
 
   // Strict rate limit for registration: 5 requests per 15 minutes
   @Throttle({ default: THROTTLER_CONFIG.AUTH })
-  @Post()
+  @Post('register')
+  @ApiOperation({ summary: 'Register a new user' })
+  @ApiBody({ type: CreateAuthDto })
+  @ApiResponse({ 
+    status: 201, 
+    description: 'User registered successfully. Verification email sent.',
+    schema: {
+      example: {
+        success: true,
+        message: 'Registration successful. Please check your email for verification code.'
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Bad request - validation errors',
+    schema: {
+      example: {
+        statusCode: 400,
+        message: ['email must be a valid email', 'password must be at least 8 characters long'],
+        error: 'Bad Request'
+      }
+    }
+  })
   create(@Body() payload: CreateAuthDto, @Req() req: Request) {
     this.customLogger.log(
       `Registration attempt for email: ${payload.email}`,
@@ -59,31 +91,62 @@ export class AuthController {
   // Strict rate limit for verification: 5 requests per 15 minutes
   @Throttle({ default: THROTTLER_CONFIG.AUTH })
   @Post('verify-email')
-  verifyEmail(
-    @Body('email') email: string,
-    @Body('code') code: string,
-    @Req() req: Request,
-  ) {
+  @ApiOperation({ summary: 'Verify user email with verification code' })
+  @ApiBody({ type: VerifyEmailDto })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Email verified successfully',
+    schema: {
+      example: {
+        success: true,
+        message: 'Email verified successfully'
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Invalid verification code or email',
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'Invalid verification code',
+        error: 'Bad Request'
+      }
+    }
+  })
+  verifyEmail(@Body() verifyEmailDto: VerifyEmailDto, @Req() req: Request) {
     this.customLogger.log(
-      `Email verification attempt for: ${email}`,
+      `Email verification attempt for: ${verifyEmailDto.email}`,
       'AuthController',
     );
     const meta = {
       ip: req.ip || 'unknown',
       userAgent: req.headers['user-agent'] || 'unknown',
     };
-    return this.authService.verifyEmail(email, code, meta);
+    return this.authService.verifyEmail(verifyEmailDto.email, verifyEmailDto.code, meta);
   }
 
   // Strict rate limit: 5 requests per 15 minutes
   @Throttle({ default: THROTTLER_CONFIG.AUTH })
   @Post('resend-verification-email')
-  resendVerificationEmail(@Body('email') email: string, @Req() req: Request) {
+  @ApiOperation({ summary: 'Resend verification email' })
+  @ApiBody({ type: ResendVerificationDto })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Verification email sent successfully',
+    schema: {
+      example: {
+        success: true,
+        message: 'Verification email sent successfully'
+      }
+    }
+  })
+  resendVerificationEmail(@Body() resendDto: ResendVerificationDto, @Req() req: Request) {
     const meta = {
       ip: req.ip || 'unknown',
       userAgent: req.headers['user-agent'] || 'unknown',
     };
-    return this.authService.resendVerificationEmail(email, meta);
+    return this.authService.resendVerificationEmail(resendDto.email, meta);
   }
 
   // ==========================================
@@ -98,6 +161,18 @@ export class AuthController {
    * @example GET /auth/google?redirectUrl=http://localhost:3000/dashboard
    */
   @Get('google')
+  @ApiOperation({ summary: 'Initiate Google OAuth flow' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Google OAuth URL generated successfully',
+    schema: {
+      example: {
+        url: 'https://accounts.google.com/oauth/authorize?...',
+        state: 'random-state-string',
+        message: 'Redirect to the provided URL to authenticate with Google'
+      }
+    }
+  })
   async googleOAuthInit(
     @Query() query: GoogleOAuthInitDto,
     @Req() req: Request,
@@ -193,25 +268,15 @@ export class AuthController {
       meta,
     );
 
-    // If redirectUrl is provided, redirect to it with tokens as query params
-    if (result.redirectUrl) {
-      const redirectUrl = new URL(result.redirectUrl);
-      redirectUrl.searchParams.set('access_token', result.accessToken);
-      redirectUrl.searchParams.set('refresh_token', result.refreshToken);
-      redirectUrl.searchParams.set('user_id', result.user.id);
-      redirectUrl.searchParams.set('email', result.user.email);
-      redirectUrl.searchParams.set('is_new_user', result.isNewUser.toString());
-
-      return res.redirect(redirectUrl.toString());
-    }
-
-    // Otherwise return JSON response
+    // SECURITY: Never put tokens in URL query params (browser history / Referer header leaks).
+    // Return JSON payload; the frontend SPA is responsible for receiving and storing tokens.
+    // If a redirect is needed, the frontend should perform it after receiving the JSON.
     return {
       success: true,
       message: result.isNewUser
         ? 'Account created successfully via Google'
         : 'Signed in successfully via Google',
-      data: result,
+      ...result,
     };
   }
 
@@ -269,13 +334,54 @@ export class AuthController {
   // Strict rate limit for login: 5 requests per 15 minutes per IP
   @Throttle({ default: THROTTLER_CONFIG.AUTH })
   @Post('login')
-  async login(
-    @Body('email') email: string,
-    @Body('password') password: string,
-    @Req() req: Request,
-  ) {
+  @ApiOperation({ summary: 'Login with email and password' })
+  @ApiBody({ type: LoginDto })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Login successful',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Success',
+        data: {
+          accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+          refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+          user: {
+            id: 'uuid',
+            email: 'owner@acme.com',
+            username: 'owner',
+            role: 'USER',
+            verified: true
+          },
+          workspaces: [
+            {
+              workspaceId: 'uuid',
+              workspaceName: 'Acme Corporation',
+              subdomain: 'acme',
+              status: 'ACTIVE',
+              role: 'OWNER',
+              department: null
+            }
+          ],
+          expiresIn: 3600
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 401, 
+    description: 'Invalid credentials',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Invalid email or password',
+        error: 'Unauthorized'
+      }
+    }
+  })
+  async login(@Body() loginDto: LoginDto, @Req() req: Request) {
     this.customLogger.log(
-      `Login attempt for email: ${email}`,
+      `Login attempt for email: ${loginDto.email}`,
       'AuthController',
     );
 
@@ -294,23 +400,31 @@ export class AuthController {
           : req.headers['sec-ch-ua-platform']),
     };
 
-    const result = await this.authService.login({ email, password }, meta);
-
-    return {
-      success: true,
-      message: 'Login successful',
-      data: result,
-    };
+    return await this.authService.login({ email: loginDto.email, password: loginDto.password }, meta);
   }
 
   /**
    * Refresh access token using refresh token
    */
   @Post('refresh-token')
-  async refreshToken(
-    @Body('refreshToken') refreshToken: string,
-    @Req() req: Request,
-  ) {
+  @ApiOperation({ summary: 'Refresh access token using refresh token' })
+  @ApiBody({ type: RefreshTokenDto })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Token refreshed successfully',
+    schema: {
+      example: {
+        success: true,
+        message: 'Token refreshed successfully',
+        data: {
+          accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+          refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+          expiresIn: 3600
+        }
+      }
+    }
+  })
+  async refreshToken(@Body() refreshTokenDto: RefreshTokenDto, @Req() req: Request) {
     this.customLogger.log('Token refresh requested', 'AuthController');
 
     const meta = {
@@ -328,50 +442,183 @@ export class AuthController {
           : req.headers['sec-ch-ua-platform']),
     };
 
-    const result = await this.authService.refreshToken(refreshToken, meta);
-
-    return {
-      success: true,
-      message: 'Token refreshed successfully',
-      data: result,
-    };
+    return await this.authService.refreshToken(refreshTokenDto.refreshToken, meta);
   }
 
   /**
    * Logout current session
+   * Requires authentication — userId is taken from the verified JWT.
    */
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth('JWT-auth')
   @Post('logout')
-  async logout(
-    @Body('refreshToken') refreshToken: string,
-    @Body('userId') userId: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    @Req() req: Request,
-  ) {
+  @ApiOperation({ summary: 'Logout current session' })
+  @ApiBody({ type: LogoutDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Logout successful',
+    schema: { example: { success: true, message: 'Logged out successfully' } },
+  })
+  async logout(@Body() logoutDto: LogoutDto, @Req() req: Request) {
     this.customLogger.log('Logout requested', 'AuthController');
+    const user = (req as any).user;
 
-    const result = await this.authService.logout(refreshToken, userId);
-
-    return {
-      success: true,
-      ...result,
-    };
+    // Prevent privilege escalation: always use userId from verified JWT
+    return await this.authService.logout(logoutDto.refreshToken, user.userId);
   }
 
   /**
    * Logout from all devices
+   * Requires authentication — userId is taken from the verified JWT.
    */
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth('JWT-auth')
   @Post('logout-all')
-  async logoutAll(@Body('userId') userId: string) {
+  @ApiOperation({ summary: 'Logout from all devices' })
+  @ApiResponse({
+    status: 200,
+    description: 'Logout from all devices successful',
+    schema: { example: { success: true, message: 'Logged out from all devices successfully' } },
+  })
+  async logoutAll(@Req() req: Request) {
+    const user = (req as any).user;
     this.customLogger.log(
-      `Logout all devices requested for user: ${userId}`,
+      `Logout all devices requested for user: ${user.userId}`,
       'AuthController',
     );
 
-    const result = await this.authService.logoutAllDevices(userId);
+    return await this.authService.logoutAllDevices(user.userId);
+  }
 
-    return {
-      success: true,
-      ...result,
-    };
+  /**
+   * Get current user info
+   */
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @Get('me')
+  @ApiOperation({ summary: 'Get current authenticated user information' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'User information retrieved successfully',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Success',
+        data: {
+          userId: 'uuid',
+          role: 'USER',
+          tokenVersion: 0
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 401, 
+    description: 'User not authenticated',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'No token found',
+        error: 'Unauthorized'
+      }
+    }
+  })
+  async getCurrentUser(@Req() req: Request) {
+    // This will be protected by AuthGuard
+    const user = (req as any).user;
+    
+    return user;
+  }
+
+  /**
+   * Get user's workspaces
+   */
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @Get('workspaces')
+  @ApiOperation({ summary: 'Get user workspaces' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'User workspaces retrieved successfully',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Success',
+        data: [
+          {
+            workspaceId: 'uuid',
+            workspaceName: 'Acme Corporation',
+            subdomain: 'acme',
+            status: 'ACTIVE',
+            role: 'OWNER',
+            department: null,
+            joinedAt: '2024-01-01T00:00:00.000Z'
+          }
+        ]
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 401, 
+    description: 'User not authenticated',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'No token found',
+        error: 'Unauthorized'
+      }
+    }
+  })
+  async getUserWorkspaces(@Req() req: Request) {
+    // Extract userId from JWT token
+    const user = (req as any).user;
+
+    return await this.authService.getUserWorkspaces(user.userId);
+  }
+
+  /**
+   * Select workspace (returns new JWT with workspace context)
+   */
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @Post('select-workspace')
+  @ApiOperation({ summary: 'Select workspace and get new JWT with workspace context' })
+  @ApiBody({ type: SelectWorkspaceDto })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Workspace selected successfully',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Success',
+        data: {
+          accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+          workspace: {
+            id: 'uuid',
+            name: 'Acme Corporation',
+            subdomain: 'acme',
+            status: 'ACTIVE',
+            role: 'OWNER',
+            department: null
+          }
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 401, 
+    description: 'User not authenticated',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'No token found',
+        error: 'Unauthorized'
+      }
+    }
+  })
+  async selectWorkspace(@Body() selectWorkspaceDto: SelectWorkspaceDto, @Req() req: Request) {
+    const user = (req as any).user;
+
+    return await this.authService.selectWorkspace(user.userId, selectWorkspaceDto.workspaceId);
   }
 }

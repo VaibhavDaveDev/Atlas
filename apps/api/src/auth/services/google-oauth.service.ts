@@ -413,7 +413,7 @@ export class GoogleOAuthService {
         id: true,
         email: true,
         username: true,
-        role: true,
+        globalRole: true,
         verified: true,
         status: true,
         provider: true,
@@ -458,7 +458,7 @@ export class GoogleOAuthService {
             email: googleUser.email,
             username,
             password: '', // OAuth users don't have a password
-            role: 'USER',
+            globalRole: 'USER',
             verified: true, // Google verified the email
             status: 'ACTIVE',
             provider: 'google',
@@ -468,7 +468,7 @@ export class GoogleOAuthService {
             id: true,
             email: true,
             username: true,
-            role: true,
+            globalRole: true,
             verified: true,
             status: true,
             provider: true,
@@ -504,7 +504,7 @@ export class GoogleOAuthService {
           {
             email: googleUser.email,
             username,
-            role: 'USER',
+            globalRole: 'USER',
             status: 'ACTIVE',
             verified: 'true',
             provider: 'google',
@@ -537,7 +537,10 @@ export class GoogleOAuthService {
 
     // Generate tokens
     return this.generateTokensForUser(
-      user,
+      {
+        ...user,
+        username: user.username || user.email.split('@')[0],
+      },
       { ip, userAgent, device },
       isNewUser,
     );
@@ -551,7 +554,7 @@ export class GoogleOAuthService {
       id: string;
       email: string;
       username: string;
-      role: string;
+      globalRole: string;
       tokenVersion: number;
       verified: boolean;
       provider: string;
@@ -579,7 +582,7 @@ export class GoogleOAuthService {
       // Create access token
       const accessToken = this.authUtilsService.createAccessToken({
         userId: user.id,
-        role: user.role as unknown as UserRole,
+        role: user.globalRole as unknown as UserRole,
         tokenVersion: user.tokenVersion, // Include tokenVersion for hybrid JWT validation
       });
 
@@ -646,8 +649,8 @@ export class GoogleOAuthService {
         user: {
           id: user.id,
           email: user.email,
-          username: user.username,
-          role: user.role,
+          username: user.username || user.email.split('@')[0],
+          role: user.globalRole,
           verified: user.verified,
           provider: user.provider,
           providerId: user.providerId || '',

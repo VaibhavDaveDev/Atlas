@@ -169,9 +169,14 @@ DATABASE_URL="postgresql://postgres:YOUR_PASSWORD@localhost:5432/atlas_erp?schem
 cp apps/api/.env.example apps/api/.env
 ```
 
-Edit `apps/api/.env` and update:
+Edit `apps/api/.env` and update the following:
+
+**Required Configuration:**
 ```env
+# Database
 DATABASE_URL="postgresql://postgres:YOUR_PASSWORD@localhost:5432/atlas_erp?schema=public"
+
+# JWT Secrets (Generate strong random secrets - see below)
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production-min-32-chars
 JWT_REFRESH_SECRET=your-super-secret-refresh-key-change-this-in-production-min-32-chars
 ```
@@ -190,6 +195,52 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ### Method 2: OpenSSL
 ```bash
 openssl rand -hex 32
+```
+**Email Configuration (Mailtrap - Development/Sandbox Mode):**
+
+1. Sign up for free at: https://mailtrap.io
+2. Go to "Email Testing" → "Inboxes" → Select your inbox
+3. Click "Show Credentials" under SMTP Settings
+4. Copy the credentials to your `.env`:
+
+```env
+# Email Configuration (Mailtrap - Development/Sandbox Mode)
+EMAIL_HOST=sandbox.smtp.mailtrap.io
+EMAIL_PORT=2525
+EMAIL_USER=your-mailtrap-username-from-mailtrap
+EMAIL_PASS=your-mailtrap-password-from-mailtrap
+EMAIL_FROM=noreply@atlas-erp.com
+```
+
+**Note:** In development, Mailtrap captures all emails in a sandbox inbox. No emails are actually sent to real addresses. This is perfect for testing!
+
+**Google OAuth Configuration (Optional):**
+
+1. Go to: https://console.cloud.google.com/apis/credentials
+2. Create a new project or select existing
+3. Click "Create Credentials" → "OAuth 2.0 Client ID"
+4. Configure OAuth consent screen if prompted
+5. Application type: "Web application"
+6. Add these URLs:
+
+   **Authorized JavaScript origins:**
+   ```
+   http://localhost:3001
+   http://localhost:3000
+   ```
+
+   **Authorized redirect URIs:**
+   ```
+   http://localhost:3001/api/v1/auth/google/callback
+   ```
+
+7. Copy the credentials to your `.env`:
+
+```env
+# Google OAuth Configuration
+GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-client-secret
+GOOGLE_REDIRECT_URI=http://localhost:3001/api/v1/auth/google/callback
 ```
 
 #### 2.3 Web Environment
@@ -284,6 +335,21 @@ pnpm db:seed
 @atlas/database:db:seed: 🌱 Starting database seed...
 @atlas/database:db:seed: 👤 Creating Super Admin...
 @atlas/database:db:seed: ✅ Database seeded successfully!
+```
+## 📝 Sample Credentials (After Seeding)
+
+```
+Owner/Admin:
+  Email: admin@atlas-erp.com
+  Password: Password123!
+
+HR Manager:
+  Email: ohr@atlas.com
+  Password: Password123!
+
+Employee:
+  Email: employee@atlas.com
+  Password: Password123!
 ```
 
 ### Step 7: Start Development Servers
@@ -574,26 +640,6 @@ Use this checklist to track your progress setting up the project.
 - [ ] Database has sample data (check Prisma Studio)
 - [ ] No errors in terminal logs
 - [ ] TypeScript compilation working (no red squiggles)
-
-## 📝 Sample Credentials (After Seeding)
-
-```
-Super Admin:
-  Email: admin@atlas-erp.com
-  Password: Admin@123
-
-Workspace Owner:
-  Email: owner@acme.com
-  Password: Admin@123
-
-Sales Manager:
-  Email: sales.manager@acme.com
-  Password: Admin@123
-
-Sales Rep:
-  Email: sales.rep@acme.com
-  Password: Admin@123
-```
 
 ## 🚀 Next Steps
 

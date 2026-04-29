@@ -110,7 +110,7 @@ export class AuthService {
             email,
             username,
             password: hashedPassword,
-            role: 'USER',
+            globalRole: 'USER',
             verified: false,
             status: 'ACTIVE',
             provider: 'local',
@@ -148,7 +148,7 @@ export class AuthService {
           {
             email,
             username,
-            role: 'USER',
+            globalRole: 'USER',
             status: 'ACTIVE',
             verified: 'false',
             provider: 'local',
@@ -157,7 +157,11 @@ export class AuthService {
           tx,
         );
 
-        return user;
+        return {
+          id: user.id,
+          email: user.email,
+          username: user.username || email.split('@')[0],
+        };
       },
     );
 
@@ -299,7 +303,7 @@ export class AuthService {
     try {
       await this.emailQueueService.sendWelcomeEmail(
         email,
-        user.username,
+        user.username || email.split('@')[0],
         user.id,
       );
       this.customLogger.log(
@@ -341,17 +345,15 @@ export class AuthService {
       15 * 60 * 1000, // 15 minutes
     );
 
-    // Find user
+    // Find user — return generic message if not found (prevents user enumeration)
     const user = await this.prismaService.authUser.findUnique({
       where: { email },
     });
 
-    if (!user) {
-      throw AppError.notFound('User not found');
-    }
-
-    if (user.verified) {
-      throw AppError.badRequest('Email already verified');
+    // SECURITY: Return the same message regardless of whether the email exists.
+    // This prevents user enumeration attacks.
+    if (!user || user.verified) {
+      return { message: 'If this email exists and is unverified, a new code has been sent.' };
     }
 
     // Generate new verification code
@@ -393,7 +395,7 @@ export class AuthService {
     try {
       await this.emailQueueService.sendVerificationEmail(
         email,
-        user.username,
+        user.username || email.split('@')[0],
         verificationCode,
         user.id,
       );
@@ -451,12 +453,12 @@ export class AuthService {
         email: true,
         username: true,
         password: true,
-        role: true,
+        globalRole: true,
         verified: true,
         status: true,
         provider: true,
         tokenVersion: true,
-        authSecurity: {
+        security: {
           select: {
             id: true,
             failedAttempts: true,
@@ -524,7 +526,7 @@ export class AuthService {
     }
 
     // Check account lockout
-    const security = user.authSecurity;
+    const security = user.security;
     if (security?.lockExpiresAt && new Date() < security.lockExpiresAt) {
       const remainingTime = Math.ceil(
         (security.lockExpiresAt.getTime() - Date.now()) / 1000 / 60,
@@ -589,7 +591,7 @@ export class AuthService {
       // Create access token (stateless, minimal payload - no email)
       const accessToken: string = this.authUtilsService.createAccessToken({
         userId: user.id,
-        role: user.role as unknown as UserRole,
+        role: user.globalRole as unknown as UserRole,
         tokenVersion: user.tokenVersion, // Include tokenVersion for hybrid JWT validation
       });
 
@@ -708,16 +710,20 @@ export class AuthService {
         });
       });
 
+      // Fetch user's workspaces
+      const workspaces = await this.getUserWorkspaces(user.id);
+
       return {
         accessToken,
         refreshToken,
         user: {
           id: user.id,
           email: user.email,
-          username: user.username,
-          role: user.role,
+          username: user.username || '',
+          role: user.globalRole,
           verified: user.verified,
         },
+        workspaces,
         expiresIn: this.parseExpiryToSeconds(AUTH_CONFIG.TOKEN_EXPIRY.ACCESS),
       };
     } finally {
@@ -784,7 +790,7 @@ export class AuthService {
     // Fetch user to get current role (may have changed)
     const user = await this.prismaService.authUser.findUnique({
       where: { id: userId },
-      select: { id: true, role: true, status: true, tokenVersion: true },
+      select: { id: true, globalRole: true, status: true, tokenVersion: true },
     });
 
     if (!user || user.status !== 'ACTIVE') {
@@ -798,7 +804,7 @@ export class AuthService {
     // Create new tokens
     const newAccessToken: string = this.authUtilsService.createAccessToken({
       userId: user.id,
-      role: user.role as unknown as UserRole,
+      role: user.globalRole as unknown as UserRole,
       tokenVersion: user.tokenVersion, // Include tokenVersion for hybrid JWT validation
     });
 
@@ -889,7 +895,8 @@ export class AuthService {
   }
 
   /**
-   * Add a session (JTI) to user's session list
+   * Add a session (JTI) to user's session list.
+   * Uses Redis RPUSH to append atomically — eliminates the read-modify-write race condition.
    */
   private async addUserSession(
     userId: string,
@@ -898,38 +905,27 @@ export class AuthService {
   ): Promise<void> {
     const userSessionsKey = `${config.redis_cache_key_prefix}:${AUTH_CONFIG.CACHE_PREFIXES.USER_SESSIONS}:${userId}`;
 
-    // Get current sessions
-    const sessions =
-      (await this.redisService.get<string[]>(userSessionsKey)) || [];
-
-    // Add new session
-    sessions.push(jti);
-
-    // Store updated sessions
-    await this.redisService.set(userSessionsKey, sessions, ttl);
+    // RPUSH is atomic — no race condition
+    await this.redisService.rpush(userSessionsKey, jti);
+    // Reset TTL on the list key so it expires with the longest-lived session
+    await this.redisService.expire(userSessionsKey, ttl);
   }
 
   /**
-   * Remove a session from user's session list
+   * Remove a session from user's session list.
+   * Uses Redis LREM to remove atomically.
    */
   private async removeUserSession(userId: string, jti: string): Promise<void> {
     const userSessionsKey = `${config.redis_cache_key_prefix}:${AUTH_CONFIG.CACHE_PREFIXES.USER_SESSIONS}:${userId}`;
 
-    const sessions =
-      (await this.redisService.get<string[]>(userSessionsKey)) || [];
-    const updatedSessions = sessions.filter((s) => s !== jti);
-
-    if (updatedSessions.length > 0) {
-      const ttl = this.parseExpiryToSeconds(AUTH_CONFIG.TOKEN_EXPIRY.REFRESH);
-      await this.redisService.set(userSessionsKey, updatedSessions, ttl);
-    } else {
-      await this.redisService.del(userSessionsKey);
-    }
+    // LREM count=0 removes ALL occurrences of jti (should be at most 1)
+    await this.redisService.lrem(userSessionsKey, 0, jti);
   }
 
   /**
-   * Enforce maximum devices per user
-   * Removes oldest sessions when limit exceeded
+   * Enforce maximum devices per user.
+   * Removes oldest sessions when limit is exceeded.
+   * Uses Redis native list operations to avoid race conditions.
    */
   private async enforceMaxDevices(
     userId: string,
@@ -937,42 +933,37 @@ export class AuthService {
   ): Promise<void> {
     const userSessionsKey = `${config.redis_cache_key_prefix}:${AUTH_CONFIG.CACHE_PREFIXES.USER_SESSIONS}:${userId}`;
 
-    const sessions =
-      (await this.redisService.get<string[]>(userSessionsKey)) || [];
+    // LLEN is O(1) — no need to fetch the full list first
+    const sessionCount = await this.redisService.llen(userSessionsKey);
 
-    if (sessions.length <= maxDevices) {
+    if (sessionCount <= maxDevices) {
       return;
     }
 
-    // Remove oldest sessions (first in list)
-    const sessionsToRemove = sessions.slice(
-      0,
-      sessions.length - maxDevices + 1,
-    );
+    // Calculate how many excess sessions to remove
+    const excessCount = sessionCount - maxDevices;
 
-    await Promise.all(
-      sessionsToRemove.map(async (jti) => {
-        const tokenKey = `${config.redis_cache_key_prefix}:${AUTH_CONFIG.CACHE_PREFIXES.REFRESH_TOKEN}:${userId}:${jti}`;
+    // LPOP the oldest sessions (they were RPUSH-ed in order)
+    for (let i = 0; i < excessCount; i++) {
+      const oldJti = await this.redisService.lpop(userSessionsKey);
+      if (oldJti) {
+        const tokenKey = `${config.redis_cache_key_prefix}:${AUTH_CONFIG.CACHE_PREFIXES.REFRESH_TOKEN}:${userId}:${oldJti}`;
         await this.redisService.del(tokenKey);
-      }),
-    );
-
-    // Keep only the most recent sessions
-    const updatedSessions = sessions.slice(sessions.length - maxDevices + 1);
-    const ttl = this.parseExpiryToSeconds(AUTH_CONFIG.TOKEN_EXPIRY.REFRESH);
-    await this.redisService.set(userSessionsKey, updatedSessions, ttl);
+      }
+    }
   }
 
   /**
-   * Revoke all refresh tokens for a user (security measure)
+   * Revoke all refresh tokens for a user (security measure).
+   * Uses native Redis list operations for correctness.
    */
   private async revokeAllUserTokens(userId: string): Promise<void> {
     const userSessionsKey = `${config.redis_cache_key_prefix}:${AUTH_CONFIG.CACHE_PREFIXES.USER_SESSIONS}:${userId}`;
 
-    const sessions =
-      (await this.redisService.get<string[]>(userSessionsKey)) || [];
+    // Fetch all JTIs from the Redis list
+    const sessions = await this.redisService.lrange(userSessionsKey, 0, -1);
 
-    // Delete all refresh tokens
+    // Delete all refresh tokens and the session list atomically
     await Promise.all([
       ...sessions.map((jti) => {
         const tokenKey = `${config.redis_cache_key_prefix}:${AUTH_CONFIG.CACHE_PREFIXES.REFRESH_TOKEN}:${userId}:${jti}`;
@@ -1061,28 +1052,25 @@ export class AuthService {
   }
 
   /**
-   * Parse token expiry string to seconds
+   * Parse token expiry string to seconds.
+   * Supports: s (seconds), m (minutes), h (hours), d (days), w (weeks)
    */
   private parseExpiryToSeconds(expiry: string): number {
-    const match = expiry.match(/^(\d+)([smhd])?$/);
+    const match = expiry.match(/^(\d+)([smhdw])?$/);
     if (!match) {
-      return 3600;
+      return 3600; // default 1 hour
     }
 
     const value = parseInt(match[1], 10);
     const unit = match[2] || 's';
 
     switch (unit) {
-      case 's':
-        return value;
-      case 'm':
-        return value * 60;
-      case 'h':
-        return value * 60 * 60;
-      case 'd':
-        return value * 60 * 60 * 24;
-      default:
-        return value;
+      case 's': return value;
+      case 'm': return value * 60;
+      case 'h': return value * 60 * 60;
+      case 'd': return value * 60 * 60 * 24;
+      case 'w': return value * 60 * 60 * 24 * 7;
+      default:  return value;
     }
   }
 
@@ -1104,9 +1092,133 @@ export class AuthService {
     const cacheKey = `${config.redis_cache_key_prefix}:token_version:${userId}`;
     await this.redisService.del(cacheKey);
 
-    this.customLogger.log(`Token version incremented for user ${userId}, {
-      context: 'AuthService.incrementTokenVersion',
-      userId,
-    }`);
+    this.customLogger.log(
+      `Token version incremented for user ${userId}`,
+      'AuthService.incrementTokenVersion',
+    );
+  }
+
+  /**
+   * Get user's workspaces
+   */
+  async getUserWorkspaces(userId: string): Promise<any[]> {
+    const workspaces = await this.prismaService.workspaceMember.findMany({
+      where: {
+        userId,
+        isActive: true,
+      },
+      include: {
+        workspace: {
+          select: {
+            id: true,
+            name: true,
+            subdomain: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    return workspaces.map((wm) => ({
+      workspaceId: wm.workspace.id,
+      workspaceName: wm.workspace.name,
+      subdomain: wm.workspace.subdomain,
+      status: wm.workspace.status,
+      role: wm.role,
+      department: wm.department,
+      joinedAt: wm.joinedAt,
+    }));
+  }
+
+  /**
+   * Select workspace and return new JWT with workspace context
+   */
+  async selectWorkspace(
+    userId: string,
+    workspaceId: string,
+  ): Promise<{ accessToken: string; workspace: any }> {
+    // Verify user is member of workspace
+    const member = await this.prismaService.workspaceMember.findUnique({
+      where: {
+        workspaceId_userId: {
+          workspaceId,
+          userId,
+        },
+      },
+      include: {
+        workspace: {
+          select: {
+            id: true,
+            name: true,
+            subdomain: true,
+            status: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            email: true,
+            globalRole: true,
+          },
+        },
+      },
+    });
+
+    if (!member) {
+      throw AppError.forbidden('You are not a member of this workspace');
+    }
+
+    if (!member.isActive) {
+      throw AppError.forbidden('Your membership in this workspace is inactive');
+    }
+
+    if (member.workspace.status !== 'ACTIVE') {
+      throw AppError.forbidden(
+        `This workspace is ${member.workspace.status.toLowerCase()}`,
+      );
+    }
+
+    // Update last access time
+    await this.prismaService.workspaceMember.update({
+      where: {
+        workspaceId_userId: {
+          workspaceId,
+          userId,
+        },
+      },
+      data: {
+        lastAccessAt: new Date(),
+      },
+    });
+
+    // Fetch current tokenVersion from DB — do NOT hardcode 0.
+    // If tokenVersion is 0 in the JWT but the DB has version 2 (after a forced logout),
+    // the AuthGuard will reject every workspace-scoped token immediately.
+    const userRecord = await this.prismaService.authUser.findUnique({
+      where: { id: member.user.id },
+      select: { tokenVersion: true },
+    });
+
+    // Create new access token with workspace context
+    const accessToken = this.authUtilsService.createAccessToken({
+      userId: member.user.id,
+      role: member.user.globalRole as unknown as UserRole,
+      tokenVersion: userRecord?.tokenVersion ?? 0,
+      workspaceId: member.workspace.id,
+      workspaceRole: member.role,
+      department: member.department,
+    });
+
+    return {
+      accessToken,
+      workspace: {
+        workspaceId: member.workspace.id,
+        workspaceName: member.workspace.name,
+        subdomain: member.workspace.subdomain,
+        status: member.workspace.status,
+        role: member.role,
+        department: member.department,
+      },
+    };
   }
 }
