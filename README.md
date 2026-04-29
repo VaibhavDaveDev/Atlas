@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="apps\web\src\app\images\logo-full-dark-nobg.png" alt="Atlas Logo" width="400" />
+  <img src="apps\web\src\app\images\logo-full-dark.png" alt="Atlas Logo" width="400" />
 </div>
 
 # Project Atlas
