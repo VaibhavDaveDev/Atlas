@@ -44,6 +44,13 @@ enum WorkspaceRole {
   VIEWER
 }
 
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  CANCELLED
+}
+
 enum EmployeeStatus {
   ACTIVE
   ON_LEAVE
@@ -188,6 +195,7 @@ model AuthUser {
   profile       UserProfile?
   workspaces    WorkspaceMember[]
   employees     Employee[]
+  sentInvites   WorkspaceInvite[] @relation("InvitedBy")
   
   @@index([email])
   @@index([status])
@@ -244,6 +252,7 @@ model Workspace {
   
   members     WorkspaceMember[]
   settings    WorkspaceSettings?
+  invites     WorkspaceInvite[]
   
   @@index([subdomain])
   @@index([status])
@@ -282,6 +291,29 @@ model WorkspaceSettings {
   customSettings   Json?
   
   @@map("workspace_settings")
+}
+
+model WorkspaceInvite {
+  id          String        @id @default(uuid())
+  workspaceId String
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  email       String
+  role        WorkspaceRole @default(USER)
+  token       String        @unique
+  status      InviteStatus  @default(PENDING)
+  
+  invitedById String
+  invitedBy   AuthUser      @relation("InvitedBy", fields: [invitedById], references: [id])
+  
+  expiresAt   DateTime
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  
+  @@unique([workspaceId, email])
+  @@index([token])
+  @@index([email])
+  @@map("workspace_invites")
 }
 
 // ============================================
@@ -606,6 +638,7 @@ model Employee {
   dateOfBirth     DateTime?
   gender          String?
   maritalStatus   String?
+  baseSalary      Decimal?       @default(0)
   
   departmentId    String?
   department      Department?    @relation(fields: [departmentId], references: [id])
@@ -1181,4 +1214,48 @@ model ActivityLog {
   @@index([workspaceId, entityType, entityId])
   @@index([workspaceId, userId, createdAt])
   @@map("activity_logs")
+}
+
+// ============================================
+// AUTH HISTORY & TRACKING
+// ============================================
+
+model LoginHistory {
+  id             String    @id @default(uuid())
+  authId         String
+  ipAddress      String
+  userAgent      String
+  device_id      String?
+  action         String    @default("login")
+  success        Boolean
+  failureReason  String?
+  attemptNumber  Int       @default(1)
+  isSuspicious   Boolean   @default(false)
+  
+  createdAt      DateTime  @default(now())
+  
+  @@index([authId, createdAt])
+  @@index([ipAddress, createdAt])
+  @@map("login_history")
+}
+
+model EmailHistory {
+  id           String    @id @default(uuid())
+  authId       String
+  emailTo      String
+  emailType    String
+  subject      String
+  messageId    String
+  emailStatus  String    @default("pending")
+  errorMessage String?
+  ipAddress    String?
+  userAgent    String?
+  sentAt       DateTime?
+  
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  
+  @@index([authId, emailType])
+  @@index([emailStatus, createdAt])
+  @@map("email_history")
 }

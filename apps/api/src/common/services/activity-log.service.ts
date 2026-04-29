@@ -1,21 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from './prisma.service';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@atlas/database';
 import { CustomLoggerService } from './custom-logger.service';
 
-export interface ActivityLogMetadata {
-  ip?: string;
-  userAgent?: string;
-  actionedBy?: string | null;
-  device?: string;
-}
-
-export interface FieldChange {
-  fieldName: string;
-  oldValue: string | null;
-  newValue: string | null;
-}
-
+/**
+ * Activity Log Service
+ * Simplified version for Atlas ERP
+ */
 @Injectable()
 export class ActivityLogService {
   constructor(
@@ -24,195 +15,157 @@ export class ActivityLogService {
   ) {}
 
   /**
-   * Log an activity event with field-level changes
-   * Can be used within a transaction or standalone
-   */
-  async logActivity(
-    params: {
-      tableName: string;
-      recordId: string;
-      action: 'create' | 'update' | 'delete';
-      eventType?:
-        | 'create'
-        | 'update'
-        | 'delete'
-        | 'login'
-        | 'logout'
-        | 'password_change'
-        | 'profile_update';
-      changes?: FieldChange[];
-      metadata: ActivityLogMetadata;
-    },
-    tx?: Prisma.TransactionClient,
-  ) {
-    const {
-      tableName,
-      recordId,
-      action,
-      eventType,
-      changes = [],
-      metadata,
-    } = params;
-    const prismaClient = tx || this.prisma;
-
-    return await prismaClient.activityLogEvent.create({
-      data: {
-        tableName,
-        recordId,
-        action,
-        eventType: eventType || action,
-        actionedBy: metadata.actionedBy || null,
-        ipAddress: metadata.ip,
-        userAgent: metadata.userAgent,
-        device: metadata.device,
-        details:
-          changes.length > 0
-            ? {
-                create: changes.map((change) => ({
-                  fieldName: change.fieldName,
-                  oldValue: change.oldValue,
-                  newValue: change.newValue,
-                })),
-              }
-            : undefined,
-      },
-    });
-  }
-
-  /**
    * Log a create action
    */
   async logCreate(
-    tableName: string,
-    recordId: string,
-    fields: Record<string, any>,
-    metadata: ActivityLogMetadata,
+    entityType: string,
+    entityId: string,
+    data: Record<string, any>,
+    metadata: {
+      ip: string;
+      userAgent: string;
+      actionedBy: string;
+      device?: string;
+    },
     tx?: Prisma.TransactionClient,
-  ) {
-    const changes: FieldChange[] = Object.entries(fields).map(
-      ([key, value]) => ({
-        fieldName: key,
-        oldValue: null,
-        newValue: String(value),
-      }),
-    );
+  ): Promise<void> {
+    const prismaClient = tx || this.prisma;
 
-    return this.logActivity(
-      {
-        tableName,
-        recordId,
-        action: 'create',
-        eventType: 'create',
-        changes,
-        metadata,
-      },
-      tx,
-    );
+    try {
+      await prismaClient.activityLog.create({
+        data: {
+          workspaceId: 'system', // For auth actions, use 'system'
+          userId: metadata.actionedBy,
+          entityType,
+          entityId,
+          action: 'CREATE',
+          changes: data,
+          ipAddress: metadata.ip,
+          userAgent: metadata.userAgent,
+        },
+      });
+    } catch (error) {
+      this.customLogger.error(
+        `Failed to log create action for ${entityType}:${entityId}`,
+        error instanceof Error ? error.stack : undefined,
+        'ActivityLogService',
+      );
+    }
   }
 
   /**
    * Log an update action
    */
   async logUpdate(
-    tableName: string,
-    recordId: string,
-    oldData: Record<string, any>,
-    newData: Record<string, any>,
-    metadata: ActivityLogMetadata,
+    entityType: string,
+    entityId: string,
+    changes: Array<{ fieldName: string; oldValue: any; newValue: any }>,
+    metadata: {
+      ip: string;
+      userAgent: string;
+      actionedBy: string;
+      device?: string;
+    },
     tx?: Prisma.TransactionClient,
-  ) {
-    const changes: FieldChange[] = [];
+  ): Promise<void> {
+    const prismaClient = tx || this.prisma;
 
-    // Find changed fields
-    for (const [key, newValue] of Object.entries(newData)) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const oldValue = oldData[key];
-      if (oldValue !== newValue) {
-        changes.push({
-          fieldName: key,
-          oldValue: oldValue != null ? String(oldValue) : null,
-          newValue: newValue != null ? String(newValue) : null,
-        });
-      }
+    try {
+      await prismaClient.activityLog.create({
+        data: {
+          workspaceId: 'system',
+          userId: metadata.actionedBy,
+          entityType,
+          entityId,
+          action: 'UPDATE',
+          changes: { fields: changes },
+          ipAddress: metadata.ip,
+          userAgent: metadata.userAgent,
+        },
+      });
+    } catch (error) {
+      this.customLogger.error(
+        `Failed to log update action for ${entityType}:${entityId}`,
+        error instanceof Error ? error.stack : undefined,
+        'ActivityLogService',
+      );
     }
-
-    if (changes.length === 0) {
-      return null; // No changes to log
-    }
-
-    return this.logActivity(
-      {
-        tableName,
-        recordId,
-        action: 'update',
-        eventType: 'update',
-        changes,
-        metadata,
-      },
-      tx,
-    );
   }
 
   /**
    * Log a delete action
    */
   async logDelete(
-    tableName: string,
-    recordId: string,
-    deletedData: Record<string, any>,
-    metadata: ActivityLogMetadata,
+    entityType: string,
+    entityId: string,
+    metadata: {
+      ip: string;
+      userAgent: string;
+      actionedBy: string;
+      device?: string;
+    },
     tx?: Prisma.TransactionClient,
-  ) {
-    const changes: FieldChange[] = Object.entries(deletedData).map(
-      ([key, value]) => ({
-        fieldName: key,
-        oldValue: String(value),
-        newValue: null,
-      }),
-    );
+  ): Promise<void> {
+    const prismaClient = tx || this.prisma;
 
-    return this.logActivity(
-      {
-        tableName,
-        recordId,
-        action: 'delete',
-        eventType: 'delete',
-        changes,
-        metadata,
-      },
-      tx,
-    );
+    try {
+      await prismaClient.activityLog.create({
+        data: {
+          workspaceId: 'system',
+          userId: metadata.actionedBy,
+          entityType,
+          entityId,
+          action: 'DELETE',
+          ipAddress: metadata.ip,
+          userAgent: metadata.userAgent,
+        },
+      });
+    } catch (error) {
+      this.customLogger.error(
+        `Failed to log delete action for ${entityType}:${entityId}`,
+        error instanceof Error ? error.stack : undefined,
+        'ActivityLogService',
+      );
+    }
   }
 
   /**
-   * Log a custom event (login, logout, password change, etc.)
+   * Log a custom event
    */
   async logCustomEvent(
-    tableName: string,
-    recordId: string,
-    eventType: 'login' | 'logout' | 'password_change' | 'profile_update',
-    metadata: ActivityLogMetadata,
-    changes?: FieldChange[],
+    entityType: string,
+    entityId: string,
+    eventType: string,
+    metadata: {
+      ip: string;
+      userAgent: string;
+      actionedBy: string;
+      device?: string;
+    },
+    changes?: Array<{ fieldName: string; oldValue: any; newValue: any }>,
     tx?: Prisma.TransactionClient,
-  ) {
-    // Map eventType to action
-    const actionMap = {
-      login: 'update',
-      logout: 'update',
-      password_change: 'update',
-      profile_update: 'update',
-    };
+  ): Promise<void> {
+    const prismaClient = tx || this.prisma;
 
-    return this.logActivity(
-      {
-        tableName,
-        recordId,
-        action: actionMap[eventType] as 'create' | 'update' | 'delete',
-        eventType,
-        changes,
-        metadata,
-      },
-      tx,
-    );
+    try {
+      await prismaClient.activityLog.create({
+        data: {
+          workspaceId: 'system',
+          userId: metadata.actionedBy,
+          entityType,
+          entityId,
+          action: 'UPDATE', // Custom events are treated as updates
+          changes: changes ? { fields: changes, eventType } : { eventType },
+          ipAddress: metadata.ip,
+          userAgent: metadata.userAgent,
+        },
+      });
+    } catch (error) {
+      this.customLogger.error(
+        `Failed to log custom event ${eventType} for ${entityType}:${entityId}`,
+        error instanceof Error ? error.stack : undefined,
+        'ActivityLogService',
+      );
+    }
   }
 }

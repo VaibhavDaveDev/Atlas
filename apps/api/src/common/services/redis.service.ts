@@ -310,6 +310,74 @@ export class RedisService implements OnModuleInit {
     }
   }
 
+  // ==================== List Operations ====================
+  // Used for session management (FIFO order, atomic operations)
+
+  /**
+   * RPUSH — Append one or more values to the end of a list.
+   * @returns New length of the list.
+   */
+  async rpush(key: string, ...values: string[]): Promise<number> {
+    try {
+      return await this.client.rpush(key, ...values);
+    } catch (error) {
+      this.logger.error(`Error rpush "${key}":`, error);
+      return 0;
+    }
+  }
+
+  /**
+   * LRANGE — Get a range of elements from a list.
+   * Use (key, 0, -1) to get all elements.
+   */
+  async lrange(key: string, start: number, stop: number): Promise<string[]> {
+    try {
+      return await this.client.lrange(key, start, stop);
+    } catch (error) {
+      this.logger.error(`Error lrange "${key}":`, error);
+      return [];
+    }
+  }
+
+  /**
+   * LLEN — Return the length of a list (O(1)).
+   */
+  async llen(key: string): Promise<number> {
+    try {
+      return await this.client.llen(key);
+    } catch (error) {
+      this.logger.error(`Error llen "${key}":`, error);
+      return 0;
+    }
+  }
+
+  /**
+   * LPOP — Remove and return the first element of a list.
+   * @returns The removed element, or null if the list is empty.
+   */
+  async lpop(key: string): Promise<string | null> {
+    try {
+      return await this.client.lpop(key);
+    } catch (error) {
+      this.logger.error(`Error lpop "${key}":`, error);
+      return null;
+    }
+  }
+
+  /**
+   * LREM — Remove elements equal to value from the list.
+   * @param count 0 = remove all occurrences.
+   * @returns Number of elements removed.
+   */
+  async lrem(key: string, count: number, value: string): Promise<number> {
+    try {
+      return await this.client.lrem(key, count, value);
+    } catch (error) {
+      this.logger.error(`Error lrem "${key}":`, error);
+      return 0;
+    }
+  }
+
   // ==================== Legacy API Compatibility ====================
   // These methods maintain backward compatibility with existing code
 

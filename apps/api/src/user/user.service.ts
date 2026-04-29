@@ -17,18 +17,18 @@ export class UserService {
     return `This action returns all user`;
   }
 
-  findOne(id: number) {
+  findOne(id: string) {
     this.customLogger.log(`Fetching user with id: ${id}`, 'UserService');
-    return `This action returns a #${id} user`;
+    return `This action returns user #${id}`;
   }
 
-  update(id: number, updateUserDto: UpdateUserDto) {
+  update(id: string, updateUserDto: UpdateUserDto) {
     this.customLogger.log(`Updating user with id: ${id}`, 'UserService');
-    return `This action updates a #${id} user`;
+    return `This action updates user #${id}`;
   }
 
-  remove(id: number) {
+  remove(id: string) {
     this.customLogger.warn(`Removing user with id: ${id}`, 'UserService');
-    return `This action removes a #${id} user`;
+    return `This action removes user #${id}`;
   }
 }

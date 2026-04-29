@@ -1,0 +1,134 @@
+'use client';
+
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import * as authApi from '@/lib/auth';
+import type { User, Workspace } from '@/lib/auth';
+
+interface AuthContextType {
+  user: User | null;
+  workspace: Workspace | null;
+  workspaces: Workspace[];
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  selectWorkspace: (workspaceId: string) => Promise<void>;
+  logout: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [workspace, setWorkspace] = useState<Workspace | null>(null);
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
+
+  // Load user from localStorage on mount
+  useEffect(() => {
+    const loadUser = () => {
+      const storedUser = authApi.tokenStorage.getUser();
+      const storedWorkspace = authApi.tokenStorage.getWorkspace();
+      const accessToken = authApi.tokenStorage.getAccessToken();
+
+      if (storedUser && accessToken) {
+        setUser(storedUser);
+        setWorkspace(storedWorkspace);
+      }
+      
+      setIsLoading(false);
+    };
+
+    loadUser();
+  }, []);
+
+  const login = async (email: string, password: string) => {
+    try {
+      const response = await authApi.login(email, password);
+      
+      // Store tokens and user
+      authApi.tokenStorage.setAccessToken(response.data.accessToken);
+      authApi.tokenStorage.setRefreshToken(response.data.refreshToken);
+      authApi.tokenStorage.setUser(response.data.user);
+      
+      setUser(response.data.user);
+      setWorkspaces(response.data.workspaces);
+      
+      // If user has only one workspace, select it automatically
+      if (response.data.workspaces.length === 1) {
+        await selectWorkspace(response.data.workspaces[0].workspaceId);
+      } else {
+        // Redirect to workspace selection
+        router.push('/select-workspace');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
+  };
+
+  const selectWorkspace = async (workspaceId: string) => {
+    try {
+      const accessToken = authApi.tokenStorage.getAccessToken();
+      if (!accessToken) {
+        throw new Error('No access token found');
+      }
+
+      const response = await authApi.selectWorkspace(workspaceId, accessToken);
+      
+      // Update access token with workspace context
+      authApi.tokenStorage.setAccessToken(response.data.accessToken);
+      authApi.tokenStorage.setWorkspace(response.data.workspace);
+      
+      setWorkspace(response.data.workspace);
+      
+      // Redirect to dashboard based on role
+      router.push('/dashboard');
+    } catch (error) {
+      console.error('Select workspace error:', error);
+      throw error;
+    }
+  };
+
+  const logout = async () => {
+    try {
+      const refreshToken = authApi.tokenStorage.getRefreshToken();
+      const userId = user?.id;
+      
+      if (refreshToken && userId) {
+        await authApi.logout(refreshToken, userId);
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      // Clear local storage regardless of API call success
+      authApi.tokenStorage.clear();
+      setUser(null);
+      setWorkspace(null);
+      setWorkspaces([]);
+      router.push('/login');
+    }
+  };
+
+  const value = {
+    user,
+    workspace,
+    workspaces,
+    isLoading,
+    isAuthenticated: !!user,
+    login,
+    selectWorkspace,
+    logout,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}

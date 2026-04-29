@@ -2,20 +2,128 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    /* Atlas ERP — Light Mode */
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Indigo brand primary */
+    --primary: 238 84% 67%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 214 32% 91%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 214 32% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 214 32% 94%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 238 84% 67%;
+
+    --radius: 0.625rem;
+
+    /* Sidebar */
+    --sidebar: 0 0% 98%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-accent: 214 32% 94%;
+    --sidebar-accent-foreground: 238 84% 60%;
+  }
+
+  .dark {
+    /* Atlas ERP — Dark Mode */
+    --background: 222 47% 5%;
+    --foreground: 210 40% 96%;
+
+    --card: 222 47% 7%;
+    --card-foreground: 210 40% 96%;
+
+    --popover: 222 47% 7%;
+    --popover-foreground: 210 40% 96%;
+
+    /* Indigo brand primary — slightly brighter in dark */
+    --primary: 238 84% 70%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 222 47% 12%;
+    --secondary-foreground: 210 40% 96%;
+
+    --muted: 222 47% 10%;
+    --muted-foreground: 215 20% 60%;
+
+    --accent: 222 47% 12%;
+    --accent-foreground: 210 40% 96%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 222 47% 13%;
+    --input: 222 47% 13%;
+    --ring: 238 84% 70%;
+
+    /* Sidebar */
+    --sidebar: 222 47% 7%;
+    --sidebar-foreground: 210 40% 88%;
+    --sidebar-border: 222 47% 12%;
+    --sidebar-accent: 222 47% 10%;
+    --sidebar-accent-foreground: 238 84% 75%;
   }
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Custom scrollbar — subtle */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/30;
+  }
+}
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out;
+  }
+
+  /* Subtle gradient text utility */
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary to-indigo-400 bg-clip-text text-transparent;
+  }
 }

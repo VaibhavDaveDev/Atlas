@@ -5,7 +5,9 @@ import { AppService } from './app.service';
 // import { BlogModule } from './blog/blog.module';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
-import { JobModule } from './job/job.module';
+import { WorkspaceModule } from './workspace/workspace.module';
+import { HrModule } from './hr/hr.module';
+// import { JobModule } from './job/job.module'; // Removed - not needed for ERP
 import { RedisModule } from './common/modules/redis.module';
 import { RateLimitModule } from './common/modules/rate-limit.module';
 import { MetricsModule } from './metrics/metrics.module';
@@ -33,7 +35,9 @@ import { LoggerModule } from './common/modules/logger.module';
     // BlogModule,
     AuthModule,
     UserModule,
-    JobModule,
+    WorkspaceModule,
+    HrModule,
+    // JobModule, // Removed - not needed for ERP
   ],
   controllers: [AppController],
   providers: [AppService],
