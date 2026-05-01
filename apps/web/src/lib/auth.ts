@@ -187,6 +187,54 @@ export async function acceptInvite(inviteToken: string) {
   return response.json();
 }
 
+/**
+ * Request a password reset code via email
+ */
+export interface AuthResponse<T = any> {
+  statusCode: number;
+  message: string;
+  data: T;
+}
+
+/**
+ * Request a password reset code via email
+ */
+export async function forgotPassword(email: string): Promise<AuthResponse<{ message: string; resetSessionId: string }>> {
+  const response = await fetch(`${API_BASE}/auth/forgot-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to send reset email');
+  }
+
+  return response.json();
+}
+
+/**
+ * Reset password using the emailed code
+ */
+export async function resetPassword(
+  resetSessionId: string,
+  code: string,
+  newPassword: string,
+): Promise<AuthResponse<{ message: string }>> {
+  const response = await fetch(`${API_BASE}/auth/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ resetSessionId, code, newPassword }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to reset password');
+  }
+
+  return response.json();
+}
 
 /**
  * Token storage utilities

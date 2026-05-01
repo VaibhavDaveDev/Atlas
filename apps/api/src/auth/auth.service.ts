@@ -420,6 +420,166 @@ export class AuthService {
     return { message: 'Verification email sent successfully' };
   }
 
+  /**
+   * Initiate forgot-password flow: sends a reset code to the user's email.
+   * Returns a generic message regardless of whether the email exists (prevents enumeration).
+   */
+  async forgotPassword(
+    email: string,
+    meta: { ip: string; userAgent: string },
+  ): Promise<{ message: string; resetSessionId?: string }> {
+    const { PASSWORD_RESET_MAX_ATTEMPTS, PASSWORD_RESET_WINDOW_MS } =
+      AUTH_CONFIG.RATE_LIMIT;
+
+    this.customLogger.log(
+      `Forgot password request for: ${email}`,
+      'AuthService',
+    );
+
+    // Rate limit per email to prevent abuse
+    await this.authUtilsService.checkRateLimit(
+      `password_reset:email:${email}`,
+      PASSWORD_RESET_MAX_ATTEMPTS,
+      PASSWORD_RESET_WINDOW_MS,
+    );
+
+    // Look up user — return generic response either way (enumeration prevention)
+    const user = await this.prismaService.authUser.findUnique({
+      where: { email },
+      select: { id: true, email: true, username: true, provider: true, status: true },
+    });
+
+    const resetSessionId = crypto.randomUUID();
+
+    // SECURITY: Always return the same message regardless of user existence
+    if (!user || user.status !== 'ACTIVE' || user.provider !== 'local') {
+      return { 
+        message: 'If this email is registered, a password reset code has been sent.',
+        resetSessionId
+      };
+    }
+
+    // Generate a secure 6-char reset code
+    const resetCode = this.authUtilsService.generateVerificationCode();
+    const { PASSWORD_RESET } = AUTH_CONFIG.TOKEN_EXPIRY;
+    const ttlSeconds = this.parseExpiryToSeconds(PASSWORD_RESET);
+
+    // Store reset code in Redis with expiry, keyed by resetSessionId
+    const resetKey = `${config.redis_cache_key_prefix}:${AUTH_CONFIG.CACHE_PREFIXES.PASSWORD_RESET_TOKEN}:${resetSessionId}`;
+    await this.redisService.set(
+      resetKey,
+      { code: resetCode, userId: user.id, email },
+      ttlSeconds,
+    );
+
+    // Queue password reset email for async processing
+    try {
+      await this.emailQueueService.sendPasswordResetEmail(
+        email,
+        user.username || email.split('@')[0],
+        resetCode,
+        user.id,
+      );
+      this.customLogger.log(
+        `Password reset email queued for: ${email}`,
+        'AuthService',
+      );
+    } catch (error) {
+      this.customLogger.error(
+        `Failed to queue password reset email for ${email}`,
+        error instanceof Error ? error.stack : undefined,
+        'AuthService',
+      );
+      // Don't reveal failure to caller — log only
+    }
+
+    return { 
+      message: 'If this email is registered, a password reset code has been sent.',
+      resetSessionId 
+    };
+  }
+
+  /**
+   * Complete forgot-password flow: validates reset code and updates the password.
+   */
+  async resetPassword(
+    resetSessionId: string,
+    code: string,
+    newPassword: string,
+    meta: { ip: string; userAgent: string },
+  ): Promise<{ message: string }> {
+    this.customLogger.log(
+      `Password reset attempt for session: ${resetSessionId}`,
+      'AuthService',
+    );
+
+    // Validate new password strength before doing anything expensive
+    if (!this.authUtilsService.validatePassword(newPassword)) {
+      throw AppError.badRequest('Password does not meet security requirements');
+    }
+
+    // Retrieve reset code from Redis
+    const resetKey = `${config.redis_cache_key_prefix}:${AUTH_CONFIG.CACHE_PREFIXES.PASSWORD_RESET_TOKEN}:${resetSessionId}`;
+    const storedData = await this.redisService.get<{
+      code: string;
+      userId: string;
+      email: string;
+    }>(resetKey);
+
+    if (!storedData || storedData.code !== code) {
+      this.customLogger.warn(
+        `Password reset failed: invalid or expired code for session ${resetSessionId}`,
+        'AuthService',
+      );
+      throw AppError.badRequest(
+        'Invalid or expired reset code. Please request a new one.',
+      );
+    }
+
+    // Find user
+    const user = await this.prismaService.authUser.findUnique({
+      where: { id: storedData.userId },
+      select: { id: true, email: true, status: true },
+    });
+
+    if (!user || user.status !== 'ACTIVE') {
+      throw AppError.badRequest('User account is not available');
+    }
+
+    // Hash new password
+    const saltRounds = 12;
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+    // Update password and clear the reset code atomically
+    await this.prismaService.authUser.update({
+      where: { id: user.id },
+      data: { password: hashedPassword },
+    });
+
+    // Delete the reset token from Redis (one-time use)
+    await this.redisService.del(resetKey);
+
+    // Invalidate all existing sessions so any stolen refresh tokens are revoked
+    await this.revokeAllUserTokens(user.id);
+    await this.incrementTokenVersion(user.id);
+
+    // Log the password reset activity
+    void this.activityLogService.logCustomEvent(
+      'authUser',
+      user.id,
+      'profile_update',
+      { ip: meta.ip, userAgent: meta.userAgent, actionedBy: user.id },
+      [{ fieldName: 'password', oldValue: '[redacted]', newValue: '[redacted]' }],
+    );
+
+    this.customLogger.log(
+      `Password reset successfully for user: ${user.id} via session ${resetSessionId}`,
+      'AuthService',
+    );
+
+    return { message: 'Password has been reset successfully. You can now log in with your new password.' };
+  }
+
   async login(
     payload: { email: string; password: string },
     meta: { ip: string; userAgent: string; device?: string },

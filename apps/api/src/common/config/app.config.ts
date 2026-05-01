@@ -18,10 +18,8 @@ interface AppConfig {
 }
 
 const config: AppConfig = {
-  jwt_access_secret:
-    process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || '',
-  jwt_refresh_secret:
-    process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || '',
+  jwt_access_secret: process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || '',
+  jwt_refresh_secret: process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || '',
   redis_cache_key_prefix: process.env.REDIS_CACHE_KEY_PREFIX || 'app',
   node_env: process.env.NODE_ENV || 'development',
   port: parseInt(process.env.PORT || '5000', 10),

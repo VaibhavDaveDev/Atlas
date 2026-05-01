@@ -344,7 +344,7 @@ Owner/Admin:
   Password: Password123!
 
 HR Manager:
-  Email: ohr@atlas.com
+  Email: hr@atlas.com
   Password: Password123!
 
 Employee:
