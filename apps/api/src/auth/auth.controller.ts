@@ -22,6 +22,8 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { LogoutDto } from './dto/logout.dto';
 import { LogoutAllDto } from './dto/logout-all.dto';
 import { SelectWorkspaceDto } from './dto/select-workspace.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 // import { UpdateAuthDto } from './dto/update-auth.dto';
 import {
   GoogleOAuthInitDto,
@@ -147,6 +149,73 @@ export class AuthController {
       userAgent: req.headers['user-agent'] || 'unknown',
     };
     return this.authService.resendVerificationEmail(resendDto.email, meta);
+  }
+
+  // ==========================================
+  // Forgot / Reset Password Endpoints
+  // ==========================================
+
+  /**
+   * Request a password reset code (sent to email)
+   */
+  @Throttle({ default: THROTTLER_CONFIG.STRICT })
+  @Post('forgot-password')
+  @ApiOperation({ summary: 'Request a password reset code' })
+  @ApiBody({ type: ForgotPasswordDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Password reset email sent (if email is registered)',
+    schema: {
+      example: {
+        success: true,
+        message: 'If this email is registered, a password reset code has been sent.',
+        resetSessionId: '123e4567-e89b-12d3-a456-426614174000',
+      },
+    },
+  })
+  async forgotPassword(@Body() dto: ForgotPasswordDto, @Req() req: Request) {
+    this.customLogger.log(
+      `Forgot password request for: ${dto.email}`,
+      'AuthController',
+    );
+    const meta = {
+      ip: req.ip || 'unknown',
+      userAgent: req.headers['user-agent'] || 'unknown',
+    };
+    return this.authService.forgotPassword(dto.email, meta);
+  }
+
+  /**
+   * Reset password using the code from email
+   */
+  @Throttle({ default: THROTTLER_CONFIG.STRICT })
+  @Post('reset-password')
+  @ApiOperation({ summary: 'Reset password using emailed reset code' })
+  @ApiBody({ type: ResetPasswordDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Password reset successfully',
+    schema: {
+      example: {
+        success: true,
+        message: 'Password has been reset successfully. You can now log in with your new password.',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid or expired reset code',
+  })
+  async resetPassword(@Body() dto: ResetPasswordDto, @Req() req: Request) {
+    this.customLogger.log(
+      `Password reset attempt for session: ${dto.resetSessionId}`,
+      'AuthController',
+    );
+    const meta = {
+      ip: req.ip || 'unknown',
+      userAgent: req.headers['user-agent'] || 'unknown',
+    };
+    return this.authService.resetPassword(dto.resetSessionId, dto.code, dto.newPassword, meta);
   }
 
   // ==========================================

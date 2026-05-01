@@ -18,10 +18,12 @@ export const THROTTLER_CONFIG = {
     limit: 10, // 10 requests per minute
   },
 
-  // Very strict for auth attempts (prevents brute force)
+  // Rate limit for auth attempts — the Redis-based rate limiter in auth.service.ts
+  // handles actual brute-force protection (locks at 5 consecutive failures per IP/email).
+  // This NestJS throttler is a secondary layer — keep it lenient to avoid false positives.
   AUTH: {
     ttl: 900000, // 15 minutes
-    limit: 5, // 5 attempts per 15 minutes
+    limit: 20, // 20 attempts per 15 minutes (Redis rate limiter handles brute-force)
   },
 
   // Relaxed for read-heavy endpoints
