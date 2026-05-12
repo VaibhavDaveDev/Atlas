@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
+import { toast } from 'sonner';
 
 export default function AddEmployeePage() {
   const router = useRouter();
@@ -37,6 +38,10 @@ export default function AddEmployeePage() {
         if (depsRes.success) setDepartments(depsRes.data);
         if (desigsRes.success) setDesignations(desigsRes.data);
       })
+      .catch((err) => {
+        console.error('Failed to load data:', err);
+        toast.error('Failed to load initial data');
+      })
       .finally(() => setIsLoading(false));
   }, []);
 
@@ -49,14 +54,20 @@ export default function AddEmployeePage() {
     e.preventDefault();
     setIsSaving(true);
     setError('');
+    const toastId = toast.loading('Creating employee profile...');
 
     try {
       const res = await createEmployee(formData);
       if (res.success) {
+        toast.success('Employee created successfully!', { id: toastId });
         router.push('/dashboard/hr/employees');
+      } else {
+        throw new Error(res.error || 'Failed to create employee');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create employee');
+      const message = err instanceof Error ? err.message : 'Failed to create employee';
+      setError(message);
+      toast.error(message, { id: toastId });
       setIsSaving(false);
     }
   };
@@ -189,8 +200,8 @@ export default function AddEmployeePage() {
               <Link href="/dashboard/hr/employees">
                 <Button type="button" variant="outline">Cancel</Button>
               </Link>
-              <Button type="submit" disabled={isSaving}>
-                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+              <Button type="submit" isLoading={isSaving}>
+                {!isSaving && <Save className="mr-2 h-4 w-4" />}
                 Save Employee
               </Button>
             </div>

@@ -56,7 +56,7 @@ function WorkspaceCard({
       disabled={isLoading || !isActive}
       className={cn(
         'group w-full rounded-xl border bg-card text-left p-5 transition-all duration-200',
-        'hover:border-primary/40 hover:shadow-md hover:-translate-y-px',
+        'hover:border-primary/40 hover:-translate-y-px',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         'disabled:pointer-events-none disabled:opacity-50',
         'flex items-center gap-4',

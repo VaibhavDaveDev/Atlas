@@ -15,5 +15,8 @@
   },
   "devDependencies": {
     "typescript": "^5.7.3"
+  },
+  "dependencies": {
+    "expr-eval-fork": "^3.0.3"
   }
 }

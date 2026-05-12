@@ -3,12 +3,13 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Eye, EyeOff, Loader2, ArrowLeft, Check } from 'lucide-react';
+import { Eye, EyeOff, ArrowLeft, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 const API_BASE = `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'}/api/v1`;
 
@@ -51,6 +52,7 @@ export default function RegisterPage() {
     e.preventDefault();
     setError('');
     setIsLoading(true);
+    const toastId = toast.loading('Creating your account...');
     try {
       const res = await fetch(`${API_BASE}/auth/register`, {
         method: 'POST',
@@ -62,14 +64,18 @@ export default function RegisterPage() {
         throw new Error(body.message ?? 'Registration failed');
       }
       setSuccess(true);
+      toast.success('Registration successful!', { id: toastId });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed. Please try again.');
+      const message = err instanceof Error ? err.message : 'Registration failed. Please try again.';
+      setError(message);
+      toast.error(message, { id: toastId });
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleGoogleSignup = async () => {
+    const toastId = toast.loading('Connecting to Google...');
     try {
       const res = await fetch(`${API_BASE}/auth/google`);
       const responseData = await res.json();
@@ -81,12 +87,15 @@ export default function RegisterPage() {
       const url = responseData.data?.url || responseData.url;
       
       if (url) {
+        toast.success('Redirecting to Google...', { id: toastId });
         window.location.href = url;
       } else {
         throw new Error('Invalid response from authentication server');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to initialize Google signup');
+      const message = err instanceof Error ? err.message : 'Failed to initialize Google signup';
+      setError(message);
+      toast.error(message, { id: toastId });
     }
   };
 
@@ -280,8 +289,7 @@ export default function RegisterPage() {
                 )}
               </div>
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button type="submit" className="w-full" isLoading={isLoading}>
                 {isLoading ? 'Creating account…' : 'Create account'}
               </Button>
             </form>

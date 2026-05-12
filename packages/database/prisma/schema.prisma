@@ -56,6 +56,7 @@ enum EmployeeStatus {
   ON_LEAVE
   TERMINATED
   RESIGNED
+  ONBOARDING
 }
 
 enum AttendanceStatus {
@@ -73,6 +74,15 @@ enum LeaveStatus {
   CANCELLED
 }
 
+enum LeaveTransactionType {
+  ALLOCATION
+  APPLICATION
+  ADJUSTMENT
+  CARRY_FORWARD
+  EXPIRY
+  ENCASHMENT
+}
+
 enum PayrollRunStatus {
   DRAFT
   PROCESSING
@@ -84,6 +94,17 @@ enum PayrollEntryStatus {
   PENDING
   PROCESSED
   PAID
+}
+
+enum SalaryComponentType {
+  EARNING
+  DEDUCTION
+}
+
+enum SalaryCalculationType {
+  FLAT
+  PERCENTAGE
+  FORMULA
 }
 
 enum AccountType {
@@ -171,12 +192,27 @@ enum ActivityAction {
   VIEW
 }
 
+enum EmployeeMovementType {
+  PROMOTION
+  TRANSFER
+  RE_DESIGNATION
+}
+
+enum ApplicantStatus {
+  APPLIED
+  SHORTLISTED
+  INTERVIEWED
+  OFFERED
+  REJECTED
+  HIRED
+}
+
 // ============================================
 // AUTHENTICATION
 // ============================================
 
 model AuthUser {
-  id            String      @id @default(uuid())
+  id            String      @id @default(uuid(7))
   email         String      @unique
   password      String
   username      String?     @unique
@@ -203,7 +239,7 @@ model AuthUser {
 }
 
 model AuthSecurity {
-  id                  String    @id @default(uuid())
+  id                  String    @id @default(uuid(7))
   authId              String    @unique
   auth                AuthUser  @relation(fields: [authId], references: [id], onDelete: Cascade)
   
@@ -221,7 +257,7 @@ model AuthSecurity {
 }
 
 model UserProfile {
-  id        String   @id @default(uuid())
+  id        String   @id @default(uuid(7))
   authId    String   @unique
   auth      AuthUser @relation(fields: [authId], references: [id], onDelete: Cascade)
   
@@ -240,7 +276,7 @@ model UserProfile {
 // ============================================
 
 model Workspace {
-  id          String          @id @default(uuid())
+  id          String          @id @default(uuid(7))
   name        String
   subdomain   String          @unique
   domain      String?
@@ -260,7 +296,7 @@ model Workspace {
 }
 
 model WorkspaceMember {
-  id          String        @id @default(uuid())
+  id          String        @id @default(uuid(7))
   workspaceId String
   workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   userId      String
@@ -279,7 +315,7 @@ model WorkspaceMember {
 }
 
 model WorkspaceSettings {
-  id               String    @id @default(uuid())
+  id               String    @id @default(uuid(7))
   workspaceId      String    @unique
   workspace        Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   
@@ -294,7 +330,7 @@ model WorkspaceSettings {
 }
 
 model WorkspaceInvite {
-  id          String        @id @default(uuid())
+  id          String        @id @default(uuid(7))
   workspaceId String
   workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   
@@ -321,7 +357,7 @@ model WorkspaceInvite {
 // ============================================
 
 model Permission {
-  id          String   @id @default(uuid())
+  id          String   @id @default(uuid(7))
   workspaceId String?  // null = global permission
   
   resource    String   // "leads", "deals", "payroll", "invoices"
@@ -340,7 +376,7 @@ model Permission {
 }
 
 model RolePermission {
-  id           String        @id @default(uuid())
+  id           String        @id @default(uuid(7))
   workspaceId  String
   role         WorkspaceRole
   permissionId String
@@ -354,7 +390,7 @@ model RolePermission {
 }
 
 model UserPermission {
-  id           String     @id @default(uuid())
+  id           String     @id @default(uuid(7))
   workspaceId  String
   userId       String
   permissionId String
@@ -374,7 +410,7 @@ model UserPermission {
 // ============================================
 
 model Organization {
-  id              String    @id @default(uuid())
+  id              String    @id @default(uuid(7))
   workspaceId     String
   name            String
   website         String?
@@ -402,7 +438,7 @@ model Organization {
 }
 
 model Lead {
-  id                  String    @id @default(uuid())
+  id                  String    @id @default(uuid(7))
   workspaceId         String
   leadNumber          String    @unique
   
@@ -448,7 +484,7 @@ model Lead {
 }
 
 model Deal {
-  id                  String    @id @default(uuid())
+  id                  String    @id @default(uuid(7))
   workspaceId         String
   dealNumber          String    @unique
   
@@ -489,7 +525,7 @@ model Deal {
 }
 
 model Contact {
-  id              String    @id @default(uuid())
+  id              String    @id @default(uuid(7))
   workspaceId     String
   
   salutation      String?
@@ -520,7 +556,7 @@ model Contact {
 }
 
 model Product {
-  id           String    @id @default(uuid())
+  id           String    @id @default(uuid(7))
   workspaceId  String
   productCode  String    @unique
   name         String
@@ -542,7 +578,7 @@ model Product {
 }
 
 model LeadProduct {
-  id        String  @id @default(uuid())
+  id        String  @id @default(uuid(7))
   leadId    String
   lead      Lead    @relation(fields: [leadId], references: [id], onDelete: Cascade)
   productId String
@@ -558,7 +594,7 @@ model LeadProduct {
 }
 
 model DealProduct {
-  id        String  @id @default(uuid())
+  id        String  @id @default(uuid(7))
   dealId    String
   deal      Deal    @relation(fields: [dealId], references: [id], onDelete: Cascade)
   productId String
@@ -574,7 +610,7 @@ model DealProduct {
 }
 
 model DealContact {
-  id        String  @id @default(uuid())
+  id        String  @id @default(uuid(7))
   dealId    String
   deal      Deal    @relation(fields: [dealId], references: [id], onDelete: Cascade)
   contactId String
@@ -590,7 +626,7 @@ model DealContact {
 // ============================================
 
 model Department {
-  id               String      @id @default(uuid())
+  id               String      @id @default(uuid(7))
   workspaceId      String
   name             String
   code             String      @unique
@@ -604,27 +640,31 @@ model Department {
   updatedAt        DateTime    @updatedAt
   
   employees        Employee[]
+  movementsFrom    EmployeeMovement[] @relation("FromDept")
+  movementsTo      EmployeeMovement[] @relation("ToDept")
   
   @@index([workspaceId, isActive])
   @@map("departments")
 }
 
 model Designation {
-  id          String    @id @default(uuid())
+  id          String    @id @default(uuid(7))
   workspaceId String
   title       String
   description String?
   level       Int
   isActive    Boolean   @default(true)
   
-  employees   Employee[]
+  employees     Employee[]
+  movementsFrom EmployeeMovement[] @relation("FromDesig")
+  movementsTo   EmployeeMovement[] @relation("ToDesig")
   
   @@index([workspaceId, isActive])
   @@map("designations")
 }
 
 model Employee {
-  id              String         @id @default(uuid())
+  id              String         @id @default(uuid(7))
   workspaceId     String
   employeeNumber  String         @unique
   
@@ -639,6 +679,12 @@ model Employee {
   gender          String?
   maritalStatus   String?
   baseSalary      Decimal?       @default(0)
+  
+  // Statutory Fields (India)
+  panNumber       String?
+  pfAccount       String?
+  esiNumber       String?
+  aadhaarNumber   String?
   
   departmentId    String?
   department      Department?    @relation(fields: [departmentId], references: [id])
@@ -664,10 +710,18 @@ model Employee {
   updatedBy       String?
   deletedAt       DateTime?
   
-  attendances     Attendance[]
+  attendances       Attendance[]
   leaveApplications LeaveApplication[]
-  payrollEntries  PayrollEntry[]
-  taskAssignments TaskAssignment[]
+  leaveLedgerEntries LeaveLedgerEntry[]
+  payrollEntries    PayrollEntry[]
+  taskAssignments   TaskAssignment[]
+  salaryAssignments SalaryStructureAssignment[]
+  onboardingTasks   EmployeeOnboardingTask[]
+  leaveAllocations  LeaveAllocation[]
+  taxExemptionDeclarations TaxExemptionDeclaration[]
+  movements         EmployeeMovement[]
+  interviewsHeld    Interview[] @relation("Interviewer")
+  shiftAssignments  ShiftAssignment[]
   
   @@index([workspaceId, status, deletedAt])
   @@index([workspaceId, departmentId])
@@ -675,13 +729,13 @@ model Employee {
 }
 
 model Attendance {
-  id             String           @id @default(uuid())
+  id             String           @id @default(uuid(7))
   workspaceId    String
   employeeId     String
   employee       Employee         @relation(fields: [employeeId], references: [id])
   attendanceDate DateTime         @db.Date
-  checkIn        DateTime?        @db.Time
-  checkOut       DateTime?        @db.Time
+  checkIn        DateTime?
+  checkOut       DateTime?
   workingHours   Decimal?
   status         AttendanceStatus
   remarks        String?
@@ -689,13 +743,12 @@ model Attendance {
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   
-  @@unique([workspaceId, employeeId, attendanceDate])
   @@index([workspaceId, attendanceDate])
   @@map("attendances")
 }
 
 model LeaveType {
-  id               String    @id @default(uuid())
+  id               String    @id @default(uuid(7))
   workspaceId      String
   name             String
   maxDaysAllowed   Int
@@ -703,14 +756,16 @@ model LeaveType {
   isPaid           Boolean   @default(true)
   isActive         Boolean   @default(true)
   
-  leaveApplications LeaveApplication[]
+  leaveApplications  LeaveApplication[]
+  leaveLedgerEntries LeaveLedgerEntry[]
+  leavePolicyTypes   LeavePolicyType[]
   
   @@index([workspaceId, isActive])
   @@map("leave_types")
 }
 
 model LeaveApplication {
-  id              String      @id @default(uuid())
+  id              String      @id @default(uuid(7))
   workspaceId     String
   employeeId      String
   employee        Employee    @relation(fields: [employeeId], references: [id])
@@ -734,12 +789,353 @@ model LeaveApplication {
   @@map("leave_applications")
 }
 
+model LeaveLedgerEntry {
+  id              String               @id @default(uuid(7))
+  workspaceId     String
+  employeeId      String
+  employee        Employee             @relation(fields: [employeeId], references: [id])
+  leaveTypeId     String
+  leaveType       LeaveType            @relation(fields: [leaveTypeId], references: [id])
+  
+  transactionType LeaveTransactionType
+  transactionId   String               // ID of LeaveApplication or Allocation
+  leaves          Decimal              // Positive for addition, Negative for deduction
+  postingDate     DateTime             @default(now())
+  remarks         String?
+  
+  createdAt       DateTime             @default(now())
+  
+  @@index([workspaceId, employeeId, leaveTypeId])
+  @@map("leave_ledger_entries")
+}
+
+model LeavePolicy {
+  id              String    @id @default(uuid(7))
+  workspaceId     String
+  name            String
+  description     String?
+  isActive        Boolean   @default(true)
+  
+  leaveTypes      LeavePolicyType[]
+  allocations     LeaveAllocation[]
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@map("leave_policies")
+}
+
+model LeavePolicyType {
+  id              String    @id @default(uuid(7))
+  leavePolicyId   String
+  leavePolicy     LeavePolicy @relation(fields: [leavePolicyId], references: [id], onDelete: Cascade)
+  leaveTypeId     String
+  leaveType       LeaveType   @relation(fields: [leaveTypeId], references: [id])
+  annualAllocation Int
+  
+  @@map("leave_policy_types")
+}
+
+model LeaveAllocation {
+  id              String    @id @default(uuid(7))
+  workspaceId     String
+  employeeId      String
+  employee        Employee  @relation(fields: [employeeId], references: [id])
+  leavePolicyId   String
+  leavePolicy     LeavePolicy @relation(fields: [leavePolicyId], references: [id])
+  fromDate        DateTime  @db.Date
+  toDate          DateTime  @db.Date
+  isActive        Boolean   @default(true)
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([workspaceId, employeeId, isActive])
+  @@map("leave_allocations")
+}
+
+model EmployeeMovement {
+  id              String               @id @default(uuid(7))
+  workspaceId     String
+  employeeId      String
+  employee        Employee             @relation(fields: [employeeId], references: [id])
+  
+  type            EmployeeMovementType
+  movementDate    DateTime             @db.Date
+  
+  // From fields
+  fromDepartmentId String?
+  fromDepartment   Department?         @relation("FromDept", fields: [fromDepartmentId], references: [id])
+  fromDesignationId String?
+  fromDesignation  Designation?        @relation("FromDesig", fields: [fromDesignationId], references: [id])
+  fromSalary       Decimal?
+  
+  // To fields
+  toDepartmentId   String?
+  toDepartment     Department?         @relation("ToDept", fields: [toDepartmentId], references: [id])
+  toDesignationId  String?
+  toDesignation    Designation?        @relation("ToDesig", fields: [toDesignationId], references: [id])
+  toSalary         Decimal?
+  
+  reason           String?
+  status           String               @default("PROPOSED") // PROPOSED, APPROVED, CANCELLED
+  
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  
+  @@index([workspaceId, employeeId])
+  @@map("employee_movements")
+}
+
+model JobApplicant {
+  id              String          @id @default(uuid(7))
+  workspaceId     String
+  firstName       String
+  lastName        String
+  email           String          @unique
+  phone           String?
+  resumeUrl       String?
+  coverLetter     String?
+  status          ApplicantStatus @default(APPLIED)
+  
+  appliedDate     DateTime        @default(now())
+  
+  interviews      Interview[]
+  
+  @@index([workspaceId, status])
+  @@map("job_applicants")
+}
+
+model Interview {
+  id              String               @id @default(uuid(7))
+  workspaceId     String
+  applicantId     String
+  applicant       JobApplicant         @relation(fields: [applicantId], references: [id])
+  
+  interviewDate   DateTime
+  roundName       String               // e.g., Technical, HR, Final
+  interviewerId   String
+  interviewer     Employee             @relation("Interviewer", fields: [interviewerId], references: [id])
+  
+  status          String               @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED
+  feedback        String?
+  score           Int?                 // 1-10
+  
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  
+  @@map("interviews")
+}
+
+model ShiftType {
+  id              String    @id @default(uuid(7))
+  workspaceId     String
+  name            String
+  startTime       String    // e.g., "09:00"
+  endTime         String    // e.g., "18:00"
+  isDefault       Boolean   @default(false)
+  
+  assignments     ShiftAssignment[]
+  
+  @@map("shift_types")
+}
+
+model ShiftAssignment {
+  id              String    @id @default(uuid(7))
+  workspaceId     String
+  employeeId      String
+  employee        Employee  @relation(fields: [employeeId], references: [id])
+  shiftTypeId     String
+  shiftType       ShiftType @relation(fields: [shiftTypeId], references: [id])
+  
+  fromDate        DateTime  @db.Date
+  toDate          DateTime? @db.Date // null means permanent
+  
+  @@index([workspaceId, employeeId])
+  @@map("shift_assignments")
+}
+
 // ============================================
-// PAYROLL MODULE
+// PAYROLL CONFIGURATION
+// ============================================
+
+model SalaryComponent {
+  id              String                @id @default(uuid(7))
+  workspaceId     String
+  name            String
+  abbr            String                // e.g., BS, HRA, PF
+  type            SalaryComponentType
+  componentType   String?               // e.g., "Provident Fund", "Professional Tax"
+  calculationType SalaryCalculationType @default(FLAT)
+  amount          Decimal?
+  formula         String?
+  isTaxable       Boolean               @default(false)
+  dependsOnDays   Boolean               @default(true)
+  isActive        Boolean               @default(true)
+  
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  
+  structureComponents SalaryStructureComponent[]
+  
+  @@unique([workspaceId, abbr])
+  @@map("salary_components")
+}
+
+model SalaryStructure {
+  id              String    @id @default(uuid(7))
+  workspaceId     String
+  name            String
+  isActive        Boolean   @default(true)
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  components      SalaryStructureComponent[]
+  assignments     SalaryStructureAssignment[]
+  
+  @@map("salary_structures")
+}
+
+model SalaryStructureComponent {
+  id                String          @id @default(uuid(7))
+  salaryStructureId String
+  salaryStructure   SalaryStructure @relation(fields: [salaryStructureId], references: [id], onDelete: Cascade)
+  componentId       String
+  salaryComponent   SalaryComponent @relation(fields: [componentId], references: [id])
+  
+  @@map("salary_structure_components")
+}
+
+model SalaryStructureAssignment {
+  id                String          @id @default(uuid(7))
+  workspaceId       String
+  employeeId        String
+  employee          Employee        @relation(fields: [employeeId], references: [id])
+  salaryStructureId String
+  salaryStructure   SalaryStructure @relation(fields: [salaryStructureId], references: [id])
+  baseSalary        Decimal
+  fromDate          DateTime        @db.Date
+  isActive          Boolean         @default(true)
+  
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  
+  @@index([workspaceId, employeeId, isActive])
+  @@map("salary_structure_assignments")
+}
+
+// ============================================
+// ONBOARDING MODULE
+// ============================================
+
+model OnboardingTemplate {
+  id          String   @id @default(uuid(7))
+  workspaceId String
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  activities  OnboardingActivity[]
+  
+  @@map("onboarding_templates")
+}
+
+model OnboardingActivity {
+  id          String   @id @default(uuid(7))
+  templateId  String
+  template    OnboardingTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  isMandatory Boolean  @default(true)
+  role        String?  // Who is responsible (e.g., IT, HR, Manager)
+  
+  @@map("onboarding_activities")
+}
+
+model EmployeeOnboardingTask {
+  id          String   @id @default(uuid(7))
+  workspaceId String
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  isMandatory Boolean  @default(true)
+  status      String   @default("PENDING") // PENDING, COMPLETED, CANCELLED
+  completedAt DateTime?
+  completedBy String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("employee_onboarding_tasks")
+}
+
+// ============================================
+// TAXATION MODULE
+// ============================================
+
+model IncomeTaxSlab {
+  id              String    @id @default(uuid(7))
+  workspaceId     String
+  name            String
+  effectiveFrom   DateTime  @db.Date
+  effectiveTo     DateTime? @db.Date
+  
+  // India Specifics
+  marginalReliefLimit Decimal?
+  
+  slabs           TaxSlabLine[]
+  taxExemptionDeclarations TaxExemptionDeclaration[]
+  
+  @@map("income_tax_slabs")
+}
+
+model TaxSlabLine {
+  id              String    @id @default(uuid(7))
+  taxSlabId       String
+  taxSlab         IncomeTaxSlab @relation(fields: [taxSlabId], references: [id], onDelete: Cascade)
+  fromAmount      Decimal
+  toAmount        Decimal?  // null means infinity
+  taxRate         Decimal   // e.g., 0.05 for 5%
+  
+  @@map("tax_slab_lines")
+}
+
+model TaxExemptionDeclaration {
+  id              String    @id @default(uuid(7))
+  workspaceId     String
+  employeeId      String
+  employee        Employee  @relation(fields: [employeeId], references: [id])
+  taxSlabId       String
+  taxSlab         IncomeTaxSlab @relation(fields: [taxSlabId], references: [id])
+  
+  status          String    @default("DRAFT") // DRAFT, SUBMITTED, APPROVED, REJECTED
+  
+  // HRA Exemption
+  monthlyHouseRent      Decimal?
+  rentedInMetroCity     Boolean   @default(false)
+  rentedFromDate        DateTime? @db.Date
+  rentedToDate          DateTime? @db.Date
+  
+  // 80C, 80D etc (Simplified for now as Json)
+  declarations          Json?     
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@map("tax_exemption_declarations")
+}
+
+// ============================================
+// PAYROLL PROCESSING
 // ============================================
 
 model PayrollRun {
-  id              String            @id @default(uuid())
+  id              String            @id @default(uuid(7))
   workspaceId     String
   runNumber       String            @unique
   name            String
@@ -766,7 +1162,7 @@ model PayrollRun {
 }
 
 model PayrollEntry {
-  id              String              @id @default(uuid())
+  id              String              @id @default(uuid(7))
   workspaceId     String
   payrollRunId    String
   payrollRun      PayrollRun          @relation(fields: [payrollRunId], references: [id])
@@ -794,7 +1190,7 @@ model PayrollEntry {
 }
 
 model PayrollDeduction {
-  id              String        @id @default(uuid())
+  id              String        @id @default(uuid(7))
   payrollEntryId  String
   payrollEntry    PayrollEntry  @relation(fields: [payrollEntryId], references: [id], onDelete: Cascade)
   
@@ -807,7 +1203,7 @@ model PayrollDeduction {
 }
 
 model PayrollEarning {
-  id              String        @id @default(uuid())
+  id              String        @id @default(uuid(7))
   payrollEntryId  String
   payrollEntry    PayrollEntry  @relation(fields: [payrollEntryId], references: [id], onDelete: Cascade)
   
@@ -824,7 +1220,7 @@ model PayrollEarning {
 // ============================================
 
 model Account {
-  id            String      @id @default(uuid())
+  id            String      @id @default(uuid(7))
   workspaceId   String
   accountNumber String      @unique
   accountName   String
@@ -847,7 +1243,7 @@ model Account {
 }
 
 model JournalEntry {
-  id            String    @id @default(uuid())
+  id            String    @id @default(uuid(7))
   workspaceId   String
   entryNumber   String    @unique
   postingDate   DateTime  @db.Date
@@ -869,7 +1265,7 @@ model JournalEntry {
 }
 
 model JournalEntryLine {
-  id              String        @id @default(uuid())
+  id              String        @id @default(uuid(7))
   journalEntryId  String
   journalEntry    JournalEntry  @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
   accountId       String
@@ -884,7 +1280,7 @@ model JournalEntryLine {
 }
 
 model Invoice {
-  id             String        @id @default(uuid())
+  id             String        @id @default(uuid(7))
   workspaceId    String
   invoiceNumber  String        @unique
   invoiceType    InvoiceType
@@ -917,7 +1313,7 @@ model Invoice {
 }
 
 model InvoiceItem {
-  id              String   @id @default(uuid())
+  id              String   @id @default(uuid(7))
   invoiceId       String
   invoice         Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   productId       String?
@@ -933,7 +1329,7 @@ model InvoiceItem {
 }
 
 model Payment {
-  id              String        @id @default(uuid())
+  id              String        @id @default(uuid(7))
   workspaceId     String
   paymentNumber   String        @unique
   paymentType     PaymentType
@@ -960,7 +1356,7 @@ model Payment {
 // ============================================
 
 model Vendor {
-  id            String    @id @default(uuid())
+  id            String    @id @default(uuid(7))
   workspaceId   String
   vendorCode    String    @unique
   vendorName    String
@@ -982,7 +1378,7 @@ model Vendor {
 }
 
 model PurchaseOrder {
-  id                    String              @id @default(uuid())
+  id                    String              @id @default(uuid(7))
   workspaceId           String
   poNumber              String              @unique
   vendorId              String
@@ -1012,7 +1408,7 @@ model PurchaseOrder {
 }
 
 model PurchaseOrderItem {
-  id              String        @id @default(uuid())
+  id              String        @id @default(uuid(7))
   purchaseOrderId String
   purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
   productId       String
@@ -1028,7 +1424,7 @@ model PurchaseOrderItem {
 }
 
 model GoodsReceipt {
-  id              String        @id @default(uuid())
+  id              String        @id @default(uuid(7))
   workspaceId     String
   grNumber        String        @unique
   purchaseOrderId String
@@ -1047,7 +1443,7 @@ model GoodsReceipt {
 }
 
 model Warehouse {
-  id            String    @id @default(uuid())
+  id            String    @id @default(uuid(7))
   workspaceId   String
   warehouseCode String    @unique
   warehouseName String
@@ -1064,7 +1460,7 @@ model Warehouse {
 }
 
 model InventoryItem {
-  id                String    @id @default(uuid())
+  id                String    @id @default(uuid(7))
   workspaceId       String
   productId         String
   product           Product   @relation(fields: [productId], references: [id])
@@ -1092,7 +1488,7 @@ model InventoryItem {
 // ============================================
 
 model Project {
-  id              String        @id @default(uuid())
+  id              String        @id @default(uuid(7))
   workspaceId     String
   projectCode     String        @unique
   projectName     String
@@ -1117,7 +1513,7 @@ model Project {
 }
 
 model Milestone {
-  id            String    @id @default(uuid())
+  id            String    @id @default(uuid(7))
   projectId     String
   project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   name          String
@@ -1131,7 +1527,7 @@ model Milestone {
 }
 
 model Task {
-  id              String       @id @default(uuid())
+  id              String       @id @default(uuid(7))
   workspaceId     String
   projectId       String
   project         Project      @relation(fields: [projectId], references: [id])
@@ -1162,7 +1558,7 @@ model Task {
 }
 
 model TaskAssignment {
-  id             String    @id @default(uuid())
+  id             String    @id @default(uuid(7))
   taskId         String
   task           Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
   employeeId     String
@@ -1181,7 +1577,7 @@ model TaskAssignment {
 // ============================================
 
 model Notification {
-  id          String              @id @default(uuid())
+  id          String              @id @default(uuid(7))
   workspaceId String
   userId      String
   title       String
@@ -1199,7 +1595,7 @@ model Notification {
 }
 
 model ActivityLog {
-  id         String         @id @default(uuid())
+  id         String         @id @default(uuid(7))
   workspaceId String
   userId     String
   entityType String
@@ -1221,7 +1617,7 @@ model ActivityLog {
 // ============================================
 
 model LoginHistory {
-  id             String    @id @default(uuid())
+  id             String    @id @default(uuid(7))
   authId         String
   ipAddress      String
   userAgent      String
@@ -1240,7 +1636,7 @@ model LoginHistory {
 }
 
 model EmailHistory {
-  id           String    @id @default(uuid())
+  id           String    @id @default(uuid(7))
   authId       String
   emailTo      String
   emailType    String

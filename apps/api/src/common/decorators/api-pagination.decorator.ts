@@ -125,17 +125,22 @@ export function createPaginatedResponse<T>(
   page: number = 1,
   limit: number = 10,
 ): PaginatedResponse<T> {
-  const totalPages = Math.ceil(total / limit);
+  // Normalize inputs to prevent division-by-zero and invalid metadata
+  const safePage = Math.max(1, Math.floor(page || 1));
+  const safeLimit = Math.max(1, Math.floor(limit || 10));
+
+  const totalPages = Math.ceil(total / safeLimit);
+  const clampedPage = Math.min(safePage, Math.max(1, totalPages));
 
   return {
     items,
     meta: {
-      page,
-      limit,
+      page: clampedPage,
+      limit: safeLimit,
       total,
       totalPages,
-      hasPreviousPage: page > 1,
-      hasNextPage: page < totalPages,
+      hasPreviousPage: clampedPage > 1,
+      hasNextPage: clampedPage < totalPages,
     },
   };
 }

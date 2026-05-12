@@ -92,7 +92,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
+    let shouldProceed = true;
+
     try {
+      // Check attendance status first
+      try {
+        const { getMyAttendance } = await import('@/lib/hr');
+        const res = await getMyAttendance();
+        if (res?.data && res.data.checkIn && !res.data.checkOut) {
+          const confirmLogout = window.confirm(
+            "You haven't checked out today! Do you want to continue logging out without checking out? Click 'Cancel' to stay and check out."
+          );
+          if (!confirmLogout) {
+            shouldProceed = false;
+            return; // Cancel logout
+          }
+        }
+      } catch (err) {
+        console.error('Failed to check attendance before logout', err);
+      }
+
       const refreshToken = authApi.tokenStorage.getRefreshToken();
       const userId = user?.id;
       
@@ -102,12 +121,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      // Clear local storage regardless of API call success
-      authApi.tokenStorage.clear();
-      setUser(null);
-      setWorkspace(null);
-      setWorkspaces([]);
-      router.push('/login');
+      // Only clear local storage if logout wasn't canceled
+      if (shouldProceed) {
+        authApi.tokenStorage.clear();
+        setUser(null);
+        setWorkspace(null);
+        setWorkspaces([]);
+        router.push('/login');
+      }
     }
   };
 

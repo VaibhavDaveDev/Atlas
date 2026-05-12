@@ -3,12 +3,13 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Eye, EyeOff, Loader2, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -22,16 +23,21 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setIsLoading(true);
+    const toastId = toast.loading('Signing you in...');
     try {
       await login(email, password);
+      toast.success('Welcome back!', { id: toastId });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Invalid credentials. Please try again.');
+      const message = err instanceof Error ? err.message : 'Invalid credentials. Please try again.';
+      setError(message);
+      toast.error(message, { id: toastId });
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleGoogleLogin = async () => {
+    const toastId = toast.loading('Connecting to Google...');
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'}/api/v1/auth/google`);
       const responseData = await res.json();
@@ -43,12 +49,15 @@ export default function LoginPage() {
       const url = responseData.data?.url || responseData.url;
       
       if (url) {
+        toast.success('Redirecting to Google...', { id: toastId });
         window.location.href = url;
       } else {
         throw new Error('Invalid response from authentication server');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to initialize Google login');
+      const message = err instanceof Error ? err.message : 'Failed to initialize Google login';
+      setError(message);
+      toast.error(message, { id: toastId });
     }
   };
 
@@ -174,8 +183,7 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button type="submit" className="w-full" isLoading={isLoading}>
                 {isLoading ? 'Signing in…' : 'Sign in'}
               </Button>
             </form>

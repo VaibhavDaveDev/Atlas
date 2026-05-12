@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../common/services/prisma.service';
+import { evaluateFormula } from '@atlas/utils';
 
 @Injectable()
 export class HrService {
@@ -25,6 +26,29 @@ export class HrService {
         code: data.code,
         managerId: data.managerId,
       },
+    });
+  }
+
+  async getDepartmentById(workspaceId: string, id: string): Promise<any> {
+    const dept = await this.prisma.department.findUnique({
+      where: { id, workspaceId },
+      include: { employees: true },
+    });
+    if (!dept) throw new NotFoundException('Department not found');
+    return dept;
+  }
+
+  async updateDepartment(workspaceId: string, id: string, data: any): Promise<any> {
+    return this.prisma.department.update({
+      where: { id, workspaceId },
+      data,
+    });
+  }
+
+  async deleteDepartment(workspaceId: string, id: string): Promise<any> {
+    return this.prisma.department.update({
+      where: { id, workspaceId },
+      data: { isActive: false },
     });
   }
 
@@ -56,7 +80,7 @@ export class HrService {
   // ====================
   async getEmployees(workspaceId: string): Promise<any> {
     return this.prisma.employee.findMany({
-      where: { workspaceId },
+      where: { workspaceId, deletedAt: null },
       include: {
         department: { select: { id: true, name: true } },
         designation: { select: { id: true, title: true } },
@@ -66,8 +90,8 @@ export class HrService {
   }
 
   async createEmployee(workspaceId: string, data: any): Promise<any> {
-    // Generate employee number if not provided
-    const employeeNumber = data.employeeNumber || `EMP-${Date.now().toString().slice(-6)}`;
+    // Generate collision-safe employee number if not provided
+    const employeeNumber = data.employeeNumber || `EMP-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 
     // Check if email is already used by another employee
     const existingEmployee = await this.prisma.employee.findUnique({
@@ -100,7 +124,67 @@ export class HrService {
         baseSalary: data.baseSalary ? parseFloat(data.baseSalary) : 0,
         userId: existingUser?.id, // Link to AuthUser if found
         status: 'ACTIVE',
+        // Statutory Fields
+        panNumber: data.panNumber,
+        pfAccount: data.pfAccount,
+        esiNumber: data.esiNumber,
+        aadhaarNumber: data.aadhaarNumber,
       },
+    });
+  }
+
+  async getEmployeeById(workspaceId: string, id: string): Promise<any> {
+    const emp = await this.prisma.employee.findFirst({
+      where: { id, workspaceId, deletedAt: null },
+      include: {
+        department: true,
+        designation: true,
+        user: { select: { email: true, username: true } },
+      },
+    });
+    if (!emp) throw new NotFoundException('Employee not found');
+    return emp;
+  }
+
+  async updateEmployee(workspaceId: string, id: string, data: any): Promise<any> {
+    // Fetch existing employee to preserve name components in partial updates
+    const existing = await this.prisma.employee.findUnique({
+      where: { id, workspaceId },
+    });
+    if (!existing) throw new NotFoundException('Employee not found');
+
+    const newFirst = data.firstName !== undefined ? data.firstName : existing.firstName;
+    const newLast = data.lastName !== undefined ? data.lastName : existing.lastName;
+    const fullName = (newFirst || newLast) ? `${newFirst || ''} ${newLast || ''}`.trim() : existing.fullName;
+
+    return this.prisma.employee.update({
+      where: { id, workspaceId },
+      data: {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        fullName,
+        mobileNo: data.mobileNo,
+        dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
+        dateOfJoining: data.dateOfJoining ? new Date(data.dateOfJoining) : undefined,
+        dateOfLeaving: data.dateOfLeaving ? new Date(data.dateOfLeaving) : undefined,
+        gender: data.gender,
+        departmentId: data.departmentId,
+        designationId: data.designationId,
+        baseSalary: data.baseSalary ? parseFloat(data.baseSalary) : undefined,
+        status: data.status,
+        // Statutory Fields
+        panNumber: data.panNumber,
+        pfAccount: data.pfAccount,
+        esiNumber: data.esiNumber,
+        aadhaarNumber: data.aadhaarNumber,
+      },
+    });
+  }
+
+  async deleteEmployee(workspaceId: string, id: string): Promise<any> {
+    return this.prisma.employee.update({
+      where: { id, workspaceId },
+      data: { deletedAt: new Date(), status: 'TERMINATED' },
     });
   }
 
@@ -126,6 +210,55 @@ export class HrService {
   }
 
   // ====================
+  // LEAVE LEDGER & BALANCES
+  // ====================
+  async getLeaveBalance(workspaceId: string, employeeId: string, leaveTypeId: string): Promise<number> {
+    const result = await this.prisma.leaveLedgerEntry.aggregate({
+      where: {
+        workspaceId,
+        employeeId,
+        leaveTypeId,
+      },
+      _sum: { leaves: true },
+    });
+    return Number(result._sum.leaves || 0);
+  }
+
+  async getAllLeaveBalances(workspaceId: string, employeeId: string): Promise<any> {
+    const leaveTypes = await this.prisma.leaveType.findMany({
+      where: { workspaceId, isActive: true },
+    });
+
+    const balances = await Promise.all(
+      leaveTypes.map(async (type) => {
+        const balance = await this.getLeaveBalance(workspaceId, employeeId, type.id);
+        return {
+          leaveTypeId: type.id,
+          leaveTypeName: type.name,
+          balance,
+        };
+      })
+    );
+
+    return balances;
+  }
+
+  async createLeaveLedgerEntry(workspaceId: string, data: any): Promise<any> {
+    return this.prisma.leaveLedgerEntry.create({
+      data: {
+        workspaceId,
+        employeeId: data.employeeId,
+        leaveTypeId: data.leaveTypeId,
+        transactionType: data.transactionType,
+        transactionId: data.transactionId,
+        leaves: data.leaves,
+        remarks: data.remarks,
+        postingDate: data.postingDate || new Date(),
+      },
+    });
+  }
+
+  // ====================
   // LEAVE APPLICATIONS
   // ====================
   async getLeaveApplications(workspaceId: string): Promise<any> {
@@ -145,6 +278,14 @@ export class HrService {
     const diffTime = Math.abs(toDate.getTime() - fromDate.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
+    // Check balance before allowing application
+    const balance = await this.getLeaveBalance(workspaceId, data.employeeId, data.leaveTypeId);
+    if (balance < diffDays) {
+      throw new BadRequestException(
+        `Insufficient leave balance. Available: ${balance} days, Requested: ${diffDays} days`
+      );
+    }
+
     return this.prisma.leaveApplication.create({
       data: {
         workspaceId,
@@ -160,7 +301,13 @@ export class HrService {
   }
 
   async updateLeaveStatus(workspaceId: string, id: string, status: any, userId: string, remarks?: string): Promise<any> {
-    return this.prisma.leaveApplication.update({
+    const application = await this.prisma.leaveApplication.findUnique({
+      where: { id, workspaceId },
+    });
+
+    if (!application) throw new NotFoundException('Leave application not found');
+
+    const updated = await this.prisma.leaveApplication.update({
       where: { id, workspaceId },
       data: {
         status,
@@ -169,6 +316,133 @@ export class HrService {
         approverRemarks: remarks,
       },
     });
+
+    // If approved, create a negative ledger entry
+    if (status === 'APPROVED') {
+      await this.createLeaveLedgerEntry(workspaceId, {
+        employeeId: application.employeeId,
+        leaveTypeId: application.leaveTypeId,
+        transactionType: 'APPLICATION',
+        transactionId: application.id,
+        leaves: -Number(application.totalDays),
+        remarks: `Approved leave from ${application.fromDate.toLocaleDateString()} to ${application.toDate.toLocaleDateString()}`,
+      });
+    }
+
+    return updated;
+  }
+
+  // ====================
+  // ATTENDANCE
+  // ====================
+  async checkIn(workspaceId: string, userId: string): Promise<any> {
+    const employee = await this.prisma.employee.findFirst({
+      where: { workspaceId, userId, deletedAt: null },
+    });
+    if (!employee) throw new NotFoundException('Employee record not found for this user');
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const existing = await this.prisma.attendance.findFirst({
+      where: {
+        workspaceId,
+        employeeId: employee.id,
+        attendanceDate: today,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (existing && !existing.checkOut) throw new BadRequestException('Already checked in today');
+
+    return this.prisma.attendance.create({
+      data: {
+        workspaceId,
+        employeeId: employee.id,
+        attendanceDate: today,
+        checkIn: new Date(),
+        status: 'PRESENT',
+      },
+    });
+  }
+
+  async checkOut(workspaceId: string, userId: string): Promise<any> {
+    const employee = await this.prisma.employee.findFirst({
+      where: { workspaceId, userId, deletedAt: null },
+    });
+    if (!employee) throw new NotFoundException('Employee record not found');
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const attendance = await this.prisma.attendance.findFirst({
+      where: {
+        workspaceId,
+        employeeId: employee.id,
+        attendanceDate: today,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!attendance || attendance.checkOut) throw new BadRequestException('Not checked in currently');
+
+    const checkOutTime = new Date();
+    const diffHours = (checkOutTime.getTime() - attendance.checkIn!.getTime()) / (1000 * 60 * 60);
+
+    return this.prisma.attendance.update({
+      where: { id: attendance.id },
+      data: {
+        checkOut: checkOutTime,
+        workingHours: diffHours,
+      },
+    });
+  }
+
+  async getAttendanceLogs(workspaceId: string): Promise<any> {
+    return this.prisma.attendance.findMany({
+      where: { workspaceId },
+      include: { employee: { select: { fullName: true, employeeNumber: true } } },
+      orderBy: { checkIn: 'desc' },
+    });
+  }
+
+  async getMyAttendance(workspaceId: string, userId: string): Promise<any> {
+    const employee = await this.prisma.employee.findFirst({
+      where: { workspaceId, userId, deletedAt: null },
+    });
+    if (!employee) return null;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const sessions = await this.prisma.attendance.findMany({
+      where: {
+        workspaceId,
+        employeeId: employee.id,
+        attendanceDate: today,
+      },
+      orderBy: { checkIn: 'asc' },
+    });
+
+    if (sessions.length === 0) {
+      return {
+        isCheckedIn: false,
+        currentSessionStart: null,
+        totalWorkingHours: 0,
+        sessions: [],
+      };
+    }
+
+    const lastSession = sessions[sessions.length - 1];
+    const isCheckedIn = !lastSession.checkOut;
+    const totalWorkingHours = sessions.reduce((sum, s) => sum + (s.workingHours ? Number(s.workingHours) : 0), 0);
+
+    return {
+      isCheckedIn,
+      currentSessionStart: isCheckedIn ? lastSession.checkIn : null,
+      totalWorkingHours,
+      sessions,
+    };
   }
 
   // ====================
@@ -205,59 +479,185 @@ export class HrService {
     const periodEnd = new Date(data.periodEnd);
     const paymentDate = new Date(data.paymentDate);
 
-    // 1. Create the run
-    const payrollRun = await this.prisma.payrollRun.create({
-      data: {
-        workspaceId,
-        runNumber,
-        name: data.name,
-        periodStart,
-        periodEnd,
-        paymentDate,
-        status: 'DRAFT',
-      },
-    });
-
-    // 2. Fetch all active employees
-    const employees = await this.prisma.employee.findMany({
-      where: { workspaceId, status: 'ACTIVE' },
-    });
-
-    // 3. Generate empty/draft payslips based on base salary
-    let totalGross = 0;
-    
-    if (employees.length > 0) {
-      const entriesToCreate = employees.map(emp => {
-        const salary = emp.baseSalary ? Number(emp.baseSalary) : 0;
-        totalGross += salary;
-        return {
-          workspaceId,
-          payrollRunId: payrollRun.id,
-          employeeId: emp.id,
-          basicSalary: salary,
-          grossSalary: salary, // Will change if earnings added
-          totalDeductions: 0,
-          netSalary: salary,
-          status: 'PENDING' as any,
-        };
-      });
-
-      await this.prisma.payrollEntry.createMany({
-        data: entriesToCreate,
-      });
-
-      // Update run totals
-      await this.prisma.payrollRun.update({
-        where: { id: payrollRun.id },
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Create the run
+      const payrollRun = await tx.payrollRun.create({
         data: {
-          totalEmployees: employees.length,
-          totalGross,
-          totalNet: totalGross,
+          workspaceId,
+          runNumber,
+          name: data.name,
+          periodStart,
+          periodEnd,
+          paymentDate,
+          status: 'DRAFT',
         },
       });
-    }
 
-    return payrollRun;
+      // 2. Fetch all active employees
+      const employees = await tx.employee.findMany({
+        where: { workspaceId, status: 'ACTIVE' },
+      });
+
+      const totalDaysInPeriod = Math.ceil((periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+      for (const emp of employees) {
+        // 3. Get Salary Assignment
+        const assignment = await this.getSalaryAssignment(workspaceId, emp.id);
+        if (!assignment) continue; // Skip if no salary structure assigned
+
+        // 4. Calculate Payment Days (Attendance based)
+        const attendance = await tx.attendance.findMany({
+          where: {
+            employeeId: emp.id,
+            attendanceDate: { gte: periodStart, lte: periodEnd },
+          },
+        });
+
+        const presentDays = attendance.filter(a => a.status === 'PRESENT').length;
+        const paymentDays = presentDays;
+
+        // 5. Evaluate Components
+        const baseSalary = Number(assignment.baseSalary);
+        const context = {
+          BS: baseSalary,
+          base_salary: baseSalary,
+          payment_days: paymentDays,
+          total_days: totalDaysInPeriod,
+        };
+
+        const entry = await tx.payrollEntry.create({
+          data: {
+            workspaceId,
+            payrollRunId: payrollRun.id,
+            employeeId: emp.id,
+            basicSalary: baseSalary,
+            grossSalary: baseSalary,
+            totalDeductions: 0,
+            netSalary: baseSalary,
+            status: 'PENDING',
+          },
+        });
+
+        let currentGross = baseSalary;
+        let currentDeductions = 0;
+        let taxableIncome = 0;
+
+        // Calculate Earnings
+        for (const sc of assignment.salaryStructure.components) {
+          const component = sc.salaryComponent;
+          let amount = 0;
+
+          if (component.calculationType === 'FLAT') {
+            amount = Number(component.amount || 0);
+          } else if (component.calculationType === 'PERCENTAGE') {
+            amount = baseSalary * (Number(component.amount || 0) / 100);
+          } else if (component.calculationType === 'FORMULA' && component.formula) {
+            try {
+              amount = evaluateFormula(component.formula, context);
+            } catch (e) {
+              throw new BadRequestException(`Formula evaluation failed for ${component.abbr}: ${e.message}`);
+            }
+          }
+
+          // Adjust for payment days if applicable
+          if (component.dependsOnDays) {
+            amount = (amount / totalDaysInPeriod) * paymentDays;
+          }
+
+          if (component.type === 'EARNING') {
+            await tx.payrollEarning.create({
+              data: { payrollEntryId: entry.id, earningType: 'REGULAR', name: component.name, amount },
+            });
+            currentGross += amount;
+            if (component.isTaxable) taxableIncome += amount;
+            context[component.abbr] = amount;
+          } else {
+            await tx.payrollDeduction.create({
+              data: { payrollEntryId: entry.id, deductionType: 'REGULAR', name: component.name, amount },
+            });
+            currentDeductions += amount;
+            context[component.abbr] = amount;
+          }
+        }
+
+        // 6. Calculate Income Tax
+        const tax = await this.calculateIncomeTax(workspaceId, taxableIncome);
+        if (tax > 0) {
+          await tx.payrollDeduction.create({
+            data: { payrollEntryId: entry.id, deductionType: 'TAX', name: 'Income Tax', amount: tax },
+          });
+          currentDeductions += tax;
+        }
+
+        // 7. Update Entry Totals
+        await tx.payrollEntry.update({
+          where: { id: entry.id },
+          data: {
+            grossSalary: currentGross,
+            totalDeductions: currentDeductions,
+            netSalary: currentGross - currentDeductions,
+          },
+        });
+      }
+
+      // 8. Update Run Totals
+      // Note: recalculateRunTotals uses this.prisma, so we should either make it transactional or do it here.
+      // For simplicity, I'll inline the recalculation here using the tx client.
+      const entries = await tx.payrollEntry.findMany({
+        where: { payrollRunId: payrollRun.id },
+      });
+
+      let totalGross = 0;
+      let totalDeductions = 0;
+      let totalNet = 0;
+
+      entries.forEach(e => {
+        totalGross += Number(e.grossSalary);
+        totalDeductions += Number(e.totalDeductions);
+        totalNet += Number(e.netSalary);
+      });
+
+      await tx.payrollRun.update({
+        where: { id: payrollRun.id },
+        data: {
+          totalEmployees: entries.length,
+          totalGross,
+          totalDeductions,
+          totalNet,
+        },
+      });
+
+      return this.getPayrollRunById(workspaceId, payrollRun.id);
+    });
+  }
+
+  async recalculateRunTotals(runId: string) {
+    const run = await this.prisma.payrollRun.findUnique({
+      where: { id: runId },
+      include: { entries: true },
+    });
+
+    if (!run) return;
+
+    let totalGross = 0;
+    let totalDeductions = 0;
+    let totalNet = 0;
+
+    run.entries.forEach(e => {
+      totalGross += Number(e.grossSalary);
+      totalDeductions += Number(e.totalDeductions);
+      totalNet += Number(e.netSalary);
+    });
+
+    await this.prisma.payrollRun.update({
+      where: { id: run.id },
+      data: {
+        totalEmployees: run.entries.length,
+        totalGross,
+        totalDeductions,
+        totalNet,
+      },
+    });
   }
 
   // ====================
@@ -293,7 +693,7 @@ export class HrService {
     return res;
   }
 
-  private async recalculatePayslip(entryId: string) {
+  async recalculatePayslip(entryId: string) {
     const entry = await this.prisma.payrollEntry.findUnique({
       where: { id: entryId },
       include: { earnings: true, deductions: true, payrollRun: true },
@@ -342,5 +742,564 @@ export class HrService {
         },
       });
     }
+  }
+
+  // ====================
+  // SALARY COMPONENTS
+  // ====================
+  async getSalaryComponents(workspaceId: string): Promise<any> {
+    return this.prisma.salaryComponent.findMany({
+      where: { workspaceId, isActive: true },
+    });
+  }
+
+  async createSalaryComponent(workspaceId: string, data: any): Promise<any> {
+    return this.prisma.salaryComponent.create({
+      data: {
+        workspaceId,
+        name: data.name,
+        abbr: data.abbr.toUpperCase(),
+        type: data.type,
+        componentType: data.componentType,
+        calculationType: data.calculationType || 'FLAT',
+        amount: data.amount ? parseFloat(data.amount) : null,
+        formula: data.formula,
+        isTaxable: data.isTaxable ?? false,
+        dependsOnDays: data.dependsOnDays ?? true,
+      },
+    });
+  }
+
+  // ====================
+  // SALARY STRUCTURES
+  // ====================
+  async getSalaryStructures(workspaceId: string): Promise<any> {
+    return this.prisma.salaryStructure.findMany({
+      where: { workspaceId, isActive: true },
+      include: {
+        components: {
+          include: { salaryComponent: true }
+        }
+      }
+    });
+  }
+
+  async createSalaryStructure(workspaceId: string, data: any): Promise<any> {
+    const structure = await this.prisma.salaryStructure.create({
+      data: {
+        workspaceId,
+        name: data.name,
+        isActive: true,
+      },
+    });
+
+    if (data.componentIds && data.componentIds.length > 0) {
+      const components = data.componentIds.map((id: string) => ({
+        salaryStructureId: structure.id,
+        componentId: id,
+      }));
+
+      await this.prisma.salaryStructureComponent.createMany({
+        data: components,
+      });
+    }
+
+    return this.getSalaryStructureById(workspaceId, structure.id);
+  }
+
+  async getSalaryStructureById(workspaceId: string, id: string): Promise<any> {
+    return this.prisma.salaryStructure.findUnique({
+      where: { id, workspaceId },
+      include: {
+        components: {
+          include: { salaryComponent: true }
+        }
+      }
+    });
+  }
+
+  async assignSalaryStructure(workspaceId: string, data: any): Promise<any> {
+    return this.prisma.$transaction(async (tx) => {
+      // Deactivate previous assignments for this employee
+      await tx.salaryStructureAssignment.updateMany({
+        where: { workspaceId, employeeId: data.employeeId, isActive: true },
+        data: { isActive: false },
+      });
+
+      return tx.salaryStructureAssignment.create({
+        data: {
+          workspaceId,
+          employeeId: data.employeeId,
+          salaryStructureId: data.salaryStructureId,
+          baseSalary: parseFloat(data.baseSalary),
+          fromDate: new Date(data.fromDate),
+          isActive: true,
+        },
+      });
+    });
+  }
+
+  async getSalaryAssignment(workspaceId: string, employeeId: string): Promise<any> {
+    return this.prisma.salaryStructureAssignment.findFirst({
+      where: { workspaceId, employeeId, isActive: true },
+      include: {
+        salaryStructure: {
+          include: {
+            components: {
+              include: { salaryComponent: true }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // ====================
+  // ONBOARDING
+  // ====================
+  async getOnboardingTemplates(workspaceId: string): Promise<any> {
+    return this.prisma.onboardingTemplate.findMany({
+      where: { workspaceId, isActive: true },
+      include: { activities: true },
+    });
+  }
+
+  async createOnboardingTemplate(workspaceId: string, data: any): Promise<any> {
+    const template = await this.prisma.onboardingTemplate.create({
+      data: {
+        workspaceId,
+        name: data.name,
+        description: data.description,
+      },
+    });
+
+    if (data.activities && data.activities.length > 0) {
+      const activities = data.activities.map((act: any) => ({
+        templateId: template.id,
+        title: act.title,
+        description: act.description,
+        isMandatory: act.isMandatory ?? true,
+        role: act.role,
+      }));
+
+      await this.prisma.onboardingActivity.createMany({
+        data: activities,
+      });
+    }
+
+    return this.prisma.onboardingTemplate.findUnique({
+      where: { id: template.id },
+      include: { activities: true },
+    });
+  }
+
+  async initiateOnboarding(workspaceId: string, employeeId: string, templateId: string): Promise<any> {
+    const template = await this.prisma.onboardingTemplate.findUnique({
+      where: { id: templateId, workspaceId },
+      include: { activities: true },
+    });
+
+    if (!template) throw new NotFoundException('Template not found');
+
+    const tasks = template.activities.map((act) => ({
+      workspaceId,
+      employeeId,
+      title: act.title,
+      description: act.description,
+      isMandatory: act.isMandatory,
+      status: 'PENDING',
+    }));
+
+    await this.prisma.employeeOnboardingTask.createMany({
+      data: tasks,
+    });
+
+    await this.prisma.employee.update({
+      where: { id: employeeId, workspaceId },
+      data: { status: 'ONBOARDING' },
+    });
+
+    return this.getOnboardingTasks(workspaceId, employeeId);
+  }
+
+  async getOnboardingTasks(workspaceId: string, employeeId: string): Promise<any> {
+    return this.prisma.employeeOnboardingTask.findMany({
+      where: { workspaceId, employeeId },
+    });
+  }
+
+  async updateOnboardingTask(workspaceId: string, taskId: string, status: string, userId: string): Promise<any> {
+    return this.prisma.employeeOnboardingTask.update({
+      where: { id: taskId, workspaceId },
+      data: {
+        status,
+        completedAt: status === 'COMPLETED' ? new Date() : null,
+        completedBy: status === 'COMPLETED' ? userId : null,
+      },
+    });
+  }
+
+  // ====================
+  // LEAVE POLICIES & ALLOCATION
+  // ====================
+  async getLeavePolicies(workspaceId: string): Promise<any> {
+    return this.prisma.leavePolicy.findMany({
+      where: { workspaceId, isActive: true },
+      include: { leaveTypes: { include: { leaveType: true } } },
+    });
+  }
+
+  async createLeavePolicy(workspaceId: string, data: any): Promise<any> {
+    const policy = await this.prisma.leavePolicy.create({
+      data: {
+        workspaceId,
+        name: data.name,
+        description: data.description,
+      },
+    });
+
+    if (data.leaveTypes && data.leaveTypes.length > 0) {
+      const types = data.leaveTypes.map((t: any) => ({
+        leavePolicyId: policy.id,
+        leaveTypeId: t.leaveTypeId,
+        annualAllocation: parseInt(t.annualAllocation),
+      }));
+
+      await this.prisma.leavePolicyType.createMany({
+        data: types,
+      });
+    }
+
+    return this.prisma.leavePolicy.findUnique({
+      where: { id: policy.id },
+      include: { leaveTypes: true },
+    });
+  }
+
+  async allocateLeaves(workspaceId: string, data: any): Promise<any> {
+    const policy = await this.prisma.leavePolicy.findUnique({
+      where: { id: data.leavePolicyId, workspaceId },
+      include: { leaveTypes: true },
+    });
+
+    if (!policy) throw new NotFoundException('Leave policy not found');
+
+    const allocation = await this.prisma.leaveAllocation.create({
+      data: {
+        workspaceId,
+        employeeId: data.employeeId,
+        leavePolicyId: data.leavePolicyId,
+        fromDate: new Date(data.fromDate),
+        toDate: new Date(data.toDate),
+        isActive: true,
+      },
+    });
+
+    // Create ledger entries for each leave type in the policy
+    for (const type of policy.leaveTypes) {
+      await this.createLeaveLedgerEntry(workspaceId, {
+        employeeId: data.employeeId,
+        leaveTypeId: type.leaveTypeId,
+        transactionType: 'ALLOCATION',
+        transactionId: allocation.id,
+        leaves: type.annualAllocation,
+        remarks: `Annual allocation via policy: ${policy.name}`,
+      });
+    }
+
+    return allocation;
+  }
+
+  // ====================
+  // TAXATION
+  // ====================
+  async getTaxSlabs(workspaceId: string): Promise<any> {
+    return this.prisma.incomeTaxSlab.findMany({
+      where: { workspaceId },
+      include: { slabs: { orderBy: { fromAmount: 'asc' } } },
+    });
+  }
+
+  async createTaxSlab(workspaceId: string, data: any): Promise<any> {
+    const slab = await this.prisma.incomeTaxSlab.create({
+      data: {
+        workspaceId,
+        name: data.name,
+        effectiveFrom: new Date(data.effectiveFrom),
+        effectiveTo: data.effectiveTo ? new Date(data.effectiveTo) : null,
+      },
+    });
+
+    if (data.slabs && data.slabs.length > 0) {
+      const lines = data.slabs.map((s: any) => ({
+        taxSlabId: slab.id,
+        fromAmount: parseFloat(s.fromAmount),
+        toAmount: s.toAmount ? parseFloat(s.toAmount) : null,
+        taxRate: parseFloat(s.taxRate),
+      }));
+
+      await this.prisma.taxSlabLine.createMany({
+        data: lines,
+      });
+    }
+
+    return this.prisma.incomeTaxSlab.findUnique({
+      where: { id: slab.id },
+      include: { slabs: true },
+    });
+  }
+
+  // ====================
+  // STATUTORY COMPLIANCE (INDIA)
+  // ====================
+
+  async calculateHraExemption(
+    basicSalary: number,
+    hraReceived: number,
+    rentPaid: number,
+    isMetro: boolean
+  ): Promise<number> {
+    // 1. Actual HRA received
+    const case1 = hraReceived;
+
+    // 2. Rent paid minus 10% of basic salary
+    const case2 = Math.max(0, rentPaid - 0.1 * basicSalary);
+
+    // 3. 50% of basic salary for metro, 40% for non-metro
+    const case3 = isMetro ? 0.5 * basicSalary : 0.4 * basicSalary;
+
+    return Math.min(case1, case2, case3);
+  }
+
+  async calculatePf(basicSalary: number, limitTo15k: boolean = true): Promise<number> {
+    const pfBasis = limitTo15k ? Math.min(basicSalary, 15000) : basicSalary;
+    return pfBasis * 0.12; // Standard 12%
+  }
+
+  async calculateEsi(grossSalary: number): Promise<{ employee: number; employer: number }> {
+    if (grossSalary > 21000) return { employee: 0, employer: 0 };
+    
+    return {
+      employee: Math.ceil(grossSalary * 0.0075),
+      employer: Math.ceil(grossSalary * 0.0325),
+    };
+  }
+
+  async calculateProfessionalTax(grossSalary: number, state: string = 'Maharashtra'): Promise<number> {
+    // Basic implementation for Maharashtra as example
+    if (state === 'Maharashtra') {
+      if (grossSalary <= 7500) return 0;
+      if (grossSalary <= 10000) return 175;
+      return 200; // Simplified; Feb is usually 300
+    }
+    return 0;
+  }
+
+  async getTaxExemptionDeclaration(workspaceId: string, employeeId: string): Promise<any> {
+    return this.prisma.taxExemptionDeclaration.findFirst({
+      where: { workspaceId, employeeId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async submitTaxExemptionDeclaration(workspaceId: string, employeeId: string, data: any): Promise<any> {
+    return this.prisma.taxExemptionDeclaration.create({
+      data: {
+        workspaceId,
+        employeeId,
+        taxSlabId: data.taxSlabId,
+        monthlyHouseRent: data.monthlyHouseRent ? parseFloat(data.monthlyHouseRent) : null,
+        rentedInMetroCity: data.rentedInMetroCity || false,
+        rentedFromDate: data.rentedFromDate ? new Date(data.rentedFromDate) : null,
+        rentedToDate: data.rentedToDate ? new Date(data.rentedToDate) : null,
+        declarations: data.declarations || {},
+        status: 'SUBMITTED',
+      },
+    });
+  }
+
+  async calculateIncomeTax(workspaceId: string, taxableIncome: number): Promise<number> {
+    const activeSlab = await this.prisma.incomeTaxSlab.findFirst({
+      where: { workspaceId },
+      include: { slabs: { orderBy: { fromAmount: 'asc' } } },
+      orderBy: { effectiveFrom: 'desc' },
+    });
+
+    if (!activeSlab) return 0;
+
+    let totalTax = 0;
+    for (const line of activeSlab.slabs) {
+      const from = Number(line.fromAmount);
+      const to = line.toAmount ? Number(line.toAmount) : Infinity;
+      const rate = Number(line.taxRate);
+
+      if (taxableIncome > from) {
+        const taxableInThisSlab = Math.min(taxableIncome, to) - from;
+        totalTax += taxableInThisSlab * rate;
+      }
+    }
+
+    // India Specific: Marginal Relief
+    if (activeSlab.marginalReliefLimit && taxableIncome > Number(activeSlab.marginalReliefLimit)) {
+      const excessIncome = taxableIncome - Number(activeSlab.marginalReliefLimit);
+      if (totalTax > excessIncome) {
+        // totalTax = excessIncome; // Simplified marginal relief
+      }
+    }
+
+    return totalTax;
+  }
+
+  // ====================
+  // EMPLOYEE MOVEMENT
+  // ====================
+  async getEmployeeMovements(workspaceId: string, employeeId?: string): Promise<any> {
+    return this.prisma.employeeMovement.findMany({
+      where: {
+        workspaceId,
+        ...(employeeId ? { employeeId } : {}),
+      },
+      include: {
+        employee: true,
+        fromDepartment: true,
+        toDepartment: true,
+        fromDesignation: true,
+        toDesignation: true,
+      },
+      orderBy: { movementDate: 'desc' },
+    });
+  }
+
+  async createEmployeeMovement(workspaceId: string, data: any): Promise<any> {
+    const employee = await this.prisma.employee.findUnique({
+      where: { id: data.employeeId, workspaceId },
+    });
+
+    if (!employee) throw new NotFoundException('Employee not found');
+
+    const movement = await this.prisma.employeeMovement.create({
+      data: {
+        workspaceId,
+        employeeId: data.employeeId,
+        type: data.type,
+        movementDate: new Date(data.movementDate),
+        fromDepartmentId: employee.departmentId,
+        fromDesignationId: employee.designationId,
+        fromSalary: employee.baseSalary,
+        toDepartmentId: data.toDepartmentId,
+        toDesignationId: data.toDesignationId,
+        toSalary: data.toSalary ? parseFloat(data.toSalary) : null,
+        reason: data.reason,
+        status: 'PROPOSED',
+      },
+    });
+
+    return movement;
+  }
+
+  async approveEmployeeMovement(workspaceId: string, movementId: string): Promise<any> {
+    const movement = await this.prisma.employeeMovement.findUnique({
+      where: { id: movementId, workspaceId },
+    });
+
+    if (!movement) throw new NotFoundException('Movement not found');
+
+    // Update employee record
+    await this.prisma.employee.update({
+      where: { id: movement.employeeId },
+      data: {
+        departmentId: movement.toDepartmentId || undefined,
+        designationId: movement.toDesignationId || undefined,
+        baseSalary: movement.toSalary || undefined,
+      },
+    });
+
+    return this.prisma.employeeMovement.update({
+      where: { id: movementId },
+      data: { status: 'APPROVED' },
+    });
+  }
+
+  // ====================
+  // RECRUITMENT (APPLICANT TRACKING)
+  // ====================
+  async getJobApplicants(workspaceId: string): Promise<any> {
+    return this.prisma.jobApplicant.findMany({
+      where: { workspaceId },
+      include: { interviews: true },
+      orderBy: { appliedDate: 'desc' },
+    });
+  }
+
+  async createJobApplicant(workspaceId: string, data: any): Promise<any> {
+    return this.prisma.jobApplicant.create({
+      data: {
+        workspaceId,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phone,
+        resumeUrl: data.resumeUrl,
+        coverLetter: data.coverLetter,
+        status: 'APPLIED',
+      },
+    });
+  }
+
+  async scheduleInterview(workspaceId: string, data: any): Promise<any> {
+    return this.prisma.interview.create({
+      data: {
+        workspaceId,
+        applicantId: data.applicantId,
+        interviewDate: new Date(data.interviewDate),
+        roundName: data.roundName,
+        interviewerId: data.interviewerId,
+        status: 'SCHEDULED',
+      },
+    });
+  }
+
+  async updateInterviewFeedback(workspaceId: string, interviewId: string, data: any): Promise<any> {
+    return this.prisma.interview.update({
+      where: { id: interviewId, workspaceId },
+      data: {
+        feedback: data.feedback,
+        score: data.score ? parseInt(data.score) : null,
+        status: 'COMPLETED',
+      },
+    });
+  }
+
+  // ====================
+  // SHIFT MANAGEMENT
+  // ====================
+  async getShiftTypes(workspaceId: string): Promise<any> {
+    return this.prisma.shiftType.findMany({
+      where: { workspaceId },
+    });
+  }
+
+  async createShiftType(workspaceId: string, data: any): Promise<any> {
+    return this.prisma.shiftType.create({
+      data: {
+        workspaceId,
+        name: data.name,
+        startTime: data.startTime,
+        endTime: data.endTime,
+        isDefault: data.isDefault || false,
+      },
+    });
+  }
+
+  async assignShift(workspaceId: string, data: any): Promise<any> {
+    return this.prisma.shiftAssignment.create({
+      data: {
+        workspaceId,
+        employeeId: data.employeeId,
+        shiftTypeId: data.shiftTypeId,
+        fromDate: new Date(data.fromDate),
+        toDate: data.toDate ? new Date(data.toDate) : null,
+      },
+    });
   }
 }

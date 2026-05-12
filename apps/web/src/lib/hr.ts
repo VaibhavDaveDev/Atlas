@@ -1,6 +1,7 @@
 import { tokenStorage } from './auth';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_BASE = `${API_URL}/api/v1`;
 
 async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
   const token = tokenStorage.getAccessToken();
@@ -39,6 +40,23 @@ export async function createDepartment(data: { name: string; code: string; manag
   });
 }
 
+export async function getDepartmentById(id: string) {
+  return fetchWithAuth(`/hr/departments/${id}`);
+}
+
+export async function updateDepartment(id: string, data: any) {
+  return fetchWithAuth(`/hr/departments/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteDepartment(id: string) {
+  return fetchWithAuth(`/hr/departments/${id}`, {
+    method: 'DELETE',
+  });
+}
+
 // ====================
 // DESIGNATIONS
 // ====================
@@ -64,6 +82,23 @@ export async function createEmployee(data: any) {
   return fetchWithAuth('/hr/employees', {
     method: 'POST',
     body: JSON.stringify(data),
+  });
+}
+
+export async function getEmployeeById(id: string) {
+  return fetchWithAuth(`/hr/employees/${id}`);
+}
+
+export async function updateEmployee(id: string, data: any) {
+  return fetchWithAuth(`/hr/employees/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteEmployee(id: string) {
+  return fetchWithAuth(`/hr/employees/${id}`, {
+    method: 'DELETE',
   });
 }
 
@@ -99,8 +134,109 @@ export async function updateLeaveStatus(id: string, status: string, remarks?: st
   });
 }
 
+export async function getLeaveBalances(employeeId: string) {
+  return fetchWithAuth(`/hr/leaves/balances/${employeeId}`);
+}
+
+export async function getLeavePolicies() {
+  return fetchWithAuth('/hr/leaves/policies');
+}
+
+export async function createLeavePolicy(data: any) {
+  return fetchWithAuth('/hr/leaves/policies', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function allocateLeaves(data: { employeeId: string; leavePolicyId: string; fromDate: string; toDate: string }) {
+  return fetchWithAuth('/hr/leaves/allocate', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
 // ====================
-// PAYROLL
+// PAYROLL CONFIGURATION
+// ====================
+export async function getSalaryComponents() {
+  return fetchWithAuth('/hr/payroll/salary-components');
+}
+
+export async function createSalaryComponent(data: any) {
+  return fetchWithAuth('/hr/payroll/salary-components', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getSalaryStructures() {
+  return fetchWithAuth('/hr/payroll/salary-structures');
+}
+
+export async function createSalaryStructure(data: any) {
+  return fetchWithAuth('/hr/payroll/salary-structures', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function assignSalaryStructure(data: any) {
+  return fetchWithAuth('/hr/payroll/salary-structures/assign', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getSalaryAssignment(employeeId: string) {
+  return fetchWithAuth(`/hr/payroll/salary-assignments/${employeeId}`);
+}
+
+export async function getTaxSlabs() {
+  return fetchWithAuth('/hr/payroll/tax-slabs');
+}
+
+export async function createTaxSlab(data: any) {
+  return fetchWithAuth('/hr/payroll/tax-slabs', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+// ====================
+// ONBOARDING
+// ====================
+export async function getOnboardingTemplates() {
+  return fetchWithAuth('/hr/onboarding/templates');
+}
+
+export async function createOnboardingTemplate(data: any) {
+  return fetchWithAuth('/hr/onboarding/templates', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function initiateOnboarding(data: { employeeId: string; templateId: string }) {
+  return fetchWithAuth('/hr/onboarding/initiate', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getOnboardingTasks(employeeId: string) {
+  return fetchWithAuth(`/hr/onboarding/tasks/${employeeId}`);
+}
+
+export async function updateOnboardingTask(taskId: string, status: string) {
+  return fetchWithAuth(`/hr/onboarding/tasks/${taskId}/status`, {
+    method: 'POST',
+    body: JSON.stringify({ status }),
+  });
+}
+
+// ====================
+// PAYROLL RUNS
 // ====================
 export async function getPayrollRuns() {
   return fetchWithAuth('/hr/payroll/runs');
@@ -126,6 +262,43 @@ export async function addPayrollEarning(entryId: string, data: any) {
 
 export async function addPayrollDeduction(entryId: string, data: any) {
   return fetchWithAuth(`/hr/payroll/entries/${entryId}/deductions`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+// ====================
+// ATTENDANCE
+// ====================
+export async function checkIn() {
+  return fetchWithAuth('/hr/attendance/check-in', {
+    method: 'POST',
+  });
+}
+
+export async function checkOut() {
+  return fetchWithAuth('/hr/attendance/check-out', {
+    method: 'POST',
+  });
+}
+
+export async function getAttendanceLogs() {
+  return fetchWithAuth('/hr/attendance');
+}
+
+export async function getMyAttendance() {
+  return fetchWithAuth('/hr/attendance/me');
+}
+
+// ====================
+// INDIA STATUTORY
+// ====================
+export async function getTaxExemptionDeclaration(employeeId: string) {
+  return fetchWithAuth(`/hr/compliance/india/declarations/${employeeId}`);
+}
+
+export async function submitTaxExemptionDeclaration(data: any) {
+  return fetchWithAuth('/hr/compliance/india/declarations', {
     method: 'POST',
     body: JSON.stringify(data),
   });

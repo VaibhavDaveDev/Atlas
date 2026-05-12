@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsUUID } from 'class-validator';
+import { IsString, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class LogoutDto {
@@ -10,10 +10,4 @@ export class LogoutDto {
   @IsNotEmpty({ message: 'Refresh token is required' })
   refreshToken: string;
 
-  @ApiProperty({
-    example: '123e4567-e89b-12d3-a456-426614174000',
-    description: 'User ID',
-  })
-  @IsUUID('4', { message: 'Please provide a valid user ID' })
-  userId: string;
 }

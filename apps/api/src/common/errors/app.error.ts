@@ -22,7 +22,7 @@ class AppError extends HttpException {
     errors?: unknown,
     code?: string,
   ): AppError {
-    return new AppError(HttpStatus.BAD_REQUEST, message, { errors, code });
+    return new AppError(HttpStatus.BAD_REQUEST, message, errors);
   }
 
   static unauthorized(message: string = 'Unauthorized'): AppError {

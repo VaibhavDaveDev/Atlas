@@ -12,20 +12,28 @@ import Link from 'next/link';
 export default function EmployeesDirectoryPage() {
   const [employees, setEmployees] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     getEmployees()
       .then((res) => {
-        if (res.success) setEmployees(res.data);
+        if (res.success) {
+          setEmployees(res.data);
+        } else {
+          setError(res.error || 'Failed to load employees');
+        }
+      })
+      .catch((err) => {
+        setError(err.message || 'Failed to load employees');
       })
       .finally(() => setIsLoading(false));
   }, []);
 
   const filteredEmployees = employees.filter(e => 
-    e.fullName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    e.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    e.employeeNumber.toLowerCase().includes(searchQuery.toLowerCase())
+    (e.fullName ?? '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (e.email ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (e.employeeNumber ?? '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -66,6 +74,16 @@ export default function EmployeesDirectoryPage() {
             <div className="flex h-32 items-center justify-center">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+                <MoreHorizontal className="h-6 w-6 text-destructive" />
+              </div>
+              <h3 className="font-semibold text-lg text-destructive">{error}</h3>
+              <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>
+                Try Again
+              </Button>
+            </div>
           ) : employees.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
@@ -98,7 +116,7 @@ export default function EmployeesDirectoryPage() {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-medium text-xs">
-                            {employee.firstName.charAt(0)}{employee.lastName?.charAt(0) || ''}
+                            {employee.firstName?.charAt(0) || ''}{employee.lastName?.charAt(0) || ''}
                           </div>
                           <div>
                             <p className="font-medium">{employee.fullName}</p>

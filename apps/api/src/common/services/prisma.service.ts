@@ -34,10 +34,16 @@ export class PrismaService
   implements OnModuleInit, OnModuleDestroy
 {
   constructor(private readonly customLogger: CustomLoggerService) {
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error(
+        'DATABASE_URL environment variable is not set. Please check your .env file.',
+      );
+    }
     super({
       datasources: {
         db: {
-          url: process.env.DATABASE_URL,
+          url: dbUrl,
         },
       },
     });
