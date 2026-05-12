@@ -24,3 +24,37 @@ export interface AttendanceInput {
   checkOut?: Date;
   status: string;
 }
+
+export interface EmployeeMovementInput {
+  employeeId: string;
+  type: 'PROMOTION' | 'TRANSFER' | 'RE_DESIGNATION';
+  movementDate: Date;
+  toDepartmentId?: string;
+  toDesignationId?: string;
+  toSalary?: number;
+  reason?: string;
+}
+
+export interface JobApplicantInput {
+  firstName: string;
+  lastName?: string;
+  email: string;
+  phone?: string;
+  resumeUrl?: string;
+  coverLetter?: string;
+}
+
+export interface InterviewInput {
+  applicantId: string;
+  interviewDate: Date;
+  roundName: string;
+  interviewerId: string;
+}
+
+export interface ShiftTypeInput {
+  name: string;
+  startTime: string;
+  endTime: string;
+  isDefault?: boolean;
+}
+

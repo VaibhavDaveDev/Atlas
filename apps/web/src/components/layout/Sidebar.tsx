@@ -28,6 +28,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { label: 'Attendance', href: '/dashboard/hr/attendance', icon: Briefcase },
   { label: 'CRM', href: '/dashboard/crm', icon: Users, badge: 'Soon' },
   { label: 'HR', href: '/dashboard/hr', icon: Briefcase, badge: 'Soon' },
   { label: 'Finance', href: '/dashboard/finance', icon: BarChart3, badge: 'Soon' },

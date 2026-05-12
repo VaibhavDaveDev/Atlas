@@ -6,6 +6,7 @@ import {
   Param,
   UseGuards,
   Req,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { WorkspaceService } from './workspace.service';
@@ -50,7 +51,7 @@ export class WorkspaceController {
     const user = (req as any).user;
     // Basic check: must be Admin or Owner to invite
     if (user.workspaceRole !== 'OWNER' && user.workspaceRole !== 'ADMIN') {
-      return { success: false, message: 'Only Owners and Admins can invite users' };
+      throw new ForbiddenException('Only Owners and Admins can invite users');
     }
 
     const invite = await this.workspaceService.createInvite(

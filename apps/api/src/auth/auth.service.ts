@@ -452,10 +452,19 @@ export class AuthService {
     const resetSessionId = crypto.randomUUID();
 
     // SECURITY: Always return the same message regardless of user existence
-    if (!user || user.status !== 'ACTIVE' || user.provider !== 'local') {
+    if (!user || user.status !== 'ACTIVE') {
       return { 
         message: 'If this email is registered, a password reset code has been sent.',
         resetSessionId
+      };
+    }
+
+    // SECURITY: OAuth accounts cannot use local password reset
+    if (user.provider !== 'local') {
+      // Return same generic message to prevent enumeration
+      return {
+        message: 'If this email is registered, a password reset code has been sent.',
+        resetSessionId,
       };
     }
 
@@ -536,14 +545,21 @@ export class AuthService {
       );
     }
 
-    // Find user
+    // Find user and verify provider
     const user = await this.prismaService.authUser.findUnique({
       where: { id: storedData.userId },
-      select: { id: true, email: true, status: true },
+      select: { id: true, email: true, status: true, provider: true },
     });
 
     if (!user || user.status !== 'ACTIVE') {
       throw AppError.badRequest('User account is not available');
+    }
+
+    // SECURITY: OAuth accounts cannot have their local password reset
+    if (user.provider !== 'local') {
+      throw AppError.badRequest(
+        'Invalid or expired reset code. Please request a new one.',
+      );
     }
 
     // Hash new password
@@ -657,8 +673,8 @@ export class AuthService {
       throw invalidCredentialsError;
     }
 
-    // Check OAuth provider
-    if (user.provider !== 'local') {
+    // Check OAuth provider if they haven't set a local password
+    if (user.provider !== 'local' && (!user.password || user.password === '')) {
       throw AppError.badRequest(
         `Please login using ${user.provider} authentication`,
       );

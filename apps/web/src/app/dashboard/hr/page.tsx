@@ -32,7 +32,7 @@ function StatCard({
   href,
 }: StatCardProps) {
   const CardContent = (
-    <div className="rounded-xl border border-border bg-card p-5 transition-all hover:shadow-sm hover:border-primary/30 h-full">
+    <div className="rounded-xl border border-border bg-card p-5 transition-all hover:border-primary/30 h-full">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm text-muted-foreground">{title}</p>
@@ -75,53 +75,62 @@ export default function HrOverviewPage() {
       href: '/dashboard/hr/employees',
     },
     {
-      title: 'Departments',
+      title: 'Pending Leaves',
       value: '0',
-      subtitle: 'Across organization',
-      icon: Building2,
-      iconColor: 'text-violet-500',
-      iconBg: 'bg-violet-500/10',
-      href: '/dashboard/hr/departments',
-    },
-    {
-      title: 'Open Positions',
-      value: '—',
-      subtitle: 'Recruitment coming soon',
-      icon: Briefcase,
-      iconColor: 'text-emerald-500',
-      iconBg: 'bg-emerald-500/10',
-    },
-    {
-      title: 'On Leave Today',
-      value: '0',
-      subtitle: 'Attendance & Leaves',
+      subtitle: 'Requiring approval',
       icon: CalendarCheck,
       iconColor: 'text-amber-500',
       iconBg: 'bg-amber-500/10',
+      href: '/dashboard/hr/leaves',
+    },
+    {
+      title: 'Active Onboarding',
+      value: '0',
+      subtitle: 'New hires in process',
+      icon: UserPlus,
+      iconColor: 'text-emerald-500',
+      iconBg: 'bg-emerald-500/10',
+      href: '/dashboard/hr/onboarding',
+    },
+    {
+      title: 'Last Payroll',
+      value: '$0',
+      subtitle: 'Total net processed',
+      icon: Briefcase,
+      iconColor: 'text-violet-500',
+      iconBg: 'bg-violet-500/10',
+      href: '/dashboard/hr/payroll',
     },
   ];
 
   const quickActions = [
     {
-      title: 'Onboard Employee',
-      desc: 'Add a new member to the directory',
+      title: 'Run Payroll',
+      desc: 'Process monthly salaries',
+      icon: Briefcase,
+      color: 'bg-violet-500 text-white',
+      href: '/dashboard/hr/payroll',
+    },
+    {
+      title: 'Onboarding',
+      desc: 'Start new hire checklist',
       icon: UserPlus,
       color: 'bg-blue-500 text-white',
-      href: '/dashboard/hr/employees/new',
+      href: '/dashboard/hr/onboarding',
     },
     {
-      title: 'Log Attendance',
-      desc: 'Mark today\'s check-in/out',
+      title: 'Leave Requests',
+      desc: 'Approve or reject leaves',
       icon: CalendarCheck,
-      color: 'bg-emerald-500 text-white',
-      href: '#',
+      color: 'bg-amber-500 text-white',
+      href: '/dashboard/hr/leaves',
     },
     {
-      title: 'Manage Departments',
-      desc: 'Update company structure',
-      icon: Building2,
-      color: 'bg-violet-500 text-white',
-      href: '/dashboard/hr/departments',
+      title: 'Employee Directory',
+      desc: 'View all staff records',
+      icon: Users,
+      color: 'bg-emerald-500 text-white',
+      href: '/dashboard/hr/employees',
     },
   ];
 
@@ -161,7 +170,7 @@ export default function HrOverviewPage() {
                   <Link
                     key={action.title}
                     href={action.href}
-                    className="flex items-start gap-4 rounded-lg border border-border bg-card p-4 transition-all hover:bg-muted/50 hover:shadow-sm"
+                    className="flex items-start gap-4 rounded-lg border border-border bg-card p-4 transition-all hover:bg-muted/50"
                   >
                     <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${action.color}`}>
                       <Icon className="h-5 w-5" />

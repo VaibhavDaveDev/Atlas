@@ -51,6 +51,7 @@ export class TransformInterceptor<T> implements NestInterceptor<T, any> {
         const message = this.defaultMessage;
 
         return {
+          success: true,
           statusCode,
           message,
           data,

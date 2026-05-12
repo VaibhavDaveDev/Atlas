@@ -2,6 +2,8 @@
  * Authentication Configuration Constants
  */
 
+const isProd = process.env.NODE_ENV === 'production';
+
 export const AUTH_CONFIG = {
   // Password Configuration
   PASSWORD_MIN_LENGTH: 8,
@@ -20,10 +22,12 @@ export const AUTH_CONFIG = {
     PASSWORD_RESET: '1h',
   },
 
-  // Rate Limiting (removed user-agent to prevent Redis key explosion)
+  // Rate Limiting
+  // Production: strict (5 attempts / 15 min). Dev/staging: lenient (50 attempts / 1 min).
+  // ACCOUNT_LOCKOUT acts as a secondary backstop in all environments.
   RATE_LIMIT: {
-    LOGIN_MAX_ATTEMPTS: 5,
-    LOGIN_WINDOW_MS: 15 * 60 * 1000, // 15 minutes
+    LOGIN_MAX_ATTEMPTS: isProd ? 5 : 50,
+    LOGIN_WINDOW_MS: isProd ? 15 * 60 * 1000 : 1 * 60 * 1000, // 15 min prod / 1 min dev
     PASSWORD_RESET_MAX_ATTEMPTS: 3,
     PASSWORD_RESET_WINDOW_MS: 60 * 60 * 1000, // 1 hour
   },

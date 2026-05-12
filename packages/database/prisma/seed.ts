@@ -1,5 +1,5 @@
-import { PrismaClient } from '@prisma/client';
-import * as bcrypt from 'bcrypt';
+import { PrismaClient } from '../index'; // Use the exported client
+import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -13,13 +13,14 @@ async function main() {
   // 1. Create a primary Workspace
   console.log('Creating "Atlas Technologies" workspace...');
   const workspace = await prisma.workspace.upsert({
-    where: { slug: 'atlas-tech' },
-    update: {},
+    where: { subdomain: 'atlas-tech' },
+    update: {
+      status: 'ACTIVE',
+    },
     create: {
       name: 'Atlas Technologies',
-      slug: 'atlas-tech',
-      subscriptionTier: 'ENTERPRISE',
-      maxUsers: 100,
+      subdomain: 'atlas-tech',
+      status: 'ACTIVE',
     },
   });
 
@@ -31,9 +32,8 @@ async function main() {
     create: {
       email: 'admin@atlas.com',
       username: 'admin',
-      passwordHash,
-      isEmailVerified: true,
-      lastLoginAt: new Date(),
+      password: passwordHash,
+      verified: true,
     },
   });
 
@@ -58,9 +58,8 @@ async function main() {
     create: {
       email: 'hr@atlas.com',
       username: 'hr_manager',
-      passwordHash,
-      isEmailVerified: true,
-      lastLoginAt: new Date(),
+      password: passwordHash,
+      verified: true,
     },
   });
 
@@ -78,26 +77,43 @@ async function main() {
 
   // 4. Create standard employee user
   console.log('Creating Standard User (employee@atlas.com)...');
-  const employee = await prisma.authUser.upsert({
+  const employeeUser = await prisma.authUser.upsert({
     where: { email: 'employee@atlas.com' },
     update: {},
     create: {
       email: 'employee@atlas.com',
       username: 'john_doe',
-      passwordHash,
-      isEmailVerified: true,
+      password: passwordHash,
+      verified: true,
     },
   });
 
   await prisma.workspaceMember.upsert({
     where: {
-      workspaceId_userId: { workspaceId: workspace.id, userId: employee.id },
+      workspaceId_userId: { workspaceId: workspace.id, userId: employeeUser.id },
     },
     update: {},
     create: {
       workspaceId: workspace.id,
-      userId: employee.id,
+      userId: employeeUser.id,
       role: 'USER',
+    },
+  });
+
+  await prisma.employee.upsert({
+    where: { employeeNumber: 'EMP-001' },
+    update: {},
+    create: {
+      workspaceId: workspace.id,
+      userId: employeeUser.id,
+      employeeNumber: 'EMP-001',
+      firstName: 'John',
+      lastName: 'Doe',
+      fullName: 'John Doe',
+      email: 'employee@atlas.com',
+      dateOfJoining: new Date(),
+      status: 'ACTIVE',
+      baseSalary: 50000,
     },
   });
 

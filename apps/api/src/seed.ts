@@ -1,4 +1,5 @@
-import { PrismaClient } from '@atlas/database';
+import { PrismaClient, WorkspaceStatus, WorkspaceRole, SalaryComponentType, SalaryCalculationType, EmployeeStatus } from '@atlas/database';
+import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -7,18 +8,19 @@ async function main() {
 
   // Hash a default password
   const defaultPassword = 'Password123!';
-  // Note: Using bcrypt directly here might fail due to TS module resolution in simple ts-node scripts without tsconfig path mapping, so we'll just insert plain text or a pre-hashed string if bcrypt fails, but let's try requiring it dynamically if needed. Wait, we can just use bcryptjs or regular bcrypt. Let's just put the hashed password string directly or require it.
-  const bcrypt = require('bcryptjs'); // standard bcrypt might fail without types, bcryptjs is safer
   const passwordHash = await bcrypt.hash(defaultPassword, 10);
 
   // 1. Create a primary Workspace
   console.log('Creating "Atlas Technologies" workspace...');
   const workspace = await prisma.workspace.upsert({
     where: { subdomain: 'atlas-tech' },
-    update: {},
+    update: {
+      status: WorkspaceStatus.ACTIVE,
+    },
     create: {
       name: 'Atlas Technologies',
       subdomain: 'atlas-tech',
+      status: WorkspaceStatus.ACTIVE,
     },
   });
 
@@ -44,7 +46,7 @@ async function main() {
     create: {
       workspaceId: workspace.id,
       userId: admin.id,
-      role: 'OWNER',
+      role: WorkspaceRole.OWNER,
     },
   });
 
@@ -69,7 +71,7 @@ async function main() {
     create: {
       workspaceId: workspace.id,
       userId: hrManager.id,
-      role: 'ADMIN', // Giving HR full workspace access
+      role: WorkspaceRole.ADMIN, // Giving HR full workspace access
     },
   });
 
@@ -94,9 +96,59 @@ async function main() {
     create: {
       workspaceId: workspace.id,
       userId: employee.id,
-      role: 'USER',
+      role: WorkspaceRole.USER,
     },
   });
+
+  // 5. Create HR Employee Record for John Doe
+  console.log('Creating employee record for John Doe...');
+  const johnDoe = await prisma.employee.upsert({
+    where: { email: 'employee@atlas.com' },
+    update: {},
+    create: {
+      workspaceId: workspace.id,
+      employeeNumber: 'EMP-001',
+      firstName: 'John',
+      lastName: 'Doe',
+      fullName: 'John Doe',
+      email: 'employee@atlas.com',
+      dateOfJoining: new Date('2024-01-01'),
+      status: EmployeeStatus.ACTIVE,
+      userId: employee.id,
+      baseSalary: 50000,
+    },
+  });
+
+  // 6. Create Default Shift
+  console.log('Creating default shift...');
+  await prisma.shiftType.upsert({
+    where: { id: 'default-general-shift' },
+    update: {},
+    create: {
+      id: 'default-general-shift',
+      workspaceId: workspace.id,
+      name: 'General Shift',
+      startTime: '09:00',
+      endTime: '18:00',
+      isDefault: true,
+    },
+  });
+
+  // 7. Salary Components
+  console.log('Creating Salary Components...');
+  const components = [
+    { name: 'Basic Salary', abbr: 'BS', type: SalaryComponentType.EARNING, calculationType: SalaryCalculationType.FLAT, isTaxable: true },
+    { name: 'House Rent Allowance', abbr: 'HRA', type: SalaryComponentType.EARNING, calculationType: SalaryCalculationType.PERCENTAGE, amount: 40, isTaxable: true },
+    { name: 'Provident Fund', abbr: 'PF', type: SalaryComponentType.DEDUCTION, calculationType: SalaryCalculationType.PERCENTAGE, amount: 12, isTaxable: false },
+  ];
+
+  for (const comp of components) {
+    await prisma.salaryComponent.upsert({
+      where: { workspaceId_abbr: { workspaceId: workspace.id, abbr: comp.abbr } },
+      update: {},
+      create: { ...comp, workspaceId: workspace.id },
+    });
+  }
 
   console.log('✅ Seeding completed successfully!');
   console.log('----------------------------------------------------');

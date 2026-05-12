@@ -9,13 +9,13 @@ export const THROTTLER_CONFIG = {
   // Default rate limit (applies to all routes unless overridden)
   DEFAULT: {
     ttl: 60000, // 60 seconds (1 minute)
-    limit: 100, // 100 requests per minute
+    limit: 300, // 300 requests per minute
   },
 
   // Strict rate limit for sensitive endpoints (login, signup, password reset)
   STRICT: {
     ttl: 60000, // 60 seconds
-    limit: 10, // 10 requests per minute
+    limit: 30, // 30 requests per minute (increased from 10)
   },
 
   // Rate limit for auth attempts — the Redis-based rate limiter in auth.service.ts
@@ -23,13 +23,13 @@ export const THROTTLER_CONFIG = {
   // This NestJS throttler is a secondary layer — keep it lenient to avoid false positives.
   AUTH: {
     ttl: 900000, // 15 minutes
-    limit: 20, // 20 attempts per 15 minutes (Redis rate limiter handles brute-force)
+    limit: 50, // 50 attempts per 15 minutes (increased from 20)
   },
 
   // Relaxed for read-heavy endpoints
   RELAXED: {
     ttl: 60000, // 60 seconds
-    limit: 300, // 300 requests per minute
+    limit: 1000, // 1000 requests per minute
   },
 } as const;
 

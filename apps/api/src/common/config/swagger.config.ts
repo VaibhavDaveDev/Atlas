@@ -40,6 +40,7 @@ export function setupSwagger(app: INestApplication): void {
 
   // Customize Swagger UI
   SwaggerModule.setup('docs', app, document, {
+    useGlobalPrefix: true,
     customSiteTitle: 'NestJS API Documentation',
     customfavIcon: 'https://nestjs.com/img/logo-small.svg',
     customCss: `

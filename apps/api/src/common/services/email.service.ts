@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
-import * as fs from 'fs';
+import { promises as fs } from 'fs';
 import * as path from 'path';
 import config from '../config/app.config';
 import AppError from '../errors/app.error';
@@ -19,13 +19,28 @@ export class EmailService {
   private transporter: nodemailer.Transporter;
 
   constructor(private readonly customLogger: CustomLoggerService) {
+    // Validate configuration
+    if (!config.email_host || typeof config.email_host !== 'string') {
+      throw new Error('Invalid email config: missing or invalid email_host');
+    }
+    if (!config.email_user || typeof config.email_user !== 'string') {
+      throw new Error('Invalid email config: missing or invalid email_user');
+    }
+    if (!config.email_pass || typeof config.email_pass !== 'string') {
+      throw new Error('Invalid email config: missing or invalid email_pass');
+    }
+    const port = Number(config.email_port);
+    if (isNaN(port) || port <= 0) {
+      throw new Error('Invalid email config: email_port must be a positive integer');
+    }
+
     this.transporter = nodemailer.createTransport({
-      host: String(config.email_host),
-      port: Number(config.email_port),
-      secure: config.email_port === 465, // true for 465, false for other ports
+      host: config.email_host,
+      port: port,
+      secure: port === 465, // true for 465, false for other ports
       auth: {
-        user: String(config.email_user),
-        pass: String(config.email_pass),
+        user: config.email_user,
+        pass: config.email_pass,
       },
     });
   }
@@ -66,10 +81,10 @@ export class EmailService {
   /**
    * Load and parse email template
    */
-  getEmailTemplate(
+  async getEmailTemplate(
     filePath: string,
     replacements: Record<string, string>,
-  ): string {
+  ): Promise<string> {
     try {
       const absolutePath = path.resolve(
         process.cwd(),
@@ -77,11 +92,13 @@ export class EmailService {
         'emails',
         filePath,
       );
-      let template = fs.readFileSync(absolutePath, { encoding: 'utf-8' });
+      let template = await fs.readFile(absolutePath, { encoding: 'utf-8' });
 
       for (const key in replacements) {
+        // Escape regex special characters to prevent ReDoS/Injection
+        const escapedKey = key.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&');
         template = template.replace(
-          new RegExp(`{{${key}}}`, 'g'),
+          new RegExp(`{{${escapedKey}}}`, 'g'),
           replacements[key],
         );
       }
@@ -104,7 +121,7 @@ export class EmailService {
     username: string,
     verificationCode: string,
   ): Promise<void> {
-    const html = this.getEmailTemplate('verification.html', {
+    const html = await this.getEmailTemplate('verification.html', {
       username,
       verificationCode,
       year: new Date().getFullYear().toString(),
@@ -125,7 +142,7 @@ export class EmailService {
     username: string,
     resetCode: string,
   ): Promise<void> {
-    const html = this.getEmailTemplate('password-reset.html', {
+    const html = await this.getEmailTemplate('password-reset.html', {
       username,
       resetCode,
       year: new Date().getFullYear().toString(),
@@ -142,7 +159,7 @@ export class EmailService {
    * Send welcome email after verification
    */
   async sendWelcomeEmail(email: string, username: string): Promise<void> {
-    const html = this.getEmailTemplate('welcome.html', {
+    const html = await this.getEmailTemplate('welcome.html', {
       username,
       year: new Date().getFullYear().toString(),
     });
