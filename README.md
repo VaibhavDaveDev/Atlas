@@ -29,8 +29,8 @@ This Turborepo includes the following packages/apps:
 - **Backend**: NestJS 11 + Prisma
 - **Frontend**: Next.js 15 + React 19
 - **Database**: PostgreSQL 17
-- **Styling**: TailwindCSS + Linaria
-- **State**: Jotai
+- **Styling**: TailwindCSS
+- **State**: Zustand
 - **i18n**: Lingui
 - **API**: GraphQL + REST
 - **Cache**: Redis 8

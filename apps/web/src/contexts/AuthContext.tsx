@@ -30,11 +30,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const loadUser = () => {
       const storedUser = authApi.tokenStorage.getUser();
       const storedWorkspace = authApi.tokenStorage.getWorkspace();
+      const storedWorkspaces = authApi.tokenStorage.getWorkspaces();
       const accessToken = authApi.tokenStorage.getAccessToken();
 
       if (storedUser && accessToken) {
         setUser(storedUser);
         setWorkspace(storedWorkspace);
+        setWorkspaces(storedWorkspaces);
       }
       
       setIsLoading(false);
@@ -47,21 +49,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await authApi.login(email, password);
       
-      // Store tokens and user
+      // Store tokens, user, and workspaces list
       authApi.tokenStorage.setAccessToken(response.data.accessToken);
       authApi.tokenStorage.setRefreshToken(response.data.refreshToken);
       authApi.tokenStorage.setUser(response.data.user);
+      authApi.tokenStorage.setWorkspaces(response.data.workspaces);
       
       setUser(response.data.user);
       setWorkspaces(response.data.workspaces);
       
-      // If user has only one workspace, select it automatically
-      if (response.data.workspaces.length === 1) {
-        await selectWorkspace(response.data.workspaces[0].workspaceId);
-      } else {
-        // Redirect to workspace selection
-        router.push('/select-workspace');
-      }
+      // Always navigate to select-workspace.
+      // The page itself handles: auto-select if 1 workspace + no pending invites,
+      // or shows the full picker if there are multiple workspaces or pending invites.
+      router.push('/select-workspace');
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -83,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       setWorkspace(response.data.workspace);
       
-      // Redirect to dashboard based on role
+      // Redirect to dashboard
       router.push('/dashboard');
     } catch (error) {
       console.error('Select workspace error:', error);
@@ -95,21 +95,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let shouldProceed = true;
 
     try {
-      // Check attendance status first
-      try {
-        const { getMyAttendance } = await import('@/lib/hr');
-        const res = await getMyAttendance();
-        if (res?.data && res.data.checkIn && !res.data.checkOut) {
-          const confirmLogout = window.confirm(
-            "You haven't checked out today! Do you want to continue logging out without checking out? Click 'Cancel' to stay and check out."
-          );
-          if (!confirmLogout) {
-            shouldProceed = false;
-            return; // Cancel logout
+      // Check attendance status first - only if workspace is properly selected
+      if (workspace && workspace.workspaceId) {
+        try {
+          const { getMyAttendance } = await import('@/lib/hr');
+          const res = await getMyAttendance();
+          if (res?.data && res.data.checkIn && !res.data.checkOut) {
+            const confirmLogout = window.confirm(
+              "You haven't checked out today! Do you want to continue logging out without checking out? Click 'Cancel' to stay and check out."
+            );
+            if (!confirmLogout) {
+              shouldProceed = false;
+              return; // Cancel logout
+            }
+          }
+        } catch (err) {
+          // Ignore "no workspace" or "unauthorized" errors during logout check
+          // as they just mean we can't check attendance, which is fine for logout
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          if (!errorMessage.includes('No workspace selected') && 
+              !errorMessage.includes('status 401') &&
+              !errorMessage.includes('Unauthorized') &&
+              !errorMessage.includes('No token found')) {
+            console.error('Failed to check attendance before logout', err);
           }
         }
-      } catch (err) {
-        console.error('Failed to check attendance before logout', err);
       }
 
       const refreshToken = authApi.tokenStorage.getRefreshToken();

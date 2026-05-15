@@ -1,6 +1,7 @@
 import { Injectable, ExecutionContext } from '@nestjs/common';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { Reflector } from '@nestjs/core';
+import { ConfigService } from '@nestjs/config';
 import * as jwt from 'jsonwebtoken';
 
 /**
@@ -16,6 +17,7 @@ export class CustomThrottlerGuard extends ThrottlerGuard {
     protected readonly options: any,
     protected readonly storageService: any,
     protected readonly reflector: Reflector,
+    private readonly configService: ConfigService,
   ) {
     super(options, storageService, reflector);
   }
@@ -51,17 +53,20 @@ export class CustomThrottlerGuard extends ThrottlerGuard {
       if (authHeader && authHeader.startsWith('Bearer ')) {
         const token = authHeader.split(' ')[1];
         try {
-          // Just decode, don't verify (AuthGuard will verify properly later)
-          // We only need the userId for throttle tracking
-          const decoded = jwt.decode(token) as any;
-          if (decoded && (decoded.userId || decoded.sub)) {
-            request.user = {
-              id: decoded.userId || decoded.sub,
-              sub: decoded.sub || decoded.userId,
-            };
+          // Verify token for throttle tracking
+          const secret = this.configService.get<string>('JWT_SECRET');
+          if (secret) {
+            const decoded = jwt.verify(token, secret) as any;
+            if (decoded && (decoded.userId || decoded.sub)) {
+              request.user = {
+                id: decoded.userId || decoded.sub,
+                sub: decoded.sub || decoded.userId,
+              };
+            }
           }
         } catch (e) {
-          // Ignore decode errors, will fall back to IP tracking
+          // Ignore verification errors, will fall back to IP tracking
+          // AuthGuard will handle formal rejection later
         }
       }
     }

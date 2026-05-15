@@ -2,8 +2,8 @@
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { getPendingInvites, acceptInvite } from '@/lib/auth';
+import { useEffect, useState, useRef } from 'react';
+import { getPendingInvites, acceptInvite, getMyWorkspaces, tokenStorage } from '@/lib/auth';
 import {
   ChevronRight,
   Crown,
@@ -13,8 +13,8 @@ import {
   Eye,
   Loader2,
   MailWarning,
-  Clock,
   Check,
+  Bell,
 } from 'lucide-react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -56,7 +56,7 @@ function WorkspaceCard({
       disabled={isLoading || !isActive}
       className={cn(
         'group w-full rounded-xl border bg-card text-left p-5 transition-all duration-200',
-        'hover:border-primary/40 hover:-translate-y-px',
+        'hover:border-primary/40 hover:-translate-y-px hover:shadow-sm',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         'disabled:pointer-events-none disabled:opacity-50',
         'flex items-center gap-4',
@@ -95,34 +95,84 @@ function WorkspaceCard({
 }
 
 export default function SelectWorkspacePage() {
-  const { user, workspaces, selectWorkspace, isLoading: authLoading, logout } = useAuth();
+  const { user, workspaces: ctxWorkspaces, selectWorkspace, isLoading: authLoading, logout } = useAuth();
   const router = useRouter();
+  const [workspaces, setWorkspaces] = useState<Workspace[]>(ctxWorkspaces);
   const [selectingId, setSelectingId] = useState<string | null>(null);
   const [error, setError] = useState('');
 
-  // Pending Invites state
+  // Pending invites
   const [invites, setInvites] = useState<any[]>([]);
   const [loadingInvites, setLoadingInvites] = useState(true);
   const [acceptingToken, setAcceptingToken] = useState<string | null>(null);
 
+  // Track if we've already attempted auto-select so it doesn't loop
+  const autoSelectAttempted = useRef(false);
+
+  // Redirect if not logged in
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/login');
     }
   }, [user, authLoading, router]);
 
+  // Hydrate workspaces: use context first, then localStorage, then re-fetch from API
   useEffect(() => {
-    if (user && workspaces.length === 0) {
-      getPendingInvites()
-        .then((res) => {
-          if (res.success) setInvites(res.data);
-          setLoadingInvites(false);
-        })
-        .catch(() => setLoadingInvites(false));
-    } else {
-      setLoadingInvites(false);
+    if (!user) return;
+
+    const hydrate = async () => {
+      let resolved = ctxWorkspaces;
+
+      if (!resolved.length) {
+        // Try localStorage
+        resolved = tokenStorage.getWorkspaces();
+      }
+
+      if (!resolved.length) {
+        // Fallback: fetch from server (handles page refresh after select-workspace was skipped)
+        try {
+          const res = await getMyWorkspaces();
+          resolved = res.data ?? [];
+          tokenStorage.setWorkspaces(resolved);
+        } catch {
+          // ignore — user may have no workspaces
+        }
+      }
+
+      setWorkspaces(resolved);
+    };
+
+    void hydrate();
+  }, [user, ctxWorkspaces]);
+
+  // Always fetch pending invites for this user
+  useEffect(() => {
+    if (!user) return;
+
+    getPendingInvites()
+      .then((res) => {
+        const list = res?.data ?? res ?? [];
+        setInvites(Array.isArray(list) ? list : []);
+      })
+      .catch(() => setInvites([]))
+      .finally(() => setLoadingInvites(false));
+  }, [user]);
+
+  // Auto-select: only if exactly 1 workspace AND no pending invites AND not yet attempted
+  useEffect(() => {
+    if (
+      !authLoading &&
+      !loadingInvites &&
+      !autoSelectAttempted.current &&
+      workspaces.length === 1 &&
+      invites.length === 0 &&
+      user
+    ) {
+      autoSelectAttempted.current = true;
+      void handleSelect(workspaces[0].workspaceId);
     }
-  }, [user, workspaces]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, loadingInvites, workspaces, invites]);
 
   const handleSelect = async (workspaceId: string) => {
     setSelectingId(workspaceId);
@@ -140,7 +190,7 @@ export default function SelectWorkspacePage() {
     setError('');
     try {
       await acceptInvite(token);
-      // Reload page to fetch new workspaces via AuthContext
+      // After accepting, reload the whole page so workspaces re-fetch cleanly
       window.location.reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to accept invite');
@@ -148,13 +198,18 @@ export default function SelectWorkspacePage() {
     }
   };
 
-  if (authLoading) {
+  if (authLoading || (workspaces.length === 1 && invites.length === 0 && !loadingInvites)) {
+    // Show spinner while auto-selecting
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
       </div>
     );
   }
+
+  const hasWorkspaces = workspaces.length > 0;
+  const hasInvites = invites.length > 0;
+  const hasNothing = !hasWorkspaces && !hasInvites && !loadingInvites;
 
   return (
     <div className="min-h-screen bg-muted/30 flex flex-col items-center justify-center px-4 py-12">
@@ -191,62 +246,9 @@ export default function SelectWorkspacePage() {
           </div>
         )}
 
-        {/* Workspace list */}
-        <div className="space-y-4">
-          {workspaces.length === 0 ? (
-            <div className="space-y-4">
-              {/* Pending Invites */}
-              <div>
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
-                  Pending Invites
-                </h2>
-                {loadingInvites ? (
-                  <div className="rounded-xl border border-border bg-card/50 p-6 flex justify-center">
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  </div>
-                ) : invites.length > 0 ? (
-                  <div className="space-y-2">
-                    {invites.map((invite) => (
-                      <div key={invite.id} className="rounded-xl border border-border bg-card p-4 flex items-center justify-between">
-                        <div className="min-w-0 pr-4">
-                          <p className="font-semibold text-sm truncate">{invite.workspace.name}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">Invited by {invite.invitedBy.username || invite.invitedBy.email}</p>
-                          <Badge variant="secondary" className="mt-2 text-[10px] py-0">{invite.role}</Badge>
-                        </div>
-                        <Button
-                          size="sm"
-                          onClick={() => handleAcceptInvite(invite.token)}
-                          disabled={acceptingToken === invite.token}
-                        >
-                          {acceptingToken === invite.token ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <Check className="h-3 w-3 mr-1.5" />}
-                          Accept
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-xl border border-dashed border-border bg-card/50 p-6 text-center">
-                    <Clock className="mx-auto mb-2 h-8 w-8 text-muted-foreground/50" />
-                    <p className="text-sm font-medium text-muted-foreground">No pending invites</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Action Required Message */}
-              <div className="rounded-xl border border-border bg-card p-6 text-center shadow-sm">
-                <MailWarning className="mx-auto mb-3 h-10 w-10 text-amber-500/80" />
-                <h3 className="font-semibold mb-2">Action Required</h3>
-                <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
-                  You haven&apos;t been added to any workspace yet. Please wait for your IT or HR admin to assign you a role and invite you to your workspace.
-                </p>
-                <div className="space-y-1.5 text-xs text-muted-foreground">
-                  <p>Need help? Contact support:</p>
-                  <p className="font-medium text-primary">support@atlas.amdox.in</p>
-                  <p className="font-medium text-primary">hr@atlas.amdox.in</p>
-                </div>
-              </div>
-            </div>
-          ) : (
+        <div className="space-y-6">
+          {/* Your Workspaces */}
+          {hasWorkspaces && (
             <div className="space-y-2">
               <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
                 Your Workspaces
@@ -259,6 +261,77 @@ export default function SelectWorkspacePage() {
                   isLoading={selectingId !== null}
                 />
               ))}
+            </div>
+          )}
+
+          {/* Pending Invites */}
+          <div className="space-y-2">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1 flex items-center gap-1.5">
+              <Bell className="h-3 w-3" />
+              Pending Invites
+              {hasInvites && (
+                <span className="ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground px-1">
+                  {invites.length}
+                </span>
+              )}
+            </h2>
+
+            {loadingInvites ? (
+              <div className="rounded-xl border border-border bg-card/50 p-6 flex justify-center">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : hasInvites ? (
+              <div className="space-y-2">
+                {invites.map((invite) => (
+                  <div
+                    key={invite.id}
+                    className="rounded-xl border border-border bg-card p-4 flex items-center justify-between"
+                  >
+                    <div className="min-w-0 pr-4">
+                      <p className="font-semibold text-sm truncate">{invite.workspace?.name}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Invited by {invite.invitedBy?.username || invite.invitedBy?.email}
+                      </p>
+                      <Badge variant="secondary" className="mt-2 text-[10px] py-0">
+                        {invite.role}
+                      </Badge>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => handleAcceptInvite(invite.token)}
+                      disabled={acceptingToken === invite.token}
+                    >
+                      {acceptingToken === invite.token ? (
+                        <Loader2 className="h-3 w-3 animate-spin mr-1.5" />
+                      ) : (
+                        <Check className="h-3 w-3 mr-1.5" />
+                      )}
+                      Accept
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-border bg-card/50 p-4 text-center">
+                <p className="text-xs text-muted-foreground">No pending invites</p>
+              </div>
+            )}
+          </div>
+
+          {/* No workspace + no invites: show help card */}
+          {hasNothing && (
+            <div className="rounded-xl border border-border bg-card p-6 text-center shadow-sm">
+              <MailWarning className="mx-auto mb-3 h-10 w-10 text-amber-500/80" />
+              <h3 className="font-semibold mb-2">Action Required</h3>
+              <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
+                You haven&apos;t been added to any workspace yet. Please wait for your IT or HR admin
+                to assign you a role and invite you to your workspace.
+              </p>
+              <div className="space-y-1.5 text-xs text-muted-foreground">
+                <p>Need help? Contact support:</p>
+                <p className="font-medium text-primary">support@atlas.amdox.in</p>
+                <p className="font-medium text-primary">hr@atlas.amdox.in</p>
+              </div>
             </div>
           )}
         </div>

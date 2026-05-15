@@ -7,6 +7,8 @@ import {
   Param,
   Delete,
   UseGuards,
+  ParseUUIDPipe,
+  Query,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { UserService } from './user.service';
@@ -44,25 +46,32 @@ export class UserController {
     return this.userService.findAll();
   }
 
+  @ApiOperation({ summary: 'Check if username is available' })
+  @ApiResponseDecorator(200, 'Username check successful')
+  @Get('check-username')
+  async checkUsername(@Query('username') username: string) {
+    if (!username) return { isAvailable: false };
+    return this.userService.checkUsernameAvailability(username);
+  }
+
   @ApiOperation({ summary: 'Get user by ID' })
   @ApiResponseDecorator(200, 'User retrieved successfully', User)
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    // id is a UUID string — do NOT coerce to number with +id
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.userService.findOne(id);
   }
 
   @ApiOperation({ summary: 'Update user by ID' })
   @ApiResponseDecorator(200, 'User updated successfully', User)
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+  update(@Param('id', ParseUUIDPipe) id: string, @Body() updateUserDto: UpdateUserDto) {
     return this.userService.update(id, updateUserDto);
   }
 
   @ApiOperation({ summary: 'Delete user by ID' })
   @ApiResponseDecorator(200, 'User deleted successfully')
   @Delete(':id')
-  remove(@Param('id') id: string) {
+  remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.userService.remove(id);
   }
 }

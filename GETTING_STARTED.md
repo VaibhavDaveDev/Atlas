@@ -66,20 +66,14 @@ If your system cannot detect `psql`, you need to add PostgreSQL’s `bin` direct
   - Then reload your shell or open a new terminal and run `psql --version` again.
 
 ### 4. Install Redis
-Download from: https://github.com/microsoftarchive/redis/releases
+Download from: https://github.com/tporadowski/redis/releases (Windows) or use Docker.
 
-Or use Docker (Recommended):
+**Using Docker (Recommended):**
 ```bash
-# Run Redis 8 in Docker
-docker run -d -p 6379:6379 --name atlas-redis redis:8-alpine # atlas-redis is name of the container
-```
+# Pull and run Redis Alpine (lightweight)
+docker run -d -p 6379:6379 --name atlas-redis redis:alpine
 
-Verify Redis is running:
-```bash
-# Check running containers
-docker ps
-
-# Test Redis connection
+# Verify Redis is running
 docker exec -it atlas-redis redis-cli ping  # Should return PONG
 ```
 
@@ -96,6 +90,9 @@ docker start atlas-redis
 
 # Remove Redis container
 docker rm -f atlas-redis
+
+# Check logs
+docker logs atlas-redis
 ```
 
 ---

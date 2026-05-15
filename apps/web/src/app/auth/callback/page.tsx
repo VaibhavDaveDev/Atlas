@@ -51,9 +51,16 @@ function AuthCallbackContent() {
         authApi.tokenStorage.setRefreshToken(payload.refreshToken);
         authApi.tokenStorage.setUser(payload.user);
 
+        // Validate redirectUrl to prevent Open Redirect vulnerability
+        let redirectUrl = payload.redirectUrl || '/select-workspace';
+        if (!redirectUrl.startsWith('/') || redirectUrl.startsWith('//')) {
+          console.warn('Invalid redirectUrl detected:', redirectUrl);
+          redirectUrl = '/select-workspace';
+        }
+
         // Use window.location.href instead of router.push so the page fully
         // re-mounts and AuthContext re-reads the new tokens from localStorage.
-        window.location.href = payload.redirectUrl || '/select-workspace';
+        window.location.href = redirectUrl;
       } catch (err) {
         console.error('Google OAuth Callback Error:', err);
         // Clear any partial tokens on failure

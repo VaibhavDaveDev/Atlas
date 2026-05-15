@@ -185,9 +185,6 @@ export default function DashboardPage() {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold tracking-tight">Active Modules</h2>
-                <Link href="/settings" className="text-sm font-medium text-primary hover:underline">
-                  Manage Apps
-                </Link>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 {moduleCards.map((module) => {
@@ -238,7 +235,7 @@ export default function DashboardPage() {
                   <Calendar className="h-4 w-4 text-primary" />
                   <h2 className="text-sm font-bold uppercase tracking-wider">Upcoming Schedule</h2>
                 </div>
-                <button className="text-xs font-semibold text-primary">View Calendar</button>
+                <Link href="/dashboard/hr/leaves" className="text-xs font-semibold text-primary hover:underline">View Calendar</Link>
               </div>
               <div className="p-12 flex flex-col items-center justify-center text-center opacity-60">
                 <div className="h-16 w-16 bg-muted rounded-full flex items-center justify-center mb-4">

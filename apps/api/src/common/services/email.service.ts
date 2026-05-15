@@ -170,4 +170,29 @@ export class EmailService {
       html,
     });
   }
+
+  /**
+   * Send workspace invite email
+   */
+  async sendWorkspaceInviteEmail(
+    email: string,
+    inviterName: string,
+    workspaceName: string,
+    inviteToken: string,
+    webAppUrl: string,
+  ): Promise<void> {
+    const acceptUrl = `${webAppUrl}/accept-invite?token=${inviteToken}`;
+    const html = await this.getEmailTemplate('workspace-invite.html', {
+      inviterName,
+      workspaceName,
+      acceptUrl,
+      year: new Date().getFullYear().toString(),
+    });
+
+    await this.sendEmail({
+      to: email,
+      subject: `You've been invited to join ${workspaceName} on Atlas ERP`,
+      html,
+    });
+  }
 }

@@ -5,6 +5,7 @@ import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { Toaster } from 'sonner';
 import NextTopLoader from 'nextjs-toploader';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -60,7 +61,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange={false}
         >
-          <AuthProvider>{children}</AuthProvider>
+          <TooltipProvider delayDuration={400}>
+            <AuthProvider>{children}</AuthProvider>
+          </TooltipProvider>
           <Toaster position="bottom-right" richColors closeButton />
         </ThemeProvider>
       </body>

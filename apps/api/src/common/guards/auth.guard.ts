@@ -9,12 +9,7 @@ import * as jwt from 'jsonwebtoken';
 import config from '../config/app.config';
 import { RedisService } from '../services/redis.service';
 import { PrismaService } from '../services/prisma.service';
-
-interface IAccessTokenPayload {
-  userId: string;
-  role: string;
-  tokenVersion: number;
-}
+import { IAccessTokenPayload } from '../../auth/interfaces/auth.interface';
 
 @Injectable()
 export class AuthGuard implements CanActivate {

@@ -30,10 +30,14 @@ export async function seedIndiaStatutory(workspaceId: string, prisma: PrismaClie
 
       // 2. Income Tax Slab (FY 2024-25 - New Regime)
       const taxSlab = await tx.incomeTaxSlab.upsert({
-        where: { id: 'india-new-regime-2024-25' }, // Using a fixed ID for seeding
+        where: {
+          workspaceId_name: {
+            workspaceId,
+            name: 'Income Tax New Regime FY 2024-25',
+          },
+        },
         update: {},
         create: {
-          id: 'india-new-regime-2024-25',
           workspaceId,
           name: 'Income Tax New Regime FY 2024-25',
           effectiveFrom: new Date('2024-04-01'),

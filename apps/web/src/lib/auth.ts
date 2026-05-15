@@ -109,12 +109,13 @@ export async function getCurrentUser(accessToken: string) {
  * Refresh access token
  */
 export async function refreshToken(refreshToken: string) {
+  const workspaceId = tokenStorage.getWorkspace()?.workspaceId;
   const response = await fetch(`${API_BASE}/auth/refresh-token`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ refreshToken }),
+    body: JSON.stringify({ refreshToken, workspaceId }),
   });
 
   if (!response.ok) {
@@ -160,6 +161,46 @@ export async function getPendingInvites() {
 
   if (!response.ok) {
     throw new Error('Failed to fetch invites');
+  }
+
+  return response.json();
+}
+
+/**
+ * Get the current user's workspaces (re-fetch from server)
+ */
+export async function getMyWorkspaces(): Promise<{ data: Workspace[] }> {
+  const token = tokenStorage.getAccessToken();
+  if (!token) throw new Error('No token');
+
+  const response = await fetch(`${API_BASE}/auth/workspaces`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch workspaces');
+  }
+
+  return response.json();
+}
+
+/**
+ * Check if a user is already a member of a workspace
+ */
+export async function checkWorkspaceMember(workspaceId: string, email: string) {
+  const token = tokenStorage.getAccessToken();
+  if (!token) throw new Error('No token');
+
+  const response = await fetch(`${API_BASE}/workspaces/${workspaceId}/members/check/${email}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to check member');
   }
 
   return response.json();
@@ -307,5 +348,22 @@ export const tokenStorage = {
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
     localStorage.removeItem('workspace');
+    localStorage.removeItem('workspaces');
+  },
+
+  getWorkspaces: (): Workspace[] => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const raw = localStorage.getItem('workspaces');
+      return raw && raw !== 'undefined' ? (JSON.parse(raw) as Workspace[]) : [];
+    } catch {
+      localStorage.removeItem('workspaces');
+      return [];
+    }
+  },
+
+  setWorkspaces: (workspaces: Workspace[]) => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('workspaces', JSON.stringify(workspaces));
   },
 };

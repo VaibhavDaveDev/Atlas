@@ -15,6 +15,7 @@ interface AppConfig {
   google_client_id: string;
   google_client_secret: string;
   google_redirect_uri: string;
+  web_url: string;
 }
 
 const config: AppConfig = {
@@ -32,6 +33,7 @@ const config: AppConfig = {
   google_client_id: process.env.GOOGLE_CLIENT_ID || '',
   google_client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
   google_redirect_uri: process.env.GOOGLE_REDIRECT_URI || '',
+  web_url: process.env.WEB_URL || 'http://localhost:3000',
 };
 
 export default config;

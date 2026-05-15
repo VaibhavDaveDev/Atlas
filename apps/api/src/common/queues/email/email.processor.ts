@@ -36,6 +36,12 @@ export class EmailProcessor extends WorkerHost {
         case 'password-reset':
           await this.handlePasswordResetEmail(job);
           break;
+        case 'security-notification':
+          await this.handleSecurityNotification(job);
+          break;
+        case 'workspace-invite':
+          await this.handleWorkspaceInviteEmail(job);
+          break;
         default:
           this.logger.warn(
             `Unknown email job type: ${String((job.data as { type?: string }).type || 'undefined')}`,
@@ -142,6 +148,64 @@ export class EmailProcessor extends WorkerHost {
       });
     } catch (error) {
       this.logger.error(`Failed to send password reset email to ${email}`, {
+        context: 'EmailProcessor',
+        email,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      throw error; // Re-throw to trigger retry
+    }
+  }
+
+  private async handleSecurityNotification(job: Job<EmailJob>): Promise<void> {
+    const data = job.data as Extract<EmailJob, { type: 'security-notification' }>;
+    const { email, subject, message } = data;
+
+    try {
+      await this.emailService.sendEmail({
+        to: email,
+        subject,
+        text: message,
+        html: `<div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
+          <h2 style="color: #d32f2f;">Security Notification</h2>
+          <p>${message.replace(/\n/g, '<br>')}</p>
+          <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+          <p style="font-size: 12px; color: #666;">This is an automated security notification from Atlas ERP. If you did not perform this action, please contact support immediately.</p>
+        </div>`,
+      });
+      this.logger.info(`Security notification email sent successfully to ${email}`, {
+        context: 'EmailProcessor',
+        jobId: job.id,
+        email,
+      });
+    } catch (error) {
+      this.logger.error(`Failed to send security notification email to ${email}`, {
+        context: 'EmailProcessor',
+        email,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  private async handleWorkspaceInviteEmail(job: Job<EmailJob>): Promise<void> {
+    const data = job.data as Extract<EmailJob, { type: 'workspace-invite' }>;
+    const { email, inviterName, workspaceName, inviteToken, webAppUrl } = data;
+
+    try {
+      await this.emailService.sendWorkspaceInviteEmail(
+        email,
+        inviterName,
+        workspaceName,
+        inviteToken,
+        webAppUrl,
+      );
+      this.logger.info(`Workspace invite email sent successfully to ${email}`, {
+        context: 'EmailProcessor',
+        jobId: job.id,
+        email,
+      });
+    } catch (error) {
+      this.logger.error(`Failed to send workspace invite email to ${email}`, {
         context: 'EmailProcessor',
         email,
         error: error instanceof Error ? error.message : String(error),

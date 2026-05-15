@@ -158,6 +158,21 @@ export class HrController {
     return await this.hrService.createLeaveType(user.workspaceId, body);
   }
 
+  @Put('leaves/types/:id')
+  @ApiOperation({ summary: 'Update leave type' })
+  async updateLeaveType(@Param('id') id: string, @Body() body: any, @Req() req: Request): Promise<any> {
+    const user = (req as any).user;
+    return await this.hrService.updateLeaveType(user.workspaceId, id, body);
+  }
+
+  @Delete('leaves/types/:id')
+  @Roles('OWNER', 'ADMIN')
+  @ApiOperation({ summary: 'Delete leave type' })
+  async deleteLeaveType(@Param('id') id: string, @Req() req: Request): Promise<any> {
+    const user = (req as any).user;
+    return await this.hrService.deleteLeaveType(user.workspaceId, id);
+  }
+
   // ====================
   // LEAVE APPLICATIONS
   // ====================
@@ -262,6 +277,21 @@ export class HrController {
   async createLeavePolicy(@Body() body: any, @Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.createLeavePolicy(user.workspaceId, body);
+  }
+
+  @Put('leaves/policies/:id')
+  @ApiOperation({ summary: 'Update leave policy' })
+  async updateLeavePolicy(@Param('id') id: string, @Body() body: any, @Req() req: Request) {
+    const user = (req as any).user;
+    return await this.hrService.updateLeavePolicy(user.workspaceId, id, body);
+  }
+
+  @Delete('leaves/policies/:id')
+  @Roles('OWNER', 'ADMIN')
+  @ApiOperation({ summary: 'Delete leave policy' })
+  async deleteLeavePolicy(@Param('id') id: string, @Req() req: Request) {
+    const user = (req as any).user;
+    return await this.hrService.deleteLeavePolicy(user.workspaceId, id);
   }
 
   @Post('leaves/allocate')
@@ -374,6 +404,41 @@ export class HrController {
   // ====================
   // INDIA COMPLIANCE
   // ====================
+  @Get('compliance/india/settings')
+  @ApiOperation({ summary: 'Get India compliance settings' })
+  async getIndiaComplianceSettings(@Req() req: Request) {
+    const user = (req as any).user;
+    return await this.hrService.getIndiaComplianceSettings(user.workspaceId);
+  }
+
+  @Put('compliance/india/settings')
+  @ApiOperation({ summary: 'Update India compliance settings' })
+  async updateIndiaComplianceSettings(@Body() body: any, @Req() req: Request): Promise<any> {
+    const user = (req as any).user;
+    return await this.hrService.updateIndiaComplianceSettings(user.workspaceId, body);
+  }
+
+  @Get('compliance/india/statutory-status')
+  @ApiOperation({ summary: 'Get statutory compliance status (PAN, PF, TDS) as real percentages from employee data' })
+  async getStatutoryStatus(@Req() req: Request) {
+    const user = (req as any).user;
+    return await this.hrService.getStatutoryStatus(user.workspaceId);
+  }
+
+  @Get('compliance/india/report/pf-esi')
+  @ApiOperation({ summary: 'Get PF/ESI report' })
+  async getPfEsiReport(
+    @Req() req: Request,
+    @Param('month') month: number,
+    @Param('year') year: number
+  ): Promise<any> {
+    const user = (req as any).user;
+    // Use query params instead if not provided in path
+    const m = month ?? (req.query.month ? parseInt(req.query.month as string) : new Date().getMonth());
+    const y = year ?? (req.query.year ? parseInt(req.query.year as string) : new Date().getFullYear());
+    return await this.hrService.getPfEsiReport(user.workspaceId, m, y);
+  }
+
   @Get('compliance/india/declarations/:employeeId')
   @ApiOperation({ summary: 'Get employee tax exemption declaration' })
   async getTaxExemptionDeclaration(@Param('employeeId') employeeId: string, @Req() req: Request) {

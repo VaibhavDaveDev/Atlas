@@ -183,7 +183,7 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" isLoading={isLoading}>
+              <Button type="submit" className="w-full" isLoading={isLoading} disabled={isLoading}>
                 {isLoading ? 'Signing in…' : 'Sign in'}
               </Button>
             </form>

@@ -7,6 +7,7 @@ import { Loader2, Plus, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { FormContainer } from '@/components/common/FormContainer';
 
 export default function DepartmentsPage() {
   const [departments, setDepartments] = useState<any[]>([]);
@@ -68,24 +69,30 @@ export default function DepartmentsPage() {
           </Button>
         </div>
 
-        {isAdding && (
-          <div className="rounded-xl border border-border bg-card p-5 animate-fade-in">
-            <h3 className="font-semibold mb-4">Create New Department</h3>
-            <form onSubmit={handleCreate} className="flex flex-col sm:flex-row items-end gap-4">
+        <FormContainer
+          title="Create New Department"
+          isOpen={isAdding}
+          setIsOpen={setIsAdding}
+        >
+          <form onSubmit={handleCreate} className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-4">
               <div className="space-y-2 flex-1">
                 <Label htmlFor="name">Department Name</Label>
                 <Input id="name" required value={name} onChange={e => setName(e.target.value)} placeholder="Engineering" />
               </div>
-              <div className="space-y-2 flex-1">
+              <div className="space-y-2 sm:w-32">
                 <Label htmlFor="code">Code</Label>
                 <Input id="code" required value={code} onChange={e => setCode(e.target.value)} placeholder="ENG" />
               </div>
+            </div>
+            <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
+              <Button type="button" variant="outline" onClick={() => setIsAdding(false)}>Cancel</Button>
               <Button type="submit" disabled={isSaving}>
-                {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : 'Save'}
+                {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : 'Save Department'}
               </Button>
-            </form>
-          </div>
-        )}
+            </div>
+          </form>
+        </FormContainer>
 
         <div className="rounded-xl border border-border bg-card overflow-hidden">
           {isLoading ? (
