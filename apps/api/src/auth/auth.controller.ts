@@ -24,6 +24,7 @@ import { LogoutAllDto } from './dto/logout-all.dto';
 import { SelectWorkspaceDto } from './dto/select-workspace.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 // import { UpdateAuthDto } from './dto/update-auth.dto';
 import {
   GoogleOAuthInitDto,
@@ -41,6 +42,43 @@ export class AuthController {
     private readonly googleOAuthService: GoogleOAuthService,
     private readonly customLogger: CustomLoggerService,
   ) {}
+
+  // ... (previous methods)
+
+  /**
+   * Request an OTP for changing password
+   */
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @Post('change-password/request')
+  @ApiOperation({ summary: 'Request an OTP for changing password' })
+  async requestChangePasswordOtp(@Req() req: Request) {
+    const user = (req as any).user;
+    // We need to get the email from the user object or DB
+    // In our AuthGuard, user object might only have userId
+    // Let's assume user.email is available or fetch it in service
+    // Actually AuthGuard usually puts minimal info. 
+    // I'll update AuthService to handle fetching email if needed.
+    const userFull = await this.authService.getCurrentUser(req);
+    return await this.authService.requestPasswordChangeOtp(user.userId, userFull.email);
+  }
+
+  /**
+   * Confirm password change using OTP
+   */
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @Post('change-password/confirm')
+  @ApiOperation({ summary: 'Confirm password change using OTP' })
+  @ApiBody({ type: ChangePasswordDto })
+  async changePassword(@Body() dto: ChangePasswordDto, @Req() req: Request) {
+    const user = (req as any).user;
+    const meta = {
+      ip: req.ip || 'unknown',
+      userAgent: req.headers['user-agent'] || 'unknown',
+    };
+    return await this.authService.changePassword(user.userId, dto, meta);
+  }
 
   // Strict rate limit for registration: 5 requests per 15 minutes
   @Throttle({ default: THROTTLER_CONFIG.AUTH })
@@ -511,7 +549,11 @@ export class AuthController {
           : req.headers['sec-ch-ua-platform']),
     };
 
-    return await this.authService.refreshToken(refreshTokenDto.refreshToken, meta);
+    return await this.authService.refreshToken(
+      refreshTokenDto.refreshToken,
+      meta,
+      refreshTokenDto.workspaceId,
+    );
   }
 
   /**

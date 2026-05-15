@@ -2,10 +2,22 @@ import { Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { CustomLoggerService } from '../common/services/custom-logger.service';
+import { PrismaService } from '../common/services/prisma.service';
 
 @Injectable()
 export class UserService {
-  constructor(private readonly customLogger: CustomLoggerService) {}
+  constructor(
+    private readonly customLogger: CustomLoggerService,
+    private readonly prisma: PrismaService,
+  ) {}
+
+  async checkUsernameAvailability(username: string): Promise<{ isAvailable: boolean }> {
+    const user = await this.prisma.authUser.findUnique({
+      where: { username },
+      select: { id: true },
+    });
+    return { isAvailable: !user };
+  }
 
   create(createUserDto: CreateUserDto) {
     this.customLogger.log('Creating new user', 'UserService');

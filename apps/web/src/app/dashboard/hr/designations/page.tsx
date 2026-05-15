@@ -7,6 +7,7 @@ import { Loader2, Plus, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { FormContainer } from '@/components/common/FormContainer';
 
 export default function DesignationsPage() {
   const [designations, setDesignations] = useState<any[]>([]);
@@ -70,24 +71,30 @@ export default function DesignationsPage() {
           </Button>
         </div>
 
-        {isAdding && (
-          <div className="rounded-xl border border-border bg-card p-5 animate-fade-in">
-            <h3 className="font-semibold mb-4">Create New Designation</h3>
-            <form onSubmit={handleCreate} className="flex flex-col sm:flex-row items-end gap-4">
+        <FormContainer
+          title="Create New Designation"
+          isOpen={isAdding}
+          setIsOpen={setIsAdding}
+        >
+          <form onSubmit={handleCreate} className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-4">
               <div className="space-y-2 flex-1">
                 <Label htmlFor="title">Job Title</Label>
                 <Input id="title" required value={title} onChange={e => setTitle(e.target.value)} placeholder="Software Engineer" />
               </div>
-              <div className="space-y-2 flex-1">
-                <Label htmlFor="level">Seniority Level (1-10)</Label>
+              <div className="space-y-2 sm:w-32">
+                <Label htmlFor="level">Level (1-10)</Label>
                 <Input id="level" type="number" min="1" max="10" required value={level} onChange={e => setLevel(e.target.value)} />
               </div>
+            </div>
+            <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
+              <Button type="button" variant="outline" onClick={() => setIsAdding(false)}>Cancel</Button>
               <Button type="submit" disabled={isSaving}>
-                {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : 'Save'}
+                {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : 'Save Designation'}
               </Button>
-            </form>
-          </div>
-        )}
+            </div>
+          </form>
+        </FormContainer>
 
         <div className="rounded-xl border border-border bg-card overflow-hidden">
           {isLoading ? (

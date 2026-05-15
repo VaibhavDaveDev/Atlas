@@ -915,6 +915,7 @@ export class AuthService {
   async refreshToken(
     refreshToken: string,
     meta: { ip: string; userAgent: string; device?: string },
+    workspaceId?: string,
   ): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
     const { ip, userAgent, device } = meta;
 
@@ -974,6 +975,32 @@ export class AuthService {
       throw AppError.unauthorized('User account is not active');
     }
 
+    // If workspaceId is provided, verify membership to preserve context
+    let workspaceContext: {
+      workspaceId: string;
+      workspaceRole: string;
+      department?: string | null;
+    } | null = null;
+
+    if (workspaceId) {
+      const membership = await this.prismaService.workspaceMember.findUnique({
+        where: {
+          workspaceId_userId: {
+            workspaceId,
+            userId,
+          },
+        },
+      });
+
+      if (membership && membership.isActive) {
+        workspaceContext = {
+          workspaceId: membership.workspaceId,
+          workspaceRole: membership.role,
+          department: membership.department,
+        };
+      }
+    }
+
     // TOKEN ROTATION: Generate new JTI for new refresh token
     const newJti: string = this.authUtilsService.generateSecureId();
 
@@ -982,6 +1009,7 @@ export class AuthService {
       userId: user.id,
       role: user.globalRole as unknown as UserRole,
       tokenVersion: user.tokenVersion, // Include tokenVersion for hybrid JWT validation
+      ...workspaceContext,
     });
 
     const newRefreshToken: string = this.authUtilsService.createRefreshToken(
@@ -1396,5 +1424,94 @@ export class AuthService {
         department: member.department,
       },
     };
+  }
+
+  async getCurrentUser(req: any) {
+    const userId = req.user.userId || req.user.id || req.user.sub;
+    const user = await this.prismaService.authUser.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, username: true, globalRole: true, verified: true },
+    });
+    if (!user) throw AppError.notFound('User not found');
+    return user;
+  }
+
+  /**
+   * Request a password change OTP
+   */
+  async requestPasswordChangeOtp(userId: string, email: string): Promise<{ message: string }> {
+    const otp = this.authUtilsService.generateVerificationCode(); // 6 digit code
+    const key = `${config.redis_cache_key_prefix}:${AUTH_CONFIG.CACHE_PREFIXES.VERIFICATION_TOKEN}:password_change:${userId}`;
+    
+    // Store in Redis for 10 minutes
+    await this.redisService.set(key, otp, 600);
+    
+    // Send email
+    await this.emailQueueService.sendSecurityNotification(
+      email,
+      'User', // We don't have username here, could fetch it
+      'Password Change Verification Code',
+      `Your verification code for password change is: ${otp}. It will expire in 10 minutes.`,
+      userId,
+    );
+    
+    return { message: 'Verification code sent to your email.' };
+  }
+
+  /**
+   * Change password with OTP
+   */
+  async changePassword(
+    userId: string,
+    payload: { currentPassword?: string; newPassword: string; otp: string },
+    meta: { ip: string; userAgent: string },
+  ): Promise<{ message: string }> {
+    const { newPassword, otp } = payload;
+    
+    // Validate new password
+    if (!this.authUtilsService.validatePassword(newPassword)) {
+      throw AppError.badRequest('Password does not meet security requirements');
+    }
+
+    // Verify OTP
+    const key = `${config.redis_cache_key_prefix}:${AUTH_CONFIG.CACHE_PREFIXES.VERIFICATION_TOKEN}:password_change:${userId}`;
+    const storedOtp = await this.redisService.get<string>(key);
+    
+    if (!storedOtp || storedOtp !== otp) {
+      throw AppError.badRequest('Invalid or expired verification code');
+    }
+
+    const user = await this.prismaService.authUser.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) throw AppError.notFound('User not found');
+
+    // Hash new password
+    const saltRounds = 12;
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+    await this.prismaService.authUser.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+    });
+
+    // Invalidate OTP
+    await this.redisService.del(key);
+
+    // Invalidate other sessions
+    await this.revokeAllUserTokens(userId);
+    await this.incrementTokenVersion(userId);
+
+    // Send notification email
+    await this.emailQueueService.sendSecurityNotification(
+      user.email,
+      user.username || 'User',
+      'Password Changed Successfully',
+      `Your password was changed on ${new Date().toLocaleString()} from IP ${meta.ip}. If this wasn't you, please contact support immediately.`,
+      userId,
+    );
+
+    return { message: 'Password changed successfully. Please log in again.' };
   }
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,6 +10,7 @@ import { Topbar } from './Topbar';
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, workspace, isLoading } = useAuth();
   const router = useRouter();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     if (!isLoading) {
@@ -32,11 +33,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Sidebar */}
-      <Sidebar />
+      <Sidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
 
       {/* Main area */}
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
-        <Topbar />
+        <Topbar setMobileOpen={setMobileOpen} />
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
     </div>

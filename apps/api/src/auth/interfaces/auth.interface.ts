@@ -3,10 +3,9 @@
  */
 
 export enum UserRole {
-  CUSTOMER = 'CUSTOMER',
-  MODERATOR = 'MODERATOR',
+  SUPERADMIN = 'SUPERADMIN',
   ADMIN = 'ADMIN',
-  SUPER_ADMIN = 'SUPER_ADMIN',
+  USER = 'USER',
 }
 
 /**

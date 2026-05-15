@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class RefreshTokenDto {
@@ -9,4 +9,13 @@ export class RefreshTokenDto {
   @IsString()
   @IsNotEmpty({ message: 'Refresh token is required' })
   refreshToken: string;
+
+  @ApiProperty({
+    example: 'uuid-of-workspace',
+    description: 'Current workspace context to preserve',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  workspaceId?: string;
 }

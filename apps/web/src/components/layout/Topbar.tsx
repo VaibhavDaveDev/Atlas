@@ -1,6 +1,7 @@
 'use client';
 
-import { Bell, Search, LogOut, User, ChevronDown } from 'lucide-react';
+import Link from 'next/link';
+import { Bell, Search, LogOut, User, ChevronDown, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -13,7 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/AuthContext';
 
-export function Topbar() {
+export function Topbar({ setMobileOpen }: { setMobileOpen?: React.Dispatch<React.SetStateAction<boolean>> }) {
   const { user, workspace, logout } = useAuth();
 
   const initials = user?.username
@@ -24,6 +25,14 @@ export function Topbar() {
     <header className="flex h-14 items-center justify-between border-b border-border px-4 sm:px-6 bg-background shrink-0">
       {/* Left — breadcrumb / search stub */}
       <div className="flex items-center gap-3">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="md:hidden -ml-2"
+          onClick={() => setMobileOpen?.(true)}
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
         <div className="relative hidden sm:flex items-center">
           <Search className="absolute left-3 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
           <input
@@ -88,9 +97,11 @@ export function Topbar() {
                 <DropdownMenuSeparator />
               </>
             )}
-            <DropdownMenuItem disabled>
-              <User className="mr-2 h-4 w-4" />
-              Profile
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard/settings" className="flex w-full items-center cursor-pointer">
+                <User className="mr-2 h-4 w-4" />
+                Profile Settings
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem

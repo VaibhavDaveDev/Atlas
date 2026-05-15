@@ -39,10 +39,9 @@ jest.mock('./config/auth.config', () => ({
       MAX_DEVICES_PER_USER: 5,
     },
     ROLE_HIERARCHY: {
-      CUSTOMER: 1,
-      MODERATOR: 2,
-      ADMIN: 3,
-      SUPER_ADMIN: 4,
+      USER: 1,
+      ADMIN: 2,
+      SUPERADMIN: 3,
     },
     CACHE_PREFIXES: {
       VERIFICATION_TOKEN: 'verification',
@@ -437,16 +436,15 @@ describe('AuthService', () => {
       expect(emailQueueService.sendVerificationEmail).toHaveBeenCalled();
     });
 
-    it('should throw error if user not found', async () => {
+    it('should return generic message if user not found', async () => {
       authUtilsService.checkRateLimit.mockResolvedValue(undefined);
       prismaService.authUser.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.resendVerificationEmail(email, meta),
-      ).rejects.toThrow('User not found');
+      const result = await service.resendVerificationEmail(email, meta);
+      expect(result.message).toContain('If this email exists');
     });
 
-    it('should throw error if email is already verified', async () => {
+    it('should return generic message if email is already verified', async () => {
       const mockUser = {
         id: 'user-123',
         email,
@@ -457,9 +455,8 @@ describe('AuthService', () => {
       authUtilsService.checkRateLimit.mockResolvedValue(undefined);
       prismaService.authUser.findUnique.mockResolvedValue(mockUser as any);
 
-      await expect(
-        service.resendVerificationEmail(email, meta),
-      ).rejects.toThrow('Email already verified');
+      const result = await service.resendVerificationEmail(email, meta);
+      expect(result.message).toContain('If this email exists');
     });
 
     it('should handle rate limiting', async () => {

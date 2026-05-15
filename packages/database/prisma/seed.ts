@@ -101,7 +101,12 @@ async function main() {
   });
 
   await prisma.employee.upsert({
-    where: { employeeNumber: 'EMP-001' },
+    where: { 
+      workspaceId_employeeNumber: {
+        workspaceId: workspace.id,
+        employeeNumber: 'EMP-001'
+      }
+    },
     update: {},
     create: {
       workspaceId: workspace.id,

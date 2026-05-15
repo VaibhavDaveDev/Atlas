@@ -93,9 +93,9 @@ export class HrService {
     // Generate collision-safe employee number if not provided
     const employeeNumber = data.employeeNumber || `EMP-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 
-    // Check if email is already used by another employee
-    const existingEmployee = await this.prisma.employee.findUnique({
-      where: { email: data.email },
+    // Check if email is already used by another employee in this workspace
+    const existingEmployee = await this.prisma.employee.findFirst({
+      where: { workspaceId, email: data.email },
     });
 
     if (existingEmployee) {
@@ -206,6 +206,25 @@ export class HrService {
         requiresApproval: data.requiresApproval ?? true,
         isPaid: data.isPaid ?? true,
       },
+    });
+  }
+
+  async updateLeaveType(workspaceId: string, id: string, data: any): Promise<any> {
+    return this.prisma.leaveType.update({
+      where: { id, workspaceId },
+      data: {
+        name: data.name,
+        maxDaysAllowed: parseInt(data.maxDaysAllowed) || 0,
+        requiresApproval: data.requiresApproval,
+        isPaid: data.isPaid,
+      },
+    });
+  }
+
+  async deleteLeaveType(workspaceId: string, id: string): Promise<any> {
+    return this.prisma.leaveType.update({
+      where: { id, workspaceId },
+      data: { isActive: false },
     });
   }
 
@@ -976,6 +995,45 @@ export class HrService {
     });
   }
 
+  async updateLeavePolicy(workspaceId: string, id: string, data: any): Promise<any> {
+    await this.prisma.leavePolicy.update({
+      where: { id, workspaceId },
+      data: {
+        name: data.name,
+        description: data.description,
+      },
+    });
+
+    if (data.leaveTypes) {
+      // Refresh leave types for the policy
+      await this.prisma.leavePolicyType.deleteMany({
+        where: { leavePolicyId: id },
+      });
+
+      const types = data.leaveTypes.map((t: any) => ({
+        leavePolicyId: id,
+        leaveTypeId: t.leaveTypeId,
+        annualAllocation: parseInt(t.annualAllocation),
+      }));
+
+      await this.prisma.leavePolicyType.createMany({
+        data: types,
+      });
+    }
+
+    return this.prisma.leavePolicy.findUnique({
+      where: { id, workspaceId },
+      include: { leaveTypes: { include: { leaveType: true } } },
+    });
+  }
+
+  async deleteLeavePolicy(workspaceId: string, id: string): Promise<any> {
+    return this.prisma.leavePolicy.update({
+      where: { id, workspaceId },
+      data: { isActive: false },
+    });
+  }
+
   async allocateLeaves(workspaceId: string, data: any): Promise<any> {
     const policy = await this.prisma.leavePolicy.findUnique({
       where: { id: data.leavePolicyId, workspaceId },
@@ -1046,6 +1104,95 @@ export class HrService {
     return this.prisma.incomeTaxSlab.findUnique({
       where: { id: slab.id },
       include: { slabs: true },
+    });
+  }
+
+  async getIndiaComplianceSettings(workspaceId: string) {
+    const settings = await this.prisma.workspaceSettings.findUnique({
+      where: { workspaceId },
+    });
+    
+    const custom = (settings?.customSettings as any) || {};
+    return custom.indiaCompliance || {
+      pfRate: 0.12,
+      pfCap: 15000,
+      esiEmployeeRate: 0.0075,
+      esiEmployerRate: 0.0325,
+      esiCap: 21000,
+    };
+  }
+
+  async updateIndiaComplianceSettings(workspaceId: string, data: any): Promise<any> {
+    const existing = await this.prisma.workspaceSettings.findUnique({
+      where: { workspaceId },
+    });
+
+    const custom = (existing?.customSettings as any) || {};
+    custom.indiaCompliance = {
+      ...custom.indiaCompliance,
+      ...data,
+    };
+
+    return this.prisma.workspaceSettings.upsert({
+      where: { workspaceId },
+      update: { customSettings: custom },
+      create: { workspaceId, customSettings: custom },
+    });
+  }
+
+  async getPfEsiReport(workspaceId: string, month: number, year: number): Promise<any> {
+    const startDate = new Date(year, month, 1);
+    const endDate = new Date(year, month + 1, 0);
+
+    const entries = await this.prisma.payrollEntry.findMany({
+      where: {
+        workspaceId,
+        payrollRun: {
+          periodStart: { gte: startDate },
+          periodEnd: { lte: endDate },
+          status: 'COMPLETED', // Only reported for completed payrolls
+        },
+      },
+      include: {
+        employee: { select: { fullName: true, employeeNumber: true, panNumber: true, pfAccount: true, esiNumber: true } },
+        earnings: true,
+        deductions: true,
+      },
+    });
+
+    const settings = await this.getIndiaComplianceSettings(workspaceId);
+
+    return entries.map(entry => {
+      const basic = Number(entry.basicSalary);
+      const gross = Number(entry.grossSalary);
+      
+      const employeePf = entry.deductions.find(d => d.name.includes('PF'))?.amount || 0;
+      const employeeEsi = entry.deductions.find(d => d.name.includes('ESI'))?.amount || 0;
+      
+      // Calculate employer contributions based on settings
+      const pfBasis = settings.pfCap ? Math.min(basic, settings.pfCap) : basic;
+      const employerPf = pfBasis * settings.pfRate;
+      
+      let employerEsi = 0;
+      if (gross <= settings.esiCap) {
+        employerEsi = Math.ceil(gross * settings.esiEmployerRate);
+      }
+
+      return {
+        employeeId: entry.employeeId,
+        employeeName: entry.employee.fullName,
+        employeeNumber: entry.employee.employeeNumber,
+        panNumber: entry.employee.panNumber,
+        pfAccount: entry.employee.pfAccount,
+        esiNumber: entry.employee.esiNumber,
+        grossEarnings: gross,
+        pfBasis,
+        employeePf,
+        employerPf,
+        employeeEsi,
+        employerEsi,
+        totalContribution: Number(employeePf) + Number(employerPf) + Number(employeeEsi) + employerEsi,
+      };
     });
   }
 
@@ -1301,5 +1448,57 @@ export class HrService {
         toDate: data.toDate ? new Date(data.toDate) : null,
       },
     });
+  }
+
+  /**
+   * Computes statutory compliance fill-rates from real employee data:
+   * - PAN Records: % of active employees with panNumber filled
+   * - PF Nominations: % of active employees with pfAccount filled
+   * - TDS Declarations: % of active employees who have submitted a TaxExemptionDeclaration
+   */
+  async getStatutoryStatus(workspaceId: string) {
+    const totalEmployees = await this.prisma.employee.count({
+      where: { workspaceId, status: 'ACTIVE', deletedAt: null },
+    });
+
+    if (totalEmployees === 0) {
+      return {
+        success: true,
+        data: {
+          totalEmployees: 0,
+          panRecords: { filled: 0, total: 0, pct: 0 },
+          pfNominations: { filled: 0, total: 0, pct: 0 },
+          tdsDeclarations: { filled: 0, total: 0, pct: 0 },
+        },
+      };
+    }
+
+    const [panFilled, pfFilled, tdsCount] = await Promise.all([
+      this.prisma.employee.count({
+        where: { workspaceId, status: 'ACTIVE', deletedAt: null, panNumber: { not: null } },
+      }),
+      this.prisma.employee.count({
+        where: { workspaceId, status: 'ACTIVE', deletedAt: null, pfAccount: { not: null } },
+      }),
+      this.prisma.taxExemptionDeclaration.count({
+        where: {
+          employee: { workspaceId, status: 'ACTIVE', deletedAt: null },
+        },
+      }),
+    ]);
+
+    const pct = (n: number, d: number) => (d === 0 ? 0 : Math.round((n / d) * 100));
+    // TDS: cap at total employees (one per employee)
+    const tdsFilled = Math.min(tdsCount, totalEmployees);
+
+    return {
+      success: true,
+      data: {
+        totalEmployees,
+        panRecords: { filled: panFilled, total: totalEmployees, pct: pct(panFilled, totalEmployees) },
+        pfNominations: { filled: pfFilled, total: totalEmployees, pct: pct(pfFilled, totalEmployees) },
+        tdsDeclarations: { filled: tdsFilled, total: totalEmployees, pct: pct(tdsFilled, totalEmployees) },
+      },
+    };
   }
 }

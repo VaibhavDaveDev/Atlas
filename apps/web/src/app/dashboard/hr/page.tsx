@@ -1,15 +1,19 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import {
   Users,
   Briefcase,
-  Building2,
   CalendarCheck,
   UserPlus,
   ArrowRight,
+  ShieldCheck,
+  AlertCircle,
+  Loader2,
 } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useAuth } from '@/contexts/AuthContext';
+import { getStatutoryStatus, getEmployees, getLeaveApplications } from '@/lib/hr';
 import Link from 'next/link';
 
 interface StatCardProps {
@@ -63,11 +67,45 @@ function StatCard({
 
 export default function HrOverviewPage() {
   const { workspace } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [statutoryData, setStatutoryData] = useState<any>(null);
+  const [kpis, setKpis] = useState({
+    employees: '0',
+    pendingLeaves: '0',
+    activeOnboarding: '0'
+  });
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [statRes, empRes, leaveRes] = await Promise.all([
+        getStatutoryStatus(),
+        getEmployees(),
+        getLeaveApplications()
+      ]);
+
+      if (statRes.success) setStatutoryData(statRes.data);
+      
+      setKpis({
+        employees: empRes.success ? empRes.data.length.toString() : '0',
+        pendingLeaves: leaveRes.success ? leaveRes.data.filter((l: any) => l.status === 'PENDING').length.toString() : '0',
+        activeOnboarding: empRes.success ? empRes.data.filter((e: any) => e.status === 'ONBOARDING').length.toString() : '0'
+      });
+    } catch (e) {
+      console.error('Failed to fetch HR dashboard data', e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const stats: StatCardProps[] = [
     {
       title: 'Total Employees',
-      value: '0',
+      value: kpis.employees,
       subtitle: 'Active headcount',
       icon: Users,
       iconColor: 'text-blue-500',
@@ -76,7 +114,7 @@ export default function HrOverviewPage() {
     },
     {
       title: 'Pending Leaves',
-      value: '0',
+      value: kpis.pendingLeaves,
       subtitle: 'Requiring approval',
       icon: CalendarCheck,
       iconColor: 'text-amber-500',
@@ -85,7 +123,7 @@ export default function HrOverviewPage() {
     },
     {
       title: 'Active Onboarding',
-      value: '0',
+      value: kpis.activeOnboarding,
       subtitle: 'New hires in process',
       icon: UserPlus,
       iconColor: 'text-emerald-500',
@@ -94,7 +132,7 @@ export default function HrOverviewPage() {
     },
     {
       title: 'Last Payroll',
-      value: '$0',
+      value: '₹0',
       subtitle: 'Total net processed',
       icon: Briefcase,
       iconColor: 'text-violet-500',
@@ -132,6 +170,13 @@ export default function HrOverviewPage() {
       color: 'bg-emerald-500 text-white',
       href: '/dashboard/hr/employees',
     },
+    {
+      title: 'Statutory Compliance',
+      desc: 'PF, ESI, and Tax (India)',
+      icon: ShieldCheck,
+      color: 'bg-orange-500 text-white',
+      href: '/dashboard/hr/compliance/india',
+    },
   ];
 
   return (
@@ -147,6 +192,7 @@ export default function HrOverviewPage() {
               Manage employees, attendance, and company structure for {workspace?.workspaceName}.
             </p>
           </div>
+          {loading && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
         </div>
 
         {/* KPI Stats */}
@@ -156,37 +202,95 @@ export default function HrOverviewPage() {
           ))}
         </div>
 
-        {/* Lower grid — Quick Actions + Upcoming */}
         <div className="grid gap-4 lg:grid-cols-3">
-          {/* Quick Actions */}
-          <div className="lg:col-span-2 rounded-xl border border-border bg-card">
-            <div className="flex items-center gap-2 border-b border-border px-5 py-3.5">
-              <h2 className="text-sm font-semibold">Quick Actions</h2>
+          {/* Main Content Area */}
+          <div className="lg:col-span-2 space-y-4">
+            {/* Statutory Compliance Status */}
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
+              <div className="flex items-center justify-between border-b border-border px-5 py-3.5 bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-primary" />
+                  <h2 className="text-sm font-semibold">Statutory Status (India)</h2>
+                </div>
+                <Link href="/dashboard/hr/compliance/india" className="text-xs text-primary hover:underline font-medium">Manage Compliance</Link>
+              </div>
+              <div className="p-5">
+                {loading ? (
+                  <div className="flex h-24 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+                ) : statutoryData ? (
+                  <div className="grid gap-6 sm:grid-cols-3">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-muted-foreground">PAN Records</span>
+                        <span className="text-xs font-bold">{statutoryData?.panRecords?.pct ?? 0}%</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-blue-500 transition-all" style={{ width: `${statutoryData?.panRecords?.pct ?? 0}%` }} />
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">{statutoryData?.panRecords?.filled ?? 0} of {statutoryData?.panRecords?.total ?? 0} employees filled</p>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-muted-foreground">PF Nominations</span>
+                        <span className="text-xs font-bold">{statutoryData?.pfNominations?.pct ?? 0}%</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-emerald-500 transition-all" style={{ width: `${statutoryData?.pfNominations?.pct ?? 0}%` }} />
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">{statutoryData?.pfNominations?.filled ?? 0} of {statutoryData?.pfNominations?.total ?? 0} employees filled</p>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-muted-foreground">TDS Declarations</span>
+                        <span className="text-xs font-bold">{statutoryData?.tdsDeclarations?.pct ?? 0}%</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-orange-500 transition-all" style={{ width: `${statutoryData?.tdsDeclarations?.pct ?? 0}%` }} />
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">{statutoryData?.tdsDeclarations?.filled ?? 0} of {statutoryData?.tdsDeclarations?.total ?? 0} submitted</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-6 text-center text-muted-foreground">
+                    <AlertCircle className="h-8 w-8 mb-2 opacity-20" />
+                    <p className="text-xs">No statutory data available yet.</p>
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="p-5 grid gap-4 sm:grid-cols-2">
-              {quickActions.map((action) => {
-                const Icon = action.icon;
-                return (
-                  <Link
-                    key={action.title}
-                    href={action.href}
-                    className="flex items-start gap-4 rounded-lg border border-border bg-card p-4 transition-all hover:bg-muted/50"
-                  >
-                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${action.color}`}>
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h3 className="font-medium text-sm">{action.title}</h3>
-                      <p className="text-xs text-muted-foreground mt-0.5">{action.desc}</p>
-                    </div>
-                  </Link>
-                );
-              })}
+
+            {/* Quick Actions */}
+            <div className="rounded-xl border border-border bg-card">
+              <div className="flex items-center gap-2 border-b border-border px-5 py-3.5">
+                <h2 className="text-sm font-semibold">Quick Actions</h2>
+              </div>
+              <div className="p-5 grid gap-4 sm:grid-cols-2">
+                {quickActions.map((action) => {
+                  const Icon = action.icon;
+                  return (
+                    <Link
+                      key={action.title}
+                      href={action.href}
+                      className="flex items-start gap-4 rounded-lg border border-border bg-card p-4 transition-all hover:bg-muted/50"
+                    >
+                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${action.color}`}>
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-sm">{action.title}</h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">{action.desc}</p>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
           {/* HR Notices */}
-          <div className="rounded-xl border border-border bg-card">
+          <div className="rounded-xl border border-border bg-card h-fit">
             <div className="flex items-center gap-2 border-b border-border px-5 py-3.5">
               <h2 className="text-sm font-semibold">Announcements</h2>
             </div>

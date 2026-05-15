@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   Users,
@@ -11,12 +11,16 @@ import {
   FolderKanban,
   Briefcase,
   Settings,
-  ChevronLeft,
-  ChevronRight,
+  Clock,
+  Users2,
+  ShieldCheck,
+  ArrowRightLeft,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Calendar
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 
 interface NavItem {
@@ -26,197 +30,263 @@ interface NavItem {
   badge?: string;
 }
 
-const navItems: NavItem[] = [
+const mainModules: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'Attendance', href: '/dashboard/hr/attendance', icon: Briefcase },
+  { label: 'HR', href: '/dashboard/hr', icon: Users2 },
   { label: 'CRM', href: '/dashboard/crm', icon: Users, badge: 'Soon' },
-  { label: 'HR', href: '/dashboard/hr', icon: Briefcase, badge: 'Soon' },
   { label: 'Finance', href: '/dashboard/finance', icon: BarChart3, badge: 'Soon' },
   { label: 'Projects', href: '/dashboard/projects', icon: FolderKanban, badge: 'Soon' },
 ];
 
-const bottomItems: NavItem[] = [
-  { label: 'Settings', href: '/dashboard/settings', icon: Settings },
+const hrModules: NavItem[] = [
+  { label: 'Overview', href: '/dashboard/hr', icon: LayoutDashboard },
+  { label: 'Employees', href: '/dashboard/hr/employees', icon: Users2 },
+  { label: 'Attendance', href: '/dashboard/hr/attendance', icon: Clock },
+  { label: 'Leaves', href: '/dashboard/hr/leaves', icon: Calendar },
+  { label: 'Payroll', href: '/dashboard/hr/payroll', icon: Briefcase },
+  { label: 'Compliance', href: '/dashboard/hr/compliance/india', icon: ShieldCheck },
 ];
 
-export function Sidebar() {
+const bottomItems: NavItem[] = [
+  { label: 'Workspace Settings', href: '/dashboard/workspace/settings', icon: Settings },
+];
+
+interface SidebarProps {
+  mobileOpen?: boolean;
+  setMobileOpen?: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
   const pathname = usePathname();
   const { user, workspace } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
 
-  const initials = user?.username
-    ? user.username.slice(0, 2).toUpperCase()
-    : user?.email?.slice(0, 2).toUpperCase() ?? '?';
+  // Close mobile sidebar on navigation
+  useEffect(() => {
+    setMobileOpen?.(false);
+  }, [pathname, setMobileOpen]);
+
+  const isHrRoute = pathname.startsWith('/dashboard/hr');
+  
+  const displayItems = isHrRoute ? hrModules : mainModules;
+  const collapsedOtherModules = isHrRoute ? mainModules.filter(m => m.href !== '/dashboard/hr') : [];
 
   return (
-    <aside
-      className={cn(
-        'relative flex h-full flex-col border-r border-sidebar-border bg-sidebar transition-all duration-250',
-        collapsed ? 'w-[60px]' : 'w-[220px]',
+    <>
+      {/* Mobile Backdrop */}
+      {mobileOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-black/50 md:hidden transition-opacity"
+          onClick={() => setMobileOpen?.(false)}
+        />
       )}
-    >
-      {/* Logo area */}
-      <div className="flex h-14 items-center justify-between px-3 shrink-0">
-        {!collapsed && (
-          <Link href="/dashboard" className="flex items-center gap-2 min-w-0">
-            <Image
-              src="/images/logo-mark-light-nobg.PNG"
-              alt="Atlas"
-              width={24}
-              height={24}
-              className="shrink-0 block dark:hidden"
-            />
-            <Image
-              src="/images/logo-mark-dark-nobg.PNG"
-              alt="Atlas"
-              width={24}
-              height={24}
-              className="shrink-0 hidden dark:block"
-            />
-            <span className="text-sm font-bold truncate">Atlas ERP</span>
-          </Link>
-        )}
-        {collapsed && (
-          <Link href="/dashboard" className="mx-auto">
-            <Image
-              src="/images/logo-mark-light-nobg.PNG"
-              alt="Atlas"
-              width={24}
-              height={24}
-              className="block dark:hidden"
-            />
-            <Image
-              src="/images/logo-mark-dark-nobg.PNG"
-              alt="Atlas"
-              width={24}
-              height={24}
-              className="hidden dark:block"
-            />
-          </Link>
-        )}
-      </div>
 
-      {/* Collapse toggle */}
-      <button
-        onClick={() => setCollapsed(!collapsed)}
+      <aside
         className={cn(
-          'absolute -right-3 top-11 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-sidebar-border bg-background text-muted-foreground shadow-sm hover:text-foreground transition-colors',
+          'fixed inset-y-0 left-0 z-50 flex h-full flex-col bg-background border-r border-border transition-all duration-300 md:relative',
+          collapsed ? 'w-[60px]' : 'w-[220px]',
+          mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         )}
-        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
       >
-        {collapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
-      </button>
+        {/* Logo area & Toggle */}
+        <div className="flex h-14 items-center justify-between px-3 shrink-0">
+          {!collapsed && (
+            <Link href="/dashboard" className="flex items-center gap-2 min-w-0">
+              <Image
+                src="/images/logo-mark-light-nobg.PNG"
+                alt="Atlas"
+                width={24}
+                height={24}
+                className="shrink-0 block dark:hidden"
+              />
+              <Image
+                src="/images/logo-mark-dark-nobg.PNG"
+                alt="Atlas"
+                width={24}
+                height={24}
+                className="shrink-0 hidden dark:block"
+              />
+              <span className="text-sm font-bold truncate tracking-tight">Atlas ERP</span>
+            </Link>
+          )}
+          {collapsed && (
+            <Link href="/dashboard" className="mx-auto">
+              <Image
+                src="/images/logo-mark-light-nobg.PNG"
+                alt="Atlas"
+                width={24}
+                height={24}
+                className="block dark:hidden"
+              />
+              <Image
+                src="/images/logo-mark-dark-nobg.PNG"
+                alt="Atlas"
+                width={24}
+                height={24}
+                className="hidden dark:block"
+              />
+            </Link>
+          )}
+          
+          {/* Sidebar Toggle (Desktop) */}
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="hidden md:flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors shrink-0"
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+          </button>
+        </div>
 
-      {/* Workspace badge */}
-      {workspace && (
-        <div className={cn('px-3 pb-2', collapsed && 'flex justify-center')}>
-          {collapsed ? (
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary text-xs font-bold">
-              {workspace.workspaceName.charAt(0)}
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 rounded-lg border border-sidebar-border bg-sidebar-accent px-2.5 py-2">
-              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary text-xs font-bold">
-                {workspace.workspaceName.charAt(0)}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-semibold">{workspace.workspaceName}</p>
-                <p className="truncate text-[10px] text-muted-foreground">{workspace.role}</p>
-              </div>
+        <Separator className="bg-border" />
+
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto py-3 px-2">
+          {!collapsed && (
+            <div className="px-2 pb-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {isHrRoute ? 'HR Management' : 'Modules'}
+              </p>
             </div>
           )}
-        </div>
-      )}
+          <ul className="space-y-0.5">
+            {displayItems.map((item) => {
+              // Special case: "Overview" points to /dashboard/hr but we only want to highlight it if exactly /dashboard/hr
+              const isExactHrOverview = item.href === '/dashboard/hr' && pathname === '/dashboard/hr';
+              const isActive = isExactHrOverview || (item.href !== '/dashboard' && item.href !== '/dashboard/hr' && pathname.startsWith(item.href)) || (item.href === '/dashboard' && pathname === '/dashboard');
+              const Icon = item.icon;
+              
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    className={cn(
+                      'flex items-center rounded-md px-2 py-2 text-sm transition-colors gap-3',
+                      isActive
+                        ? 'bg-primary/10 text-primary font-medium'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                      collapsed && 'justify-center',
+                    )}
+                    title={collapsed ? item.label : undefined}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    {!collapsed && (
+                      <>
+                        <span className="flex-1 truncate">{item.label}</span>
+                        {item.badge && (
+                          <span className="text-[9px] font-medium text-muted-foreground/60 border border-border rounded px-1">
+                            {item.badge}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
 
-      <Separator className="bg-sidebar-border" />
+          {/* Other Modules Collapsed list if in a specific module context */}
+          {isHrRoute && collapsedOtherModules.length > 0 && (
+            <div className="mt-6">
+              {!collapsed && (
+                <div className="px-2 pb-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Other Modules
+                  </p>
+                </div>
+              )}
+              <ul className="space-y-0.5">
+                {collapsedOtherModules.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        className={cn(
+                          'flex items-center rounded-md px-2 py-2 text-sm transition-colors gap-3',
+                          'text-muted-foreground hover:bg-muted hover:text-foreground',
+                          collapsed && 'justify-center',
+                        )}
+                        title={collapsed ? item.label : undefined}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" />
+                        {!collapsed && (
+                          <>
+                            <span className="flex-1 truncate">{item.label}</span>
+                          </>
+                        )}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+        </nav>
 
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-2 px-2">
-        {!collapsed && (
-          <p className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-            Modules
-          </p>
-        )}
-        <ul className="space-y-0.5">
-          {navItems.map((item) => {
-            const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
+        {/* Bottom items */}
+        <div className="px-2 pb-3">
+          <Separator className="mb-2 bg-border" />
+          {bottomItems.map((item) => {
+            // Role based access checking
+            if (item.label === 'Workspace Settings' && workspace && ['USER', 'VIEWER'].includes(workspace.role)) {
+              return null;
+            }
+            const isActive = pathname.startsWith(item.href);
             const Icon = item.icon;
             return (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className={cn(
-                    'flex items-center rounded-md px-2 py-2 text-sm transition-colors gap-3',
-                    'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                    isActive
-                      ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
-                      : 'text-sidebar-foreground/70',
-                    collapsed && 'justify-center',
-                  )}
-                  title={collapsed ? item.label : undefined}
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  {!collapsed && (
-                    <>
-                      <span className="flex-1 truncate">{item.label}</span>
-                      {item.badge && (
-                        <span className="text-[9px] font-medium text-muted-foreground/60 border border-border rounded px-1">
-                          {item.badge}
-                        </span>
-                      )}
-                    </>
-                  )}
-                </Link>
-              </li>
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  'flex items-center rounded-md px-2 py-2 text-sm transition-colors gap-3 mb-2',
+                  isActive 
+                    ? 'bg-primary/10 text-primary font-medium'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                  collapsed && 'justify-center',
+                )}
+                title={collapsed ? item.label : undefined}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                {!collapsed && <span>{item.label}</span>}
+              </Link>
             );
           })}
-        </ul>
-      </nav>
 
-      {/* Bottom items */}
-      <div className="px-2 pb-2">
-        <Separator className="mb-2 bg-sidebar-border" />
-        {bottomItems.map((item) => {
-          // Hide Settings for regular users and viewers
-          if (item.label === 'Settings' && workspace && ['USER', 'VIEWER'].includes(workspace.role)) {
-            return null;
-          }
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
+          {/* User & Org Switcher block */}
+          <Link href="/select-workspace" className="block focus:outline-none">
+            <div
               className={cn(
-                'flex items-center rounded-md px-2 py-2 text-sm text-sidebar-foreground/70 transition-colors gap-3',
-                'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                collapsed && 'justify-center',
+                'mt-1 flex items-center gap-3 rounded-lg border border-border bg-card px-2 py-2 transition-colors hover:bg-muted',
+                collapsed && 'justify-center border-transparent bg-transparent hover:bg-muted p-1',
               )}
-              title={collapsed ? item.label : undefined}
+              title={collapsed ? `Switch Org: ${workspace?.workspaceName}` : undefined}
             >
-              <Icon className="h-4 w-4 shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
-            </Link>
-          );
-        })}
-
-        {/* User avatar */}
-        <div
-          className={cn(
-            'mt-1 flex items-center gap-2 rounded-md px-2 py-2',
-            collapsed && 'justify-center',
-          )}
-        >
-          <Avatar className="h-7 w-7 shrink-0">
-            <AvatarFallback className="text-[11px]">{initials}</AvatarFallback>
-          </Avatar>
-          {!collapsed && (
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-medium">{user?.username}</p>
-              <p className="truncate text-[10px] text-muted-foreground">{user?.email}</p>
+              {collapsed ? (
+                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary text-xs font-bold shrink-0">
+                  {workspace?.workspaceName?.charAt(0) || 'A'}
+                </div>
+              ) : (
+                <>
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary text-xs font-bold">
+                    {workspace?.workspaceName?.charAt(0) || 'A'}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-semibold leading-tight text-foreground">
+                      {workspace?.workspaceName || 'Select Workspace'}
+                    </p>
+                    <p className="truncate text-[10px] text-muted-foreground">
+                      {user?.username || 'User'}
+                    </p>
+                  </div>
+                  <ArrowRightLeft className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                </>
+              )}
             </div>
-          )}
+          </Link>
         </div>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 }

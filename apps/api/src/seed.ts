@@ -103,7 +103,7 @@ async function main() {
   // 5. Create HR Employee Record for John Doe
   console.log('Creating employee record for John Doe...');
   const johnDoe = await prisma.employee.upsert({
-    where: { email: 'employee@atlas.com' },
+    where: { workspaceId_email: { workspaceId: workspace.id, email: 'employee@atlas.com' } },
     update: {},
     create: {
       workspaceId: workspace.id,

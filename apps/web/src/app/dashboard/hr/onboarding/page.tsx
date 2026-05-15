@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { getOnboardingTemplates, createOnboardingTemplate, getEmployees, initiateOnboarding, getOnboardingTasks, updateOnboardingTask } from '@/lib/hr';
-import { Loader2, Plus, UserPlus, CheckCircle2, Circle, ClipboardList } from 'lucide-react';
+import { Loader2, Plus, UserPlus, CheckCircle2, Circle, ClipboardList, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { FormContainer } from '@/components/common/FormContainer';
 
 export default function OnboardingPage() {
   const [activeTab, setActiveTab] = useState<'templates' | 'active'>('active');
@@ -65,8 +66,21 @@ export default function OnboardingPage() {
           )}
         </div>
 
-        {isInitiating && <InitiateForm />}
-        {isCreatingTemplate && <CreateTemplateForm />}
+        <FormContainer
+          title="Initiate Onboarding"
+          isOpen={isInitiating}
+          setIsOpen={setIsInitiating}
+        >
+          <InitiateForm />
+        </FormContainer>
+
+        <FormContainer
+          title="Create Onboarding Template"
+          isOpen={isCreatingTemplate}
+          setIsOpen={setIsCreatingTemplate}
+        >
+          <CreateTemplateForm />
+        </FormContainer>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-2">
@@ -191,29 +205,28 @@ export default function OnboardingPage() {
     };
 
     return (
-      <div className="rounded-xl border border-border bg-card p-5 mb-6 animate-fade-in">
-        <h3 className="font-semibold mb-4">Initiate Onboarding</h3>
-        <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-end gap-4">
-          <div className="space-y-1 flex-1">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
             <Label>Employee</Label>
-            <select required value={empId} onChange={e => setEmpId(e.target.value)} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm">
-              <option value="" className="bg-background">Select Employee...</option>
-              {employees.filter(e => e.status !== 'ONBOARDING').map(e => <option key={e.id} value={e.id} className="bg-background">{e.fullName}</option>)}
+            <select required value={empId} onChange={e => setEmpId(e.target.value)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <option value="">Select Employee...</option>
+              {employees.filter(e => e.status !== 'ONBOARDING').map(e => <option key={e.id} value={e.id}>{e.fullName}</option>)}
             </select>
           </div>
-          <div className="space-y-1 flex-1">
+          <div className="space-y-2">
             <Label>Template</Label>
-            <select required value={tempId} onChange={e => setTempId(e.target.value)} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm">
-              <option value="" className="bg-background">Select Template...</option>
-              {templates.map(t => <option key={t.id} value={t.id} className="bg-background">{t.name}</option>)}
+            <select required value={tempId} onChange={e => setTempId(e.target.value)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <option value="">Select Template...</option>
+              {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
           </div>
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={() => setIsInitiating(false)}>Cancel</Button>
-            <Button type="submit" disabled={isSaving}>Start Onboarding</Button>
-          </div>
-        </form>
-      </div>
+        </div>
+        <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
+          <Button type="button" variant="outline" onClick={() => setIsInitiating(false)}>Cancel</Button>
+          <Button type="submit" disabled={isSaving}>Start Onboarding</Button>
+        </div>
+      </form>
     );
   }
 
@@ -223,6 +236,11 @@ export default function OnboardingPage() {
     const [isSaving, setIsSaving] = useState(false);
 
     const addActivity = () => setActivities([...activities, { title: '', description: '', isMandatory: true }]);
+    const removeActivity = (index: number) => {
+      if (activities.length > 1) {
+        setActivities(activities.filter((_, i) => i !== index));
+      }
+    };
     
     const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -235,31 +253,51 @@ export default function OnboardingPage() {
     };
 
     return (
-      <div className="rounded-xl border border-border bg-card p-5 mb-6 animate-fade-in">
-        <h3 className="font-semibold mb-4">Create Onboarding Template</h3>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1"><Label>Template Name</Label><Input required value={name} onChange={e => setName(e.target.value)} placeholder="Engineering Onboarding" /></div>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-2">
+          <Label>Template Name</Label>
+          <Input required value={name} onChange={e => setName(e.target.value)} placeholder="Engineering Onboarding" />
+        </div>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label>Activities / Tasks</Label>
+          </div>
           <div className="space-y-3">
-            <Label>Activities</Label>
             {activities.map((act, i) => (
-              <div key={i} className="flex gap-3 items-start">
-                <Input required placeholder="Activity Title" value={act.title} onChange={e => {
-                  const newActs = [...activities];
-                  newActs[i].title = e.target.value;
-                  setActivities(newActs);
-                }} />
-                <Input placeholder="Description (Optional)" value={act.description} onChange={e => {
-                  const newActs = [...activities];
-                  newActs[i].description = e.target.value;
-                  setActivities(newActs);
-                }} />
+              <div key={i} className="flex flex-col sm:flex-row gap-3 sm:items-start p-4 sm:p-0 border sm:border-0 rounded-lg bg-muted/20 sm:bg-transparent">
+                <div className="flex-1 space-y-2">
+                  <Input required placeholder="Task Title (e.g., IT Asset Allocation)" value={act.title} onChange={e => {
+                    const newActs = [...activities];
+                    newActs[i].title = e.target.value;
+                    setActivities(newActs);
+                  }} />
+                  <Input placeholder="Description (Optional)" value={act.description} onChange={e => {
+                    const newActs = [...activities];
+                    newActs[i].description = e.target.value;
+                    setActivities(newActs);
+                  }} />
+                </div>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="icon" 
+                  className="w-full sm:w-10 sm:h-10 text-destructive border-destructive/20 hover:bg-destructive/10 shrink-0"
+                  onClick={() => removeActivity(i)}
+                  disabled={activities.length === 1}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span className="sm:hidden ml-2">Remove Task</span>
+                </Button>
               </div>
             ))}
-            <Button type="button" variant="ghost" size="sm" onClick={addActivity}><Plus className="h-4 w-4 mr-2" /> Add Activity</Button>
           </div>
-          <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setIsCreatingTemplate(false)}>Cancel</Button><Button type="submit" disabled={isSaving}>Save Template</Button></div>
-        </form>
-      </div>
+          <Button type="button" variant="outline" size="sm" onClick={addActivity} className="w-full sm:w-auto"><Plus className="h-4 w-4 mr-2" /> Add Task</Button>
+        </div>
+        <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
+          <Button type="button" variant="outline" onClick={() => setIsCreatingTemplate(false)}>Cancel</Button>
+          <Button type="submit" disabled={isSaving}>Save Template</Button>
+        </div>
+      </form>
     );
   }
 }

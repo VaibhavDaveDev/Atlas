@@ -16,7 +16,7 @@ export const AUTH_CONFIG = {
 
   // Token Configuration
   TOKEN_EXPIRY: {
-    ACCESS: '15m', // Short-lived for security (was 1h)
+    ACCESS: '1h', // Short-lived for security (was 15m)
     REFRESH: '7d',
     VERIFICATION: '24h',
     PASSWORD_RESET: '1h',
@@ -45,10 +45,9 @@ export const AUTH_CONFIG = {
 
   // Role Hierarchy (higher number = more permissions)
   ROLE_HIERARCHY: {
-    CUSTOMER: 1,
-    MODERATOR: 2,
-    ADMIN: 3,
-    SUPER_ADMIN: 4,
+    USER: 1,
+    ADMIN: 2,
+    SUPERADMIN: 3,
   },
 
   // Cache Prefixes (improved naming convention)

@@ -1,22 +1,42 @@
-import { tokenStorage } from './auth';
+import { tokenStorage, refreshToken as refreshAuthToken } from './auth';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 const API_BASE = `${API_URL}/api/v1`;
 
 async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
-  const token = tokenStorage.getAccessToken();
+  let token = tokenStorage.getAccessToken();
   if (!token) throw new Error('No authentication token found');
 
-  const headers = {
+  const getHeaders = (t: string) => ({
     'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
+    Authorization: `Bearer ${t}`,
     ...options.headers,
-  };
-
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers,
   });
+
+  let response = await fetch(`${API_BASE}${endpoint}`, {
+    ...options,
+    headers: getHeaders(token),
+  });
+
+  if (response.status === 401) {
+    const currentRefreshToken = tokenStorage.getRefreshToken();
+    if (currentRefreshToken) {
+      try {
+        const refreshResponse = await refreshAuthToken(currentRefreshToken);
+        if (refreshResponse?.data?.accessToken) {
+          tokenStorage.setAccessToken(refreshResponse.data.accessToken);
+          token = refreshResponse.data.accessToken;
+          // Retry request
+          response = await fetch(`${API_BASE}${endpoint}`, {
+            ...options,
+            headers: getHeaders(token),
+          });
+        }
+      } catch (e) {
+        // Refresh failed, fall through to error handling
+      }
+    }
+  }
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
@@ -116,6 +136,19 @@ export async function createLeaveType(data: any) {
   });
 }
 
+export async function updateLeaveType(id: string, data: any) {
+  return fetchWithAuth(`/hr/leaves/types/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteLeaveType(id: string) {
+  return fetchWithAuth(`/hr/leaves/types/${id}`, {
+    method: 'DELETE',
+  });
+}
+
 export async function getLeaveApplications() {
   return fetchWithAuth('/hr/leaves/applications');
 }
@@ -146,6 +179,19 @@ export async function createLeavePolicy(data: any) {
   return fetchWithAuth('/hr/leaves/policies', {
     method: 'POST',
     body: JSON.stringify(data),
+  });
+}
+
+export async function updateLeavePolicy(id: string, data: any) {
+  return fetchWithAuth(`/hr/leaves/policies/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteLeavePolicy(id: string) {
+  return fetchWithAuth(`/hr/leaves/policies/${id}`, {
+    method: 'DELETE',
   });
 }
 
@@ -293,6 +339,21 @@ export async function getMyAttendance() {
 // ====================
 // INDIA STATUTORY
 // ====================
+export async function getIndiaComplianceSettings() {
+  return fetchWithAuth('/hr/compliance/india/settings');
+}
+
+export async function updateIndiaComplianceSettings(data: any) {
+  return fetchWithAuth('/hr/compliance/india/settings', {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getPfEsiReport(month: number, year: number) {
+  return fetchWithAuth(`/hr/compliance/india/report/pf-esi?month=${month}&year=${year}`);
+}
+
 export async function getTaxExemptionDeclaration(employeeId: string) {
   return fetchWithAuth(`/hr/compliance/india/declarations/${employeeId}`);
 }
@@ -302,4 +363,8 @@ export async function submitTaxExemptionDeclaration(data: any) {
     method: 'POST',
     body: JSON.stringify(data),
   });
+}
+
+export async function getStatutoryStatus() {
+  return fetchWithAuth('/hr/compliance/india/statutory-status');
 }

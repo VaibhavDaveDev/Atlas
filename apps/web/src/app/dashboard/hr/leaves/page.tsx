@@ -2,12 +2,27 @@
 
 import { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
-import { getLeaveApplications, getLeaveTypes, createLeaveType, createLeaveApplication, updateLeaveStatus, getEmployees, getLeavePolicies, getLeaveBalances, createLeavePolicy } from '@/lib/hr';
-import { Loader2, Plus, CalendarOff, CheckCircle2, XCircle } from 'lucide-react';
+import { 
+  getLeaveApplications, 
+  getLeaveTypes, 
+  createLeaveType, 
+  updateLeaveType,
+  deleteLeaveType,
+  createLeaveApplication, 
+  updateLeaveStatus, 
+  getEmployees, 
+  getLeavePolicies, 
+  updateLeavePolicy,
+  deleteLeavePolicy,
+  getLeaveBalances, 
+  createLeavePolicy 
+} from '@/lib/hr';
+import { Loader2, Plus, CalendarOff, CheckCircle2, XCircle, Edit2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { FormContainer } from '@/components/common/FormContainer';
 
 export default function LeaveManagementPage() {
   const [activeTab, setActiveTab] = useState<'applications' | 'types' | 'policies' | 'balances'>('applications');
@@ -24,7 +39,9 @@ export default function LeaveManagementPage() {
   // Forms
   const [isApplying, setIsApplying] = useState(false);
   const [isCreatingType, setIsCreatingType] = useState(false);
+  const [editingType, setEditingType] = useState<any>(null);
   const [isCreatingPolicy, setIsCreatingPolicy] = useState(false);
+  const [editingPolicy, setEditingPolicy] = useState<any>(null);
 
   useEffect(() => {
     fetchData();
@@ -101,55 +118,66 @@ export default function LeaveManagementPage() {
     };
 
     return (
-      <div className="rounded-xl border border-border bg-card p-5 mb-6 animate-fade-in">
-        <h3 className="font-semibold mb-4">New Leave Application</h3>
-        <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2 md:grid-cols-5 items-end">
-          <div className="space-y-2 col-span-1">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
             <Label>Employee</Label>
-            <select required value={employeeId} onChange={e => setEmployeeId(e.target.value)} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm">
-              <option value="" className="bg-background">Select...</option>
-              {employees.map(e => <option key={e.id} value={e.id} className="bg-background">{e.fullName}</option>)}
+            <select required value={employeeId} onChange={e => setEmployeeId(e.target.value)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <option value="">Select Employee...</option>
+              {employees.map(e => <option key={e.id} value={e.id}>{e.fullName}</option>)}
             </select>
           </div>
-          <div className="space-y-2 col-span-1">
+          <div className="space-y-2">
             <Label>Leave Type</Label>
-            <select required value={leaveTypeId} onChange={e => setLeaveTypeId(e.target.value)} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm">
-              <option value="" className="bg-background">Select...</option>
-              {leaveTypes.map(t => <option key={t.id} value={t.id} className="bg-background">{t.name}</option>)}
+            <select required value={leaveTypeId} onChange={e => setLeaveTypeId(e.target.value)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <option value="">Select Leave Type...</option>
+              {leaveTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
           </div>
-          <div className="space-y-2 col-span-1">
-            <Label>From</Label>
+        </div>
+        
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label>From Date</Label>
             <Input required type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} />
           </div>
-          <div className="space-y-2 col-span-1">
-            <Label>To</Label>
+          <div className="space-y-2">
+            <Label>To Date</Label>
             <Input required type="date" value={toDate} onChange={e => setToDate(e.target.value)} />
           </div>
-          <div className="space-y-2 col-span-1">
-            <Label>Reason</Label>
-            <Input required value={reason} onChange={e => setReason(e.target.value)} placeholder="Sick" />
-          </div>
-          <div className="col-span-5 flex justify-end mt-2">
-            <Button type="button" variant="outline" className="mr-2" onClick={() => setIsApplying(false)}>Cancel</Button>
-            <Button type="submit" disabled={isSaving}>{isSaving ? 'Submitting...' : 'Apply Leave'}</Button>
-          </div>
-        </form>
-      </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Reason</Label>
+          <Input required value={reason} onChange={e => setReason(e.target.value)} placeholder="Annual vacation / Sick leave" />
+        </div>
+
+        <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
+          <Button type="button" variant="outline" onClick={() => setIsApplying(false)}>Cancel</Button>
+          <Button type="submit" disabled={isSaving}>{isSaving ? 'Submitting...' : 'Apply Leave'}</Button>
+        </div>
+      </form>
     );
   };
 
   const SubmitLeaveTypeForm = () => {
-    const [name, setName] = useState('');
-    const [maxDaysAllowed, setMaxDaysAllowed] = useState('10');
+    const [name, setName] = useState(editingType?.name || '');
+    const [maxDaysAllowed, setMaxDaysAllowed] = useState(editingType?.maxDaysAllowed?.toString() || '10');
+    const [isPaid, setIsPaid] = useState(editingType ? editingType.isPaid : true);
+    const [requiresApproval, setRequiresApproval] = useState(editingType ? editingType.requiresApproval : true);
     const [isSaving, setIsSaving] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       setIsSaving(true);
       try {
-        await createLeaveType({ name, maxDaysAllowed, isPaid: true, requiresApproval: true });
+        if (editingType) {
+          await updateLeaveType(editingType.id, { name, maxDaysAllowed, isPaid, requiresApproval });
+        } else {
+          await createLeaveType({ name, maxDaysAllowed, isPaid, requiresApproval });
+        }
         setIsCreatingType(false);
+        setEditingType(null);
         fetchData();
       } catch (e) {
         console.error(e);
@@ -159,20 +187,32 @@ export default function LeaveManagementPage() {
     };
 
     return (
-      <div className="rounded-xl border border-border bg-card p-5 mb-6 animate-fade-in">
-        <h3 className="font-semibold mb-4">Create Leave Type</h3>
-        <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-end gap-4">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="flex flex-col sm:flex-row gap-4">
           <div className="space-y-2 flex-1">
             <Label>Leave Name</Label>
             <Input required value={name} onChange={e => setName(e.target.value)} placeholder="Annual Leave" />
           </div>
-          <div className="space-y-2 flex-1">
-            <Label>Max Days Allowed (Annual)</Label>
+          <div className="space-y-2 sm:w-48">
+            <Label>Max Days (Annual)</Label>
             <Input required type="number" min="0" value={maxDaysAllowed} onChange={e => setMaxDaysAllowed(e.target.value)} />
           </div>
-          <Button type="submit" disabled={isSaving}>{isSaving ? 'Saving...' : 'Save Type'}</Button>
-        </form>
-      </div>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row gap-6 py-2">
+          <label className="flex items-center text-sm gap-2 cursor-pointer">
+            <input type="checkbox" className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer" checked={isPaid} onChange={e => setIsPaid(e.target.checked)} /> Is Paid Leave
+          </label>
+          <label className="flex items-center text-sm gap-2 cursor-pointer">
+            <input type="checkbox" className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer" checked={requiresApproval} onChange={e => setRequiresApproval(e.target.checked)} /> Requires Approval
+          </label>
+        </div>
+
+        <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
+          <Button type="button" variant="outline" onClick={() => { setIsCreatingType(false); setEditingType(null); }}>Cancel</Button>
+          <Button type="submit" disabled={isSaving}>{isSaving ? 'Saving...' : editingType ? 'Update Type' : 'Save Type'}</Button>
+        </div>
+      </form>
     );
   };
 
@@ -206,9 +246,29 @@ export default function LeaveManagementPage() {
           )}
         </div>
 
-        {activeTab === 'applications' && isApplying && <SubmitLeaveApplicationForm />}
-        {activeTab === 'types' && isCreatingType && <SubmitLeaveTypeForm />}
-        {activeTab === 'policies' && isCreatingPolicy && <SubmitLeavePolicyForm />}
+        <FormContainer
+          title="Apply for Leave"
+          isOpen={activeTab === 'applications' && isApplying}
+          setIsOpen={setIsApplying}
+        >
+          <SubmitLeaveApplicationForm />
+        </FormContainer>
+
+        <FormContainer
+          title={editingType ? 'Edit Leave Type' : 'Create Leave Type'}
+          isOpen={activeTab === 'types' && isCreatingType}
+          setIsOpen={setIsCreatingType}
+        >
+          <SubmitLeaveTypeForm />
+        </FormContainer>
+
+        <FormContainer
+          title={editingPolicy ? 'Edit Leave Policy' : 'Create Leave Policy'}
+          isOpen={activeTab === 'policies' && isCreatingPolicy}
+          setIsOpen={setIsCreatingPolicy}
+        >
+          <SubmitLeavePolicyForm />
+        </FormContainer>
 
         <div className="rounded-xl border border-border bg-card overflow-hidden">
           {isLoading ? (
@@ -286,21 +346,44 @@ export default function LeaveManagementPage() {
   }
 
   function TypesTable() {
+    const handleEdit = (type: any) => {
+      setEditingType(type);
+      setIsCreatingType(true);
+    };
+
+    const handleDelete = async (id: string) => {
+      if (window.confirm('Are you sure you want to delete this leave type? It will be hidden from new applications.')) {
+        try {
+          await deleteLeaveType(id);
+          fetchData();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    };
+
     return (
       <table className="w-full text-sm text-left">
         <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
           <tr>
             <th className="px-6 py-4 font-medium">Leave Type</th>
+            <th className="px-6 py-4 font-medium">Max Days</th>
             <th className="px-6 py-4 font-medium">Is Paid</th>
             <th className="px-6 py-4 font-medium">Requires Approval</th>
+            <th className="px-6 py-4 font-medium text-right">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
           {leaveTypes.map(type => (
             <tr key={type.id} className="hover:bg-muted/30">
               <td className="px-6 py-4 font-medium">{type.name}</td>
+              <td className="px-6 py-4">{type.maxDaysAllowed}</td>
               <td className="px-6 py-4">{type.isPaid ? 'Yes' : 'No'}</td>
               <td className="px-6 py-4">{type.requiresApproval ? 'Yes' : 'No'}</td>
+              <td className="px-6 py-4 text-right space-x-2">
+                <Button size="sm" variant="ghost" onClick={() => handleEdit(type)}><Edit2 className="h-4 w-4" /></Button>
+                <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(type.id)}><Trash2 className="h-4 w-4" /></Button>
+              </td>
             </tr>
           ))}
         </tbody>
@@ -309,12 +392,29 @@ export default function LeaveManagementPage() {
   }
 
   function PoliciesTable() {
+    const handleEdit = (policy: any) => {
+      setEditingPolicy(policy);
+      setIsCreatingPolicy(true);
+    };
+
+    const handleDelete = async (id: string) => {
+      if (window.confirm('Are you sure you want to delete this leave policy?')) {
+        try {
+          await deleteLeavePolicy(id);
+          fetchData();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    };
+
     return (
       <table className="w-full text-sm text-left">
         <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
           <tr>
             <th className="px-6 py-4 font-medium">Policy Name</th>
             <th className="px-6 py-4 font-medium">Leave Types & Allocations</th>
+            <th className="px-6 py-4 font-medium text-right">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
@@ -329,6 +429,10 @@ export default function LeaveManagementPage() {
                     </Badge>
                   ))}
                 </div>
+              </td>
+              <td className="px-6 py-4 text-right space-x-2">
+                <Button size="sm" variant="ghost" onClick={() => handleEdit(policy)}><Edit2 className="h-4 w-4" /></Button>
+                <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(policy.id)}><Trash2 className="h-4 w-4" /></Button>
               </td>
             </tr>
           ))}
@@ -375,8 +479,13 @@ export default function LeaveManagementPage() {
   }
 
   function SubmitLeavePolicyForm() {
-    const [name, setName] = useState('');
-    const [allocations, setAllocations] = useState<any[]>([]);
+    const [name, setName] = useState(editingPolicy?.name || '');
+    const [allocations, setAllocations] = useState<any[]>(
+      editingPolicy?.leaveTypes?.map((t: any) => ({
+        leaveTypeId: t.leaveTypeId,
+        annualAllocation: t.annualAllocation
+      })) || []
+    );
     const [isSaving, setIsSaving] = useState(false);
 
     const toggleType = (typeId: string) => {
@@ -395,8 +504,13 @@ export default function LeaveManagementPage() {
       e.preventDefault();
       setIsSaving(true);
       try {
-        await createLeavePolicy({ name, leaveTypes: allocations });
+        if (editingPolicy) {
+          await updateLeavePolicy(editingPolicy.id, { name, leaveTypes: allocations });
+        } else {
+          await createLeavePolicy({ name, leaveTypes: allocations });
+        }
         setIsCreatingPolicy(false);
+        setEditingPolicy(null);
         fetchData();
       } catch (e) {
         console.error(e);
@@ -406,43 +520,45 @@ export default function LeaveManagementPage() {
     };
 
     return (
-      <div className="rounded-xl border border-border bg-card p-5 mb-6 animate-fade-in">
-        <h3 className="font-semibold mb-4">Create Leave Policy</h3>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label>Policy Name</Label>
-            <Input required value={name} onChange={e => setName(e.target.value)} placeholder="Standard Annual Policy" />
-          </div>
-          <div className="space-y-3">
-            <Label>Included Leave Types</Label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {leaveTypes.map(type => (
-                <div key={type.id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/10">
-                  <div className="flex items-center">
-                    <input type="checkbox" className="mr-3" checked={!!allocations.find(a => a.leaveTypeId === type.id)} onChange={() => toggleType(type.id)} />
-                    <span className="text-sm">{type.name}</span>
-                  </div>
-                  {allocations.find(a => a.leaveTypeId === type.id) && (
-                    <div className="flex items-center gap-2">
-                      <Input 
-                        type="number" 
-                        className="w-20 h-8" 
-                        value={allocations.find(a => a.leaveTypeId === type.id).annualAllocation} 
-                        onChange={e => updateDays(type.id, parseInt(e.target.value) || 0)} 
-                      />
-                      <span className="text-xs text-muted-foreground">Days</span>
-                    </div>
-                  )}
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-2">
+          <Label>Policy Name</Label>
+          <Input required value={name} onChange={e => setName(e.target.value)} placeholder="Standard Annual Policy" />
+        </div>
+        <div className="space-y-3">
+          <Label>Included Leave Types & Allocations</Label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {leaveTypes.map(type => (
+              <label key={type.id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/10 hover:bg-muted/20 transition-colors cursor-pointer">
+                <div className="flex items-center gap-3">
+                  <input 
+                    type="checkbox" 
+                    className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer"
+                    checked={!!allocations.find(a => a.leaveTypeId === type.id)} 
+                    onChange={() => toggleType(type.id)} 
+                  />
+                  <span className="text-sm font-medium">{type.name}</span>
                 </div>
-              ))}
-            </div>
+                {allocations.find(a => a.leaveTypeId === type.id) && (
+                  <div className="flex items-center gap-2" onClick={e => e.preventDefault()}>
+                    <Input 
+                      type="number" 
+                      className="w-16 h-8 text-xs" 
+                      value={allocations.find(a => a.leaveTypeId === type.id).annualAllocation} 
+                      onChange={e => updateDays(type.id, parseInt(e.target.value) || 0)} 
+                    />
+                    <span className="text-[10px] uppercase text-muted-foreground">Days</span>
+                  </div>
+                )}
+              </label>
+            ))}
           </div>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setIsCreatingPolicy(false)}>Cancel</Button>
-            <Button type="submit" disabled={isSaving}>{isSaving ? 'Saving...' : 'Create Policy'}</Button>
-          </div>
-        </form>
-      </div>
+        </div>
+        <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
+          <Button type="button" variant="outline" onClick={() => { setIsCreatingPolicy(false); setEditingPolicy(null); }}>Cancel</Button>
+          <Button type="submit" disabled={isSaving}>{isSaving ? 'Saving...' : editingPolicy ? 'Update Policy' : 'Create Policy'}</Button>
+        </div>
+      </form>
     );
   }
 }
