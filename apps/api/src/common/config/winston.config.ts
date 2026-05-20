@@ -3,12 +3,10 @@ import * as winston from 'winston';
 import LokiTransport from 'winston-loki';
 
 // Check if Loki is available
-const lokiEnabled = process.env.LOKI_ENABLED !== 'false';
-const lokiHost =
-  process.env.LOKI_URL ||
-  (process.env.NODE_ENV === 'production'
-    ? 'http://loki:3100'
-    : 'http://localhost:3100');
+const lokiEnabled = process.env.LOKI_ENABLED === 'true';
+const lokiHost = process.env.LOKI_URL || 'http://localhost:3100';
+const lokiUser = process.env.LOKI_USER;
+const lokiPassword = process.env.LOKI_PASSWORD; // API Token / Password
 
 const transports: winston.transport[] = [
   // Console transport for development
@@ -32,8 +30,9 @@ if (lokiEnabled) {
     transports.push(
       new LokiTransport({
         host: lokiHost,
+        basicAuth: lokiUser && lokiPassword ? `${lokiUser}:${lokiPassword}` : undefined,
         labels: {
-          app: 'nestjs-app',
+          app: 'atlas-api',
           environment: process.env.NODE_ENV || 'development',
         },
         json: true,

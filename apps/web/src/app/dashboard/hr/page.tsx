@@ -22,7 +22,6 @@ interface StatCardProps {
   subtitle?: string;
   icon: typeof Users;
   iconColor: string;
-  iconBg: string;
   href?: string;
 }
 
@@ -32,27 +31,26 @@ function StatCard({
   subtitle,
   icon: Icon,
   iconColor,
-  iconBg,
   href,
 }: StatCardProps) {
   const CardContent = (
-    <div className="rounded-xl border border-border bg-card p-5 transition-all hover:border-primary/30 h-full">
+    <div className="rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] p-5 transition-all shadow-none group h-full">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm text-muted-foreground">{title}</p>
-          <p className="mt-1.5 text-2xl font-bold tracking-tight">{value}</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#7b7b78] dark:text-[#71717a]">{title}</p>
+          <p className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-[#111111] dark:text-[#f4f4f5]">{value}</p>
         </div>
-        <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${iconBg}`}>
+        <div className={`flex h-10 w-10 items-center justify-center rounded-lg border border-[#d3cec6] dark:border-[#27272a] bg-[#f5f1ec] dark:bg-[#09090b] transition-transform group-hover:scale-105 shadow-sm`}>
           <Icon className={`h-5 w-5 ${iconColor}`} />
         </div>
       </div>
       {subtitle && (
-        <div className="mt-3 flex items-center gap-1 text-xs text-muted-foreground">
+        <div className="mt-3 flex items-center gap-1 text-[11px] font-medium text-[#626260] dark:text-[#a1a1aa]">
           <span>{subtitle}</span>
         </div>
       )}
       {href && (
-        <div className="mt-4 flex items-center gap-1 text-xs font-medium text-primary">
+        <div className="mt-4 flex items-center gap-1 text-[11px] font-bold text-[#4f46e5] dark:text-[#818cf8] uppercase tracking-wider">
           View details <ArrowRight className="h-3 w-3" />
         </div>
       )}
@@ -108,8 +106,7 @@ export default function HrOverviewPage() {
       value: kpis.employees,
       subtitle: 'Active headcount',
       icon: Users,
-      iconColor: 'text-blue-500',
-      iconBg: 'bg-blue-500/10',
+      iconColor: 'text-blue-600 dark:text-blue-400',
       href: '/dashboard/hr/employees',
     },
     {
@@ -117,8 +114,7 @@ export default function HrOverviewPage() {
       value: kpis.pendingLeaves,
       subtitle: 'Requiring approval',
       icon: CalendarCheck,
-      iconColor: 'text-amber-500',
-      iconBg: 'bg-amber-500/10',
+      iconColor: 'text-orange-600 dark:text-orange-400',
       href: '/dashboard/hr/leaves',
     },
     {
@@ -126,8 +122,7 @@ export default function HrOverviewPage() {
       value: kpis.activeOnboarding,
       subtitle: 'New hires in process',
       icon: UserPlus,
-      iconColor: 'text-emerald-500',
-      iconBg: 'bg-emerald-500/10',
+      iconColor: 'text-emerald-600 dark:text-emerald-400',
       href: '/dashboard/hr/onboarding',
     },
     {
@@ -135,8 +130,7 @@ export default function HrOverviewPage() {
       value: '₹0',
       subtitle: 'Total net processed',
       icon: Briefcase,
-      iconColor: 'text-violet-500',
-      iconBg: 'bg-violet-500/10',
+      iconColor: 'text-violet-600 dark:text-violet-400',
       href: '/dashboard/hr/payroll',
     },
   ];
@@ -146,28 +140,28 @@ export default function HrOverviewPage() {
       title: 'Run Payroll',
       desc: 'Process monthly salaries',
       icon: Briefcase,
-      color: 'bg-violet-500 text-white',
+      color: 'bg-violet-600 text-white',
       href: '/dashboard/hr/payroll',
     },
     {
       title: 'Onboarding',
       desc: 'Start new hire checklist',
       icon: UserPlus,
-      color: 'bg-blue-500 text-white',
+      color: 'bg-blue-600 text-white',
       href: '/dashboard/hr/onboarding',
     },
     {
       title: 'Leave Requests',
       desc: 'Approve or reject leaves',
       icon: CalendarCheck,
-      color: 'bg-amber-500 text-white',
+      color: 'bg-orange-600 text-white',
       href: '/dashboard/hr/leaves',
     },
     {
       title: 'Employee Directory',
       desc: 'View all staff records',
       icon: Users,
-      color: 'bg-emerald-500 text-white',
+      color: 'bg-emerald-600 text-white',
       href: '/dashboard/hr/employees',
     },
     {
@@ -181,106 +175,116 @@ export default function HrOverviewPage() {
 
   return (
     <AppShell>
-      <div className="p-6 space-y-6 max-w-7xl mx-auto">
+      <div className="p-6 md:p-8 space-y-8 max-w-[1440px] mx-auto animate-fade-in">
         {/* Page header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold tracking-tight flex items-center gap-2">
-              <Briefcase className="h-5 w-5 text-primary" /> Human Resources
+            <h1 className="text-2xl font-semibold tracking-[-0.03em] text-[#111111] dark:text-[#f4f4f5] flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-[#ffffff] dark:bg-[#121214] border border-[#d3cec6] dark:border-[#27272a] flex items-center justify-center shadow-sm">
+                <Briefcase className="h-4.5 w-4.5 text-[#4f46e5] dark:text-[#818cf8]" />
+              </div>
+              Human Resources
             </h1>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Manage employees, attendance, and company structure for {workspace?.workspaceName}.
+            <p className="mt-2 text-sm text-[#626260] dark:text-[#a1a1aa]">
+              Manage employees, attendance, and company structure for <span className="font-semibold text-[#111111] dark:text-[#f4f4f5]">{workspace?.workspaceName}</span>.
             </p>
           </div>
-          {loading && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
+          {loading && (
+            <div className="bg-[#ffffff] dark:bg-[#121214] border border-[#d3cec6] dark:border-[#27272a] rounded-lg px-3 py-1.5 flex items-center gap-2 shadow-sm">
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-[#7b7b78] dark:text-[#71717a]" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[#7b7b78] dark:text-[#71717a]">Syncing...</span>
+            </div>
+          )}
         </div>
 
         {/* KPI Stats */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map((s) => (
             <StatCard key={s.title} {...s} />
           ))}
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="grid gap-8 lg:grid-cols-3">
           {/* Main Content Area */}
-          <div className="lg:col-span-2 space-y-4">
+          <div className="lg:col-span-2 space-y-8">
             {/* Statutory Compliance Status */}
-            <div className="rounded-xl border border-border bg-card overflow-hidden">
-              <div className="flex items-center justify-between border-b border-border px-5 py-3.5 bg-muted/30">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-primary" />
-                  <h2 className="text-sm font-semibold">Statutory Status (India)</h2>
+            <div className="rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] overflow-hidden shadow-none">
+              <div className="flex items-center justify-between border-b border-[#f5f1ec] dark:border-[#1a1a1e] px-6 py-4 bg-[#f5f1ec]/30 dark:bg-[#09090b]/30">
+                <div className="flex items-center gap-2.5">
+                  <ShieldCheck className="h-4 w-4 text-[#111111] dark:text-[#f4f4f5]" />
+                  <h2 className="text-[11px] font-bold uppercase tracking-widest text-[#111111] dark:text-[#f4f4f5]">Statutory Status (India)</h2>
                 </div>
-                <Link href="/dashboard/hr/compliance/india" className="text-xs text-primary hover:underline font-medium">Manage Compliance</Link>
+                <Link href="/dashboard/hr/compliance/india" className="text-[11px] font-bold text-[#4f46e5] dark:text-[#818cf8] hover:underline uppercase tracking-wider">Manage Compliance</Link>
               </div>
-              <div className="p-5">
+              <div className="p-6">
                 {loading ? (
-                  <div className="flex h-24 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+                  <div className="flex h-32 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-[#7b7b78] dark:text-[#71717a]" /></div>
                 ) : statutoryData ? (
-                  <div className="grid gap-6 sm:grid-cols-3">
-                    <div className="space-y-3">
+                  <div className="grid gap-8 sm:grid-cols-3">
+                    <div className="space-y-4">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-muted-foreground">PAN Records</span>
-                        <span className="text-xs font-bold">{statutoryData?.panRecords?.pct ?? 0}%</span>
+                        <span className="text-[11px] font-bold uppercase tracking-tight text-[#7b7b78] dark:text-[#71717a]">PAN Records</span>
+                        <span className="text-sm font-bold text-[#111111] dark:text-[#f4f4f5]">{statutoryData?.panRecords?.pct ?? 0}%</span>
                       </div>
-                      <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-blue-500 transition-all" style={{ width: `${statutoryData?.panRecords?.pct ?? 0}%` }} />
+                      <div className="h-1.5 w-full bg-[#f5f1ec] dark:bg-[#09090b] border border-[#d3cec6] dark:border-[#27272a] rounded-full overflow-hidden p-[1px]">
+                        <div className="h-full bg-blue-600 rounded-full transition-all duration-500" style={{ width: `${statutoryData?.panRecords?.pct ?? 0}%` }} />
                       </div>
-                      <p className="text-[10px] text-muted-foreground">{statutoryData?.panRecords?.filled ?? 0} of {statutoryData?.panRecords?.total ?? 0} employees filled</p>
+                      <p className="text-[10px] text-[#626260] dark:text-[#a1a1aa] font-medium italic">{statutoryData?.panRecords?.filled ?? 0} of {statutoryData?.panRecords?.total ?? 0} employees filled</p>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-muted-foreground">PF Nominations</span>
-                        <span className="text-xs font-bold">{statutoryData?.pfNominations?.pct ?? 0}%</span>
+                        <span className="text-[11px] font-bold uppercase tracking-tight text-[#7b7b78] dark:text-[#71717a]">PF Nominations</span>
+                        <span className="text-sm font-bold text-[#111111] dark:text-[#f4f4f5]">{statutoryData?.pfNominations?.pct ?? 0}%</span>
                       </div>
-                      <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-emerald-500 transition-all" style={{ width: `${statutoryData?.pfNominations?.pct ?? 0}%` }} />
+                      <div className="h-1.5 w-full bg-[#f5f1ec] dark:bg-[#09090b] border border-[#d3cec6] dark:border-[#27272a] rounded-full overflow-hidden p-[1px]">
+                        <div className="h-full bg-emerald-600 rounded-full transition-all duration-500" style={{ width: `${statutoryData?.pfNominations?.pct ?? 0}%` }} />
                       </div>
-                      <p className="text-[10px] text-muted-foreground">{statutoryData?.pfNominations?.filled ?? 0} of {statutoryData?.pfNominations?.total ?? 0} employees filled</p>
+                      <p className="text-[10px] text-[#626260] dark:text-[#a1a1aa] font-medium italic">{statutoryData?.pfNominations?.filled ?? 0} of {statutoryData?.pfNominations?.total ?? 0} employees filled</p>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-muted-foreground">TDS Declarations</span>
-                        <span className="text-xs font-bold">{statutoryData?.tdsDeclarations?.pct ?? 0}%</span>
+                        <span className="text-[11px] font-bold uppercase tracking-tight text-[#7b7b78] dark:text-[#71717a]">TDS Declarations</span>
+                        <span className="text-sm font-bold text-[#111111] dark:text-[#f4f4f5]">{statutoryData?.tdsDeclarations?.pct ?? 0}%</span>
                       </div>
-                      <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-orange-500 transition-all" style={{ width: `${statutoryData?.tdsDeclarations?.pct ?? 0}%` }} />
+                      <div className="h-1.5 w-full bg-[#f5f1ec] dark:bg-[#09090b] border border-[#d3cec6] dark:border-[#27272a] rounded-full overflow-hidden p-[1px]">
+                        <div className="h-full bg-orange-600 rounded-full transition-all duration-500" style={{ width: `${statutoryData?.tdsDeclarations?.pct ?? 0}%` }} />
                       </div>
-                      <p className="text-[10px] text-muted-foreground">{statutoryData?.tdsDeclarations?.filled ?? 0} of {statutoryData?.tdsDeclarations?.total ?? 0} submitted</p>
+                      <p className="text-[10px] text-[#626260] dark:text-[#a1a1aa] font-medium italic">{statutoryData?.tdsDeclarations?.filled ?? 0} of {statutoryData?.tdsDeclarations?.total ?? 0} submitted</p>
                     </div>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-6 text-center text-muted-foreground">
-                    <AlertCircle className="h-8 w-8 mb-2 opacity-20" />
-                    <p className="text-xs">No statutory data available yet.</p>
+                  <div className="flex flex-col items-center justify-center py-10 text-center">
+                    <div className="h-12 w-12 rounded-full bg-[#f5f1ec] dark:bg-[#09090b] border border-[#d3cec6] dark:border-[#27272a] flex items-center justify-center mb-4">
+                      <AlertCircle className="h-6 w-6 text-[#7b7b78] dark:text-[#71717a] opacity-40" />
+                    </div>
+                    <p className="text-xs font-semibold text-[#7b7b78] dark:text-[#71717a]">No statutory data available yet.</p>
                   </div>
                 )}
               </div>
             </div>
 
             {/* Quick Actions */}
-            <div className="rounded-xl border border-border bg-card">
-              <div className="flex items-center gap-2 border-b border-border px-5 py-3.5">
-                <h2 className="text-sm font-semibold">Quick Actions</h2>
+            <div className="rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] overflow-hidden shadow-none">
+              <div className="flex items-center gap-2.5 border-b border-[#f5f1ec] dark:border-[#1a1a1e] px-6 py-4 bg-[#f5f1ec]/30 dark:bg-[#09090b]/30">
+                <h2 className="text-[11px] font-bold uppercase tracking-widest text-[#111111] dark:text-[#f4f4f5]">HR Operations</h2>
               </div>
-              <div className="p-5 grid gap-4 sm:grid-cols-2">
+              <div className="p-6 grid gap-5 sm:grid-cols-2">
                 {quickActions.map((action) => {
                   const Icon = action.icon;
                   return (
                     <Link
                       key={action.title}
                       href={action.href}
-                      className="flex items-start gap-4 rounded-lg border border-border bg-card p-4 transition-all hover:bg-muted/50"
+                      className="group flex items-start gap-4 rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] p-4 transition-all hover:border-[#111111] dark:hover:border-[#f4f4f5]"
                     >
-                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${action.color}`}>
+                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${action.color} shadow-sm transition-transform group-hover:scale-105`}>
                         <Icon className="h-5 w-5" />
                       </div>
-                      <div>
-                        <h3 className="font-medium text-sm">{action.title}</h3>
-                        <p className="text-xs text-muted-foreground mt-0.5">{action.desc}</p>
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-sm text-[#111111] dark:text-[#f4f4f5] tracking-tight group-hover:text-[#4f46e5] transition-colors truncate">{action.title}</h3>
+                        <p className="text-xs text-[#626260] dark:text-[#a1a1aa] mt-0.5 line-clamp-1">{action.desc}</p>
                       </div>
                     </Link>
                   );
@@ -290,17 +294,17 @@ export default function HrOverviewPage() {
           </div>
 
           {/* HR Notices */}
-          <div className="rounded-xl border border-border bg-card h-fit">
-            <div className="flex items-center gap-2 border-b border-border px-5 py-3.5">
-              <h2 className="text-sm font-semibold">Announcements</h2>
+          <div className="rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] h-fit shadow-none overflow-hidden">
+            <div className="flex items-center gap-2.5 border-b border-[#f5f1ec] dark:border-[#1a1a1e] px-6 py-4 bg-[#f5f1ec]/30 dark:bg-[#09090b]/30">
+              <h2 className="text-[11px] font-bold uppercase tracking-widest text-[#111111] dark:text-[#f4f4f5]">Announcements</h2>
             </div>
-            <div className="p-5 flex flex-col items-center justify-center text-center h-[200px]">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                <CalendarCheck className="h-6 w-6 text-primary" />
+            <div className="p-10 flex flex-col items-center justify-center text-center h-[280px]">
+              <div className="h-16 w-16 rounded-xl bg-[#f5f1ec] dark:bg-[#09090b] border border-[#d3cec6] dark:border-[#27272a] flex items-center justify-center mb-5 shadow-sm">
+                <CalendarCheck className="h-8 w-8 text-[#7b7b78] dark:text-[#71717a]" />
               </div>
-              <p className="text-sm font-medium">No announcements</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Company-wide notices will appear here.
+              <p className="font-semibold text-sm text-[#111111] dark:text-[#f4f4f5] tracking-tight">No announcements</p>
+              <p className="text-xs text-[#626260] dark:text-[#a1a1aa] mt-2 max-w-[200px] leading-relaxed italic">
+                Company-wide notices and updates will appear here.
               </p>
             </div>
           </div>

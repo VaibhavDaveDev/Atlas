@@ -1,17 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
-import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
+import { Logo } from '@/components/common/Logo';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
-export default function LoginPage() {
+function LoginForm() {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -62,12 +62,148 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-muted/30 flex flex-col">
+    <div className="w-full max-w-sm animate-fade-in">
+      {/* Logo & Header */}
+      <div className="mb-8 flex flex-col items-center text-center">
+        <Logo variant="mark" width={44} height={44} className="mb-4" />
+        <h1 className="text-2xl font-semibold tracking-[-0.02em] text-[#111111] dark:text-[#f4f4f5]">
+          Welcome back
+        </h1>
+        <p className="mt-1.5 text-sm text-[#626260] dark:text-[#a1a1aa]">
+          Sign in to your Atlas workspace
+        </p>
+      </div>
+
+      {/* Card */}
+      <div className="rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] p-6 shadow-none">
+        {/* Error */}
+        {error && (
+          <div className="mb-4 rounded-lg border border-red-200/50 bg-red-50/50 dark:bg-red-950/20 dark:border-red-900/30 px-4 py-3 text-sm text-red-600 dark:text-red-400">
+            {error}
+          </div>
+        )}
+
+        <div className="space-y-4">
+          <Button 
+            type="button" 
+            variant="outline" 
+            className="w-full bg-[#ffffff] hover:bg-[#f5f1ec] dark:bg-[#121214] dark:hover:bg-[#1c1c1f] border-[#d3cec6] dark:border-[#27272a] text-[#111111] dark:text-[#f4f4f5] font-medium transition-colors"
+            onClick={handleGoogleLogin}
+            disabled={isLoading}
+          >
+            <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512">
+              <path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"></path>
+            </svg>
+            Sign in with Google
+          </Button>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-[#e5e2db] dark:border-[#232326]" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-[#ffffff] dark:bg-[#121214] px-2 text-[#7b7b78] dark:text-[#71717a]">
+                Or continue with email
+              </span>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Email */}
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-sm font-medium text-[#111111] dark:text-[#f4f4f5]">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@company.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={isLoading}
+                autoComplete="email"
+                autoFocus
+                className="bg-transparent border-[#d3cec6] dark:border-[#27272a] focus-visible:ring-[#111111] dark:focus-visible:ring-[#f4f4f5]"
+              />
+            </div>
+
+            {/* Password */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-sm font-medium text-[#111111] dark:text-[#f4f4f5]">Password</Label>
+                <Link
+                  href="/forgot-password"
+                  className="text-xs text-[#7b7b78] dark:text-[#a1a1aa] hover:text-[#111111] dark:hover:text-[#f4f4f5] transition-colors"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  autoComplete="current-password"
+                  className="pr-10 bg-transparent border-[#d3cec6] dark:border-[#27272a] focus-visible:ring-[#111111] dark:focus-visible:ring-[#f4f4f5]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#7b7b78] dark:text-[#71717a] hover:text-[#111111] dark:hover:text-[#e4e4e7] transition-colors"
+                  tabIndex={-1}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            <Button 
+              type="submit" 
+              className="w-full bg-[#111111] hover:bg-[#222222] text-[#ffffff] dark:bg-[#f4f4f5] dark:hover:bg-[#e4e4e7] dark:text-[#09090b] font-semibold transition-all rounded-md" 
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing in…
+                </>
+              ) : 'Sign in'}
+            </Button>
+          </form>
+        </div>
+      </div>
+
+      {/* Footer link */}
+      <p className="mt-6 text-center text-sm text-[#626260] dark:text-[#a1a1aa]">
+        Don&apos;t have an account?{' '}
+        <Link 
+          href="/register" 
+          className="font-semibold text-[#111111] dark:text-[#f4f4f5] hover:underline"
+        >
+          Create one
+        </Link>
+      </p>
+    </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <div className="min-h-screen bg-[#f5f1ec] dark:bg-[#09090b] flex flex-col justify-between transition-colors duration-300">
       {/* Top bar */}
       <div className="flex items-center justify-between px-6 py-4">
-        <Button variant="ghost" size="sm" asChild>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          asChild 
+          className="text-[#626260] dark:text-[#a1a1aa] hover:bg-[#e8e4dc] dark:hover:bg-[#18181b] hover:text-[#111111] dark:hover:text-[#f4f4f5] transition-colors"
+        >
           <Link href="/">
-            <ArrowLeft className="h-4 w-4 mr-1" />
+            <ArrowLeft className="h-4 w-4 mr-1.5" />
             Back
           </Link>
         </Button>
@@ -75,130 +211,18 @@ export default function LoginPage() {
       </div>
 
       {/* Centered form */}
-      <div className="flex flex-1 items-center justify-center px-4 pb-16">
-        <div className="w-full max-w-sm animate-fade-in">
-          {/* Logo */}
-          <div className="mb-8 flex flex-col items-center text-center">
-            <Image
-              src="/images/logo-mark-light-nobg.PNG"
-              alt="Atlas ERP"
-              width={40}
-              height={40}
-              className="mb-4 block dark:hidden"
-              priority
-            />
-            <Image
-              src="/images/logo-mark-dark-nobg.PNG"
-              alt="Atlas ERP"
-              width={40}
-              height={40}
-              className="mb-4 hidden dark:block"
-              priority
-            />
-            <h1 className="text-2xl font-bold tracking-tight">Welcome back</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Sign in to your Atlas workspace</p>
+      <div className="flex flex-1 items-center justify-center px-4 pb-20 pt-8">
+        <Suspense fallback={
+          <div className="flex h-64 items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-[#111111] dark:text-[#f4f4f5]" />
           </div>
-
-          {/* Card */}
-          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-            {/* Error */}
-            {error && (
-              <div className="mb-4 rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-                {error}
-              </div>
-            )}
-
-            <div className="space-y-4">
-              <Button 
-                type="button" 
-                variant="outline" 
-                className="w-full relative bg-background hover:bg-muted/50"
-                onClick={handleGoogleLogin}
-                disabled={isLoading}
-              >
-                <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512">
-                  <path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"></path>
-                </svg>
-                Sign in with Google
-              </Button>
-
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-border" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">Or continue with email</span>
-                </div>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Email */}
-              <div className="space-y-1.5">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@company.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  disabled={isLoading}
-                  autoComplete="email"
-                  autoFocus
-                />
-              </div>
-
-              {/* Password */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
-                  <Link
-                    href="/forgot-password"
-                    className="text-xs text-muted-foreground hover:text-primary transition-colors"
-                  >
-                    Forgot password?
-                  </Link>
-                </div>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    disabled={isLoading}
-                    autoComplete="current-password"
-                    className="pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    tabIndex={-1}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <Button type="submit" className="w-full" isLoading={isLoading} disabled={isLoading}>
-                {isLoading ? 'Signing in…' : 'Sign in'}
-              </Button>
-            </form>
-            </div>
-          </div>
-
-          {/* Footer link */}
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            Don&apos;t have an account?{' '}
-            <Link href="/register" className="font-medium text-primary hover:underline">
-              Create one
-            </Link>
-          </p>
-        </div>
+        }>
+          <LoginForm />
+        </Suspense>
       </div>
+
+      {/* Empty footer area for visual balance */}
+      <div className="py-4" />
     </div>
   );
 }

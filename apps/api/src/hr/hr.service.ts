@@ -529,10 +529,15 @@ export class HrService {
           where: {
             employeeId: emp.id,
             attendanceDate: { gte: periodStart, lte: periodEnd },
+            status: 'PRESENT',
           },
+          select: { attendanceDate: true },
         });
 
-        const presentDays = attendance.filter(a => a.status === 'PRESENT').length;
+        // Count distinct dates (employee may have multiple sessions per day)
+        const presentDays = new Set(
+          attendance.map(a => a.attendanceDate.toISOString().slice(0, 10))
+        ).size;
         const paymentDays = presentDays;
 
         // 5. Evaluate Components

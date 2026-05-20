@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { getOnboardingTemplates, createOnboardingTemplate, getEmployees, initiateOnboarding, getOnboardingTasks, updateOnboardingTask } from '@/lib/hr';
-import { Loader2, Plus, UserPlus, CheckCircle2, Circle, ClipboardList, Trash2 } from 'lucide-react';
+import { Loader2, Plus, UserPlus, CheckCircle2, Circle, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

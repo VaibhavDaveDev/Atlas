@@ -95,6 +95,33 @@ docker rm -f atlas-redis
 docker logs atlas-redis
 ```
 
+### Logging & Monitoring (Loki & Grafana)
+
+Atlas uses **Grafana Loki** for log aggregation and **Grafana** for visualization. This allows you to view application logs in a centralized dashboard.
+
+#### 1. Start the Logging Stack
+Run the following command from the root directory to start Loki and Grafana:
+
+```bash
+docker-compose -f docker-compose.logging.yml up -d
+```
+
+- **Loki:** Runs on port `3100` (Log aggregator)
+- **Grafana:** Runs on port `3001` (Visualization Dashboard)
+
+#### 2. Configure Environment
+Update your `apps/api/.env` file to enable Loki integration:
+
+```env
+LOKI_ENABLED=true
+LOKI_URL=http://localhost:3100
+```
+
+#### 3. Access Grafana
+- URL: `http://localhost:3001`
+- Default Credentials: `admin` / `admin`
+- **Data Source:** Loki should be automatically configured (or add it manually pointing to `http://loki:3100`).
+
 ---
 
 ## Project Setup
@@ -239,6 +266,38 @@ GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-client-secret
 GOOGLE_REDIRECT_URI=http://localhost:3001/api/v1/auth/google/callback
 ```
+
+### **Observability (Logging with Grafana Loki - Optional):**
+
+Atlas ERP is configured to send logs to Grafana Loki. You can use a local Loki instance or Grafana Cloud.
+
+**Using Grafana Cloud (Recommended for Production):**
+
+1. Sign up for Grafana Cloud at: https://grafana.com/products/cloud/ read this: https://grafana.com/docs/grafana/latest/datasources/loki/configure-loki-data-source/ to create a loki instance.
+2. From your Grafana Cloud dashboard, navigate to **Connections > Add new connection**.
+3. Search for **Loki** and click on it.
+4. Click **Create a Loki data source**.
+5. You will need your **URL**, **User ID**, and **API Key (Access Token)**. These can be found in your Grafana Cloud Portal under the **Loki** card by clicking **Details**.
+6. The **API Key** should have the `MetricsPublisher` role.
+7. Add these to `apps/api/.env`:
+
+```env
+# Logging (Grafana Loki)
+LOKI_ENABLED=true
+LOKI_URL="https://logs-prod-xxx.grafana.net"
+LOKI_USER="your-loki-user-id"
+LOKI_PASSWORD="your-grafana-cloud-api-token"
+```
+
+**Viewing Logs in Grafana:**
+1. Go to your Grafana instance.
+2. Navigate to **Explore** (compass icon).
+3. Select the **Loki** data source from the dropdown.
+4. Use a query like `{app="atlas-api"}` to see your logs.
+
+---
+
+**Note:** If `LOKI_ENABLED` is true, application logs will be streamed to Grafana Cloud. You can view them in Grafana by going to "Explore" and selecting the Loki datasource.
 
 #### 2.3 Web Environment
 ```bash

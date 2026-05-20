@@ -8,39 +8,36 @@ import { AppShell } from '@/components/layout/AppShell';
 export default function NotFound() {
   return (
     <AppShell>
-      <div className="flex flex-col items-center justify-center min-h-[80vh] px-4 text-center">
+      <div className="flex flex-col items-center justify-center min-h-[80vh] px-4 text-center animate-fade-in">
         {/* Decorative Element */}
-        <div className="relative mb-8">
-          <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full scale-150 animate-pulse" />
-          <div className="relative bg-card border border-border rounded-3xl p-8 shadow-2xl">
-            <div className="h-24 w-24 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-              <FileQuestion className="h-12 w-12 text-primary" />
+        <div className="relative mb-10">
+          <div className="relative bg-[#ffffff] dark:bg-[#121214] border border-[#d3cec6] dark:border-[#27272a] rounded-[32px] p-10 shadow-sm">
+            <div className="h-20 w-20 rounded-2xl bg-[#f5f1ec] dark:bg-[#09090b] border border-[#d3cec6] dark:border-[#27272a] flex items-center justify-center mx-auto mb-6 shadow-inner">
+              <FileQuestion className="h-10 w-10 text-[#7b7b78] dark:text-[#71717a]" />
             </div>
-            <h1 className="text-8xl font-black tracking-tighter text-foreground">404</h1>
+            <h1 className="text-7xl font-semibold tracking-[-0.05em] text-[#111111] dark:text-[#f4f4f5]">404</h1>
           </div>
         </div>
 
-        <h2 className="text-3xl font-bold tracking-tight mb-3">Page Not Found</h2>
-        <p className="text-muted-foreground max-w-[450px] mb-10 leading-relaxed">
-          The page you're looking for might have been moved, deleted, or never existed in this workspace.
+        <h2 className="text-2xl font-semibold tracking-[-0.03em] text-[#111111] dark:text-[#f4f4f5] mb-3">Page Not Found</h2>
+        <p className="text-[#626260] dark:text-[#a1a1aa] max-w-[420px] mb-10 leading-relaxed text-sm font-medium">
+          The page you&apos;re looking for might have been moved, deleted, or never existed in this workspace.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center gap-4">
-          <Button asChild variant="default" size="lg" className="rounded-xl h-12 px-8">
+          <Button asChild size="lg" className="rounded-xl h-11 px-8 bg-[#111111] hover:bg-[#222222] text-[#ffffff] dark:bg-[#f4f4f5] dark:hover:bg-[#e4e4e7] dark:text-[#09090b] font-bold shadow-sm">
             <Link href="/dashboard">
-              <Home className="mr-2 h-4 w-4" /> Back to Dashboard
+              <Home className="mr-2.5 h-4 w-4" /> Back to Dashboard
             </Link>
           </Button>
-          <Button asChild variant="outline" size="lg" className="rounded-xl h-12 px-8">
-            <button onClick={() => window.history.back()}>
-              <ArrowLeft className="mr-2 h-4 w-4" /> Go Back
-            </button>
+          <Button size="lg" variant="ghost" className="rounded-xl h-11 px-8 text-[#626260] dark:text-[#a1a1aa] hover:text-[#111111] dark:hover:text-[#f4f4f5] hover:bg-[#e8e4dc] dark:hover:bg-[#18181b] font-bold transition-all" onClick={() => window.history.back()}>
+            <ArrowLeft className="mr-2.5 h-4 w-4" /> Go Back
           </Button>
         </div>
 
         {/* Quick Links */}
-        <div className="mt-16 pt-8 border-t border-border w-full max-w-2xl">
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-6">Popular Pages</p>
+        <div className="mt-20 pt-10 border-t border-[#d3cec6] dark:border-[#27272a] w-full max-w-2xl opacity-80">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#7b7b78] dark:text-[#71717a] mb-6">Popular Modules</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
               { label: 'HR', href: '/dashboard/hr' },
@@ -51,7 +48,7 @@ export default function NotFound() {
               <Link
                 key={link.label}
                 href={link.href}
-                className="p-3 rounded-xl border border-border bg-card hover:bg-muted transition-colors text-sm font-medium"
+                className="p-4 rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] hover:border-[#111111] dark:hover:border-[#f4f4f5] transition-all text-xs font-bold text-[#111111] dark:text-[#f4f4f5] shadow-sm uppercase tracking-wider"
               >
                 {link.label}
               </Link>
@@ -59,7 +56,7 @@ export default function NotFound() {
           </div>
         </div>
 
-        <div className="mt-12 flex items-center gap-2 text-muted-foreground/40 text-xs">
+        <div className="mt-14 flex items-center gap-2 text-[#7b7b78] dark:text-[#71717a] text-[10px] font-medium uppercase tracking-tighter italic">
           <Search className="h-3 w-3" />
           <span>Searching for something specific? Contact your administrator.</span>
         </div>
