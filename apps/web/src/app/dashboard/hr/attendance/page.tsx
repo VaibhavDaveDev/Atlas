@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Clock, Calendar, CheckCircle2, XCircle, LogIn, LogOut, Coffee } from 'lucide-react';
+import { Clock, Calendar, CheckCircle2, LogIn, LogOut, Coffee } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';

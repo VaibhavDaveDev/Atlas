@@ -1,4 +1,4 @@
-import { PrismaClient, WorkspaceStatus, WorkspaceRole, SalaryComponentType, SalaryCalculationType, EmployeeStatus } from '@atlas/database';
+import { PrismaClient, WorkspaceStatus, SalaryComponentType, SalaryCalculationType, EmployeeStatus } from '@atlas/database';
 import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -24,6 +24,26 @@ async function main() {
     },
   });
 
+  // 1.5 Create default Roles
+  console.log('Creating default roles...');
+  const ownerRole = await prisma.role.upsert({
+    where: { workspaceId_name: { workspaceId: workspace.id, name: 'OWNER' } },
+    update: {},
+    create: { workspaceId: workspace.id, name: 'OWNER', description: 'Full Workspace Access' },
+  });
+  
+  const adminRole = await prisma.role.upsert({
+    where: { workspaceId_name: { workspaceId: workspace.id, name: 'ADMIN' } },
+    update: {},
+    create: { workspaceId: workspace.id, name: 'ADMIN', description: 'Administrative Access' },
+  });
+  
+  const userRole = await prisma.role.upsert({
+    where: { workspaceId_name: { workspaceId: workspace.id, name: 'USER' } },
+    update: {},
+    create: { workspaceId: workspace.id, name: 'USER', description: 'Standard User Access' },
+  });
+
   // 2. Create the Owner (Admin) User
   console.log('Creating Admin User (admin@atlas.com)...');
   const admin = await prisma.authUser.upsert({
@@ -46,7 +66,7 @@ async function main() {
     create: {
       workspaceId: workspace.id,
       userId: admin.id,
-      role: WorkspaceRole.OWNER,
+      roleId: ownerRole.id,
     },
   });
 
@@ -71,7 +91,7 @@ async function main() {
     create: {
       workspaceId: workspace.id,
       userId: hrManager.id,
-      role: WorkspaceRole.ADMIN, // Giving HR full workspace access
+      roleId: adminRole.id, // Giving HR full workspace access
     },
   });
 
@@ -96,7 +116,7 @@ async function main() {
     create: {
       workspaceId: workspace.id,
       userId: employee.id,
-      role: WorkspaceRole.USER,
+      roleId: userRole.id,
     },
   });
 
@@ -149,6 +169,52 @@ async function main() {
       create: { ...comp, workspaceId: workspace.id },
     });
   }
+
+  // 8. Seed System Permissions (Global)
+  console.log('Seeding Global Permissions...');
+  const resources = [
+    'leads', 'deals', 'contacts', 'products',
+    'employees', 'departments', 'designations', 'attendance', 'leave', 'payroll',
+    'accounts', 'invoices', 'payments', 'vendors',
+    'projects', 'tasks',
+    'workspace', 'roles', 'settings'
+  ];
+  
+  const actions = ['create', 'read', 'update', 'delete', 'manage'];
+  const scopes = ['own', 'department', 'all'];
+
+  let permissionCount = 0;
+  for (const resource of resources) {
+    for (const action of actions) {
+      for (const scope of scopes) {
+        // Skip some non-sensical combinations
+        if (['workspace', 'settings', 'roles'].includes(resource) && scope !== 'all') continue;
+        
+        const existing = await prisma.permission.findFirst({
+          where: {
+            workspaceId: null,
+            resource,
+            action,
+            scope
+          }
+        });
+
+        if (!existing) {
+          await prisma.permission.create({
+            data: {
+              workspaceId: null,
+              resource,
+              action,
+              scope,
+              description: `${action.charAt(0).toUpperCase() + action.slice(1)} ${resource} with ${scope} scope`
+            }
+          });
+          permissionCount++;
+        }
+      }
+    }
+  }
+  console.log(`✅ Seeded ${permissionCount} global permissions`);
 
   console.log('✅ Seeding completed successfully!');
   console.log('----------------------------------------------------');

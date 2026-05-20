@@ -13,9 +13,11 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
     ...options.headers,
   });
 
+  const headers = getHeaders(token);
+
   let response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
-    headers: getHeaders(token),
+    headers,
   });
 
   if (response.status === 401) {
@@ -29,7 +31,7 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
           // Retry request
           response = await fetch(`${API_BASE}${endpoint}`, {
             ...options,
-            headers: getHeaders(token),
+            headers: getHeaders(token as string),
           });
         }
       } catch (e) {

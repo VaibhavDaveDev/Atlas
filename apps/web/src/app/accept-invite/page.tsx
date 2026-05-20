@@ -5,13 +5,12 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { acceptInvite, tokenStorage } from '@/lib/auth';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, CheckCircle, XCircle, LogIn } from 'lucide-react';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { Logo } from '@/components/common/Logo';
 
 type Stage = 'loading' | 'success' | 'error' | 'unauthenticated';
 
-// Inner component using useSearchParams — must be inside <Suspense>
 function AcceptInviteInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -64,98 +63,123 @@ function AcceptInviteInner() {
   }, [authLoading, user, token, router]);
 
   return (
-    <div className="min-h-screen bg-muted/30 flex items-center justify-center px-4">
-      <div className="w-full max-w-sm text-center animate-fade-in">
-        {/* Logo */}
-        <div className="flex justify-center mb-6">
-          <Image
-            src="/images/logo-mark-light-nobg.PNG"
-            alt="Atlas ERP"
-            width={40}
-            height={40}
-            className="block dark:hidden"
-            priority
-          />
-          <Image
-            src="/images/logo-mark-dark-nobg.PNG"
-            alt="Atlas ERP"
-            width={40}
-            height={40}
-            className="hidden dark:block"
-            priority
-          />
-        </div>
+    <div className="min-h-screen bg-[#f5f1ec] dark:bg-[#09090b] flex flex-col justify-between transition-colors duration-300">
+      {/* Top spacing */}
+      <div className="py-4" />
 
-        {/* Loading */}
-        {stage === 'loading' && (
-          <div className="space-y-4">
-            <Loader2 className="mx-auto h-10 w-10 animate-spin text-primary" />
-            <h1 className="text-xl font-bold">Accepting your invite…</h1>
-            <p className="text-sm text-muted-foreground">Please wait a moment.</p>
-          </div>
-        )}
+      {/* Centered content */}
+      <div className="flex flex-1 items-center justify-center px-4 pb-20 pt-8">
+        <div className="w-full max-w-sm text-center animate-fade-in">
+          {/* Logo */}
+          <Logo variant="mark" width={44} height={44} className="mx-auto mb-6" />
 
-        {/* Success */}
-        {stage === 'success' && (
-          <div className="space-y-4">
-            <CheckCircle className="mx-auto h-12 w-12 text-green-500" />
-            <h1 className="text-xl font-bold">You&apos;re in!</h1>
-            <p className="text-sm text-muted-foreground">
-              {workspaceName ? `Welcome to ${workspaceName}.` : 'Welcome to your new workspace.'}{' '}
-              Redirecting you now…
-            </p>
-          </div>
-        )}
+          {/* Loading Stage */}
+          {stage === 'loading' && (
+            <div className="w-full mt-6 rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] p-8 text-center shadow-none flex flex-col items-center justify-center space-y-4">
+              <Loader2 className="h-8 w-8 animate-spin text-[#111111] dark:text-[#f4f4f5]" />
+              <h1 className="text-xl font-semibold tracking-[-0.02em] text-[#111111] dark:text-[#f4f4f5]">
+                Accepting your invite…
+              </h1>
+              <p className="text-sm text-[#626260] dark:text-[#a1a1aa]">
+                Please wait a moment.
+              </p>
+            </div>
+          )}
 
-        {/* Error */}
-        {stage === 'error' && (
-          <div className="space-y-4">
-            <XCircle className="mx-auto h-12 w-12 text-destructive" />
-            <h1 className="text-xl font-bold">Couldn&apos;t accept invite</h1>
-            <p className="text-sm text-muted-foreground">{errorMessage}</p>
-            <Button asChild variant="outline" size="sm">
-              <Link href="/select-workspace">Go to workspace picker</Link>
-            </Button>
-          </div>
-        )}
+          {/* Success Stage */}
+          {stage === 'success' && (
+            <div className="w-full mt-6 rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] p-8 text-center shadow-none flex flex-col items-center justify-center space-y-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/30">
+                <CheckCircle className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <h1 className="text-xl font-semibold tracking-[-0.02em] text-[#111111] dark:text-[#f4f4f5]">
+                You&apos;re in!
+              </h1>
+              <p className="text-sm text-[#626260] dark:text-[#a1a1aa] leading-relaxed">
+                {workspaceName ? `Welcome to ${workspaceName}.` : 'Welcome to your new workspace.'}
+              </p>
+              <div className="flex items-center gap-2 text-xs text-[#7b7b78] dark:text-[#71717a] pt-2">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Redirecting you now…
+              </div>
+            </div>
+          )}
 
-        {/* Not logged in */}
-        {stage === 'unauthenticated' && (
-          <div className="space-y-4">
-            <LogIn className="mx-auto h-12 w-12 text-primary" />
-            <h1 className="text-xl font-bold">Sign in to accept this invite</h1>
-            <p className="text-sm text-muted-foreground">
-              You need to be logged in to accept a workspace invite. Your invite token has been
-              saved — you&apos;ll be taken back here after you sign in.
-            </p>
-            <Button asChild size="sm" className="w-full">
-              <Link href={`/login?redirect=/accept-invite?token=${token}`}>
-                Sign in and continue
-              </Link>
-            </Button>
-            <p className="text-xs text-muted-foreground">
-              Don&apos;t have an account?{' '}
-              <Link
-                href={`/register?redirect=/accept-invite?token=${token}`}
-                className="text-primary hover:underline"
+          {/* Error Stage */}
+          {stage === 'error' && (
+            <div className="w-full mt-6 rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] p-6 text-center shadow-none flex flex-col items-center justify-center space-y-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-950/30">
+                <XCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
+              </div>
+              <h1 className="text-xl font-semibold tracking-[-0.02em] text-[#111111] dark:text-[#f4f4f5]">
+                Couldn&apos;t accept invite
+              </h1>
+              <p className="text-sm text-red-600 dark:text-red-400 max-w-xs">
+                {errorMessage}
+              </p>
+              <Button 
+                asChild 
+                variant="outline" 
+                size="sm"
+                className="mt-2 border-[#d3cec6] dark:border-[#27272a] text-[#111111] dark:text-[#f4f4f5] hover:bg-[#e8e4dc] dark:hover:bg-[#18181b]"
               >
-                Create one
-              </Link>
-            </p>
-          </div>
-        )}
+                <Link href="/select-workspace">Go to workspace picker</Link>
+              </Button>
+            </div>
+          )}
+
+          {/* Unauthenticated Stage */}
+          {stage === 'unauthenticated' && (
+            <div className="w-full mt-6 rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] p-6 text-left shadow-none space-y-6">
+              <div className="text-center space-y-2">
+                <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] shadow-none">
+                  <LogIn className="h-6 w-6 text-[#626260] dark:text-[#a1a1aa]" />
+                </div>
+                <h1 className="text-xl font-semibold tracking-[-0.02em] text-[#111111] dark:text-[#f4f4f5]">
+                  Sign in to accept this invite
+                </h1>
+                <p className="text-sm text-[#626260] dark:text-[#a1a1aa] leading-relaxed">
+                  You need to be logged in to accept a workspace invite. We&apos;ve saved your invite details and will redirect you back here.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <Button 
+                  asChild 
+                  className="w-full bg-[#111111] hover:bg-[#222222] text-[#ffffff] dark:bg-[#f4f4f5] dark:hover:bg-[#e4e4e7] dark:text-[#09090b] font-semibold transition-all rounded-md"
+                >
+                  <Link href={`/login?redirect=/accept-invite?token=${token}`}>
+                    Sign in and continue
+                  </Link>
+                </Button>
+                
+                <p className="text-center text-xs text-[#7b7b78] dark:text-[#71717a]">
+                  Don&apos;t have an account?{' '}
+                  <Link
+                    href={`/register?redirect=/accept-invite?token=${token}`}
+                    className="font-semibold text-[#111111] dark:text-[#f4f4f5] hover:underline"
+                  >
+                    Create one
+                  </Link>
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Bottom spacing */}
+      <div className="py-4" />
     </div>
   );
 }
 
-// Outer page wraps the inner component in Suspense (required by Next.js 15 for useSearchParams)
 export default function AcceptInvitePage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <div className="min-h-screen bg-[#f5f1ec] dark:bg-[#09090b] flex items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-[#111111] dark:text-[#f4f4f5]" />
         </div>
       }
     >

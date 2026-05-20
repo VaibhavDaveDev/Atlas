@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  loki:
+    image: grafana/loki:2.9.1
+    container_name: atlas-loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./loki-data:/loki
+    networks:
+      - atlas-network
+
+  grafana:
+    image: grafana/grafana:10.1.5
+    container_name: atlas-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./grafana-data:/var/lib/grafana
+    depends_on:
+      - loki
+    networks:
+      - atlas-network
+
+networks:
+  atlas-network:
+    driver: bridge

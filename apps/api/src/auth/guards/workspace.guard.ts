@@ -34,14 +34,16 @@ export class WorkspaceGuard implements CanActivate {
     }
 
     // Check if user is a member of the workspace
-    const membership = await this.prismaService.workspaceMember.findFirst({
+    const membership = await this.prismaService.workspaceMember.findUnique({
       where: {
-        workspaceId,
-        userId: user.userId,
-        isActive: true,
+        workspaceId_userId: {
+          workspaceId,
+          userId: user.userId,
+        },
       },
       include: {
         workspace: true,
+        role: true,
       },
     });
 
@@ -56,7 +58,7 @@ export class WorkspaceGuard implements CanActivate {
 
     // Attach workspace info to request
     request.user.workspaceId = workspaceId;
-    request.user.workspaceRole = membership.role;
+    request.user.workspaceRole = membership.role.name;
     request.user.department = membership.department;
 
     return true;

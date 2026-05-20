@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { GoogleOAuthService } from './services/google-oauth.service';
+import { AuthGuard } from '../common/guards/auth.guard';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { LoginDto } from './dto/login.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
@@ -19,32 +20,32 @@ describe('AuthController', () => {
   let controller: AuthController;
 
   const mockAuthService = {
-    create: jest.fn(),
-    verifyEmail: jest.fn(),
-    resendVerificationEmail: jest.fn(),
-    login: jest.fn(),
-    refreshToken: jest.fn(),
-    logout: jest.fn(),
-    logoutAllDevices: jest.fn(),
-    getUserWorkspaces: jest.fn(),
-    selectWorkspace: jest.fn(),
-    forgotPassword: jest.fn(),
-    resetPassword: jest.fn(),
-    getCurrentUser: jest.fn(),
-    requestPasswordChangeOtp: jest.fn(),
-    changePassword: jest.fn(),
+    create: vi.fn(),
+    verifyEmail: vi.fn(),
+    resendVerificationEmail: vi.fn(),
+    login: vi.fn(),
+    refreshToken: vi.fn(),
+    logout: vi.fn(),
+    logoutAllDevices: vi.fn(),
+    getUserWorkspaces: vi.fn(),
+    selectWorkspace: vi.fn(),
+    forgotPassword: vi.fn(),
+    resetPassword: vi.fn(),
+    getCurrentUser: vi.fn(),
+    requestPasswordChangeOtp: vi.fn(),
+    changePassword: vi.fn(),
   };
 
   const mockGoogleOAuthService = {
-    getAuthorizationUrl: jest.fn(),
-    handleCallback: jest.fn(),
+    getAuthorizationUrl: vi.fn(),
+    handleCallback: vi.fn(),
   };
 
   const mockCustomLoggerService = {
-    log: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
+    log: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
   };
 
   beforeEach(async () => {
@@ -64,13 +65,16 @@ describe('AuthController', () => {
           useValue: mockCustomLoggerService,
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(AuthGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<AuthController>(AuthController);
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('should be defined', () => {
@@ -175,7 +179,7 @@ describe('AuthController', () => {
 
   describe('resetPassword', () => {
     it('should reset password', async () => {
-      const dto: ResetPasswordDto = { resetSessionId: 's1', code: '123', newPassword: 'new' };
+      const dto: ResetPasswordDto = { resetSessionId: 's1', code: '123456', newPassword: 'newPassword123!' };
       const req = { ip: '1.1.1.1', headers: { 'user-agent': 'UA' } } as Request;
       await controller.resetPassword(dto, req);
       expect(mockAuthService.resetPassword).toHaveBeenCalled();
@@ -203,7 +207,7 @@ describe('AuthController', () => {
 
   describe('changePassword', () => {
     it('should change password', async () => {
-      const dto: ChangePasswordDto = { code: '123', newPassword: 'new' };
+      const dto: ChangePasswordDto = { otp: '123456', newPassword: 'newPassword123!' };
       const req = { user: { userId: '1' }, ip: '1.1.1.1', headers: { 'user-agent': 'UA' } } as any;
       await controller.changePassword(dto, req);
       expect(mockAuthService.changePassword).toHaveBeenCalled();

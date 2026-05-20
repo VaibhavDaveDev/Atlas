@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import * as authApi from '@/lib/auth';
 import type { User, Workspace } from '@/lib/auth';
+import { toast } from 'sonner';
 
 interface AuthContextType {
   user: User | null;
@@ -92,53 +93,72 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
-    let shouldProceed = true;
+    // Check attendance status first - only if workspace is properly selected
+    if (workspace && workspace.workspaceId) {
+      try {
+        const { getMyAttendance } = await import('@/lib/hr');
+        const res = await getMyAttendance();
 
-    try {
-      // Check attendance status first - only if workspace is properly selected
-      if (workspace && workspace.workspaceId) {
-        try {
-          const { getMyAttendance } = await import('@/lib/hr');
-          const res = await getMyAttendance();
-          if (res?.data && res.data.checkIn && !res.data.checkOut) {
-            const confirmLogout = window.confirm(
-              "You haven't checked out today! Do you want to continue logging out without checking out? Click 'Cancel' to stay and check out."
-            );
-            if (!confirmLogout) {
-              shouldProceed = false;
-              return; // Cancel logout
-            }
-          }
-        } catch (err) {
-          // Ignore "no workspace" or "unauthorized" errors during logout check
-          // as they just mean we can't check attendance, which is fine for logout
-          const errorMessage = err instanceof Error ? err.message : String(err);
-          if (!errorMessage.includes('No workspace selected') && 
-              !errorMessage.includes('status 401') &&
-              !errorMessage.includes('Unauthorized') &&
-              !errorMessage.includes('No token found')) {
-            console.error('Failed to check attendance before logout', err);
-          }
+        // API returns { success: true, data: { isCheckedIn: boolean, ... } }
+        // or sometimes just { isCheckedIn: boolean, ... }
+        const attendanceData = res?.data ?? res;
+        
+        if (attendanceData && attendanceData.isCheckedIn) {
+          // Ask the user via a sonner toast; wait for their choice before continuing
+          const confirmed = await new Promise<boolean>((resolve) => {
+            toast.warning("You're still checked in!", {
+              description: "You haven't checked out today. Log out anyway?",
+              duration: Infinity, // keep it until user acts
+              action: {
+                label: 'Logout Anyway',
+                onClick: () => {
+                  resolve(true);
+                  toast.dismiss();
+                },
+              },
+              cancel: {
+                label: 'Cancel',
+                onClick: () => {
+                  resolve(false);
+                  toast.dismiss();
+                },
+              },
+              onDismiss: () => resolve(false),
+            });
+          });
+
+          if (!confirmed) return; // User chose Cancel — abort logout
+        }
+      } catch (err) {
+        // Silently skip attendance check on auth / workspace errors
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        if (
+          !errorMessage.includes('No workspace selected') &&
+          !errorMessage.includes('status 401') &&
+          !errorMessage.includes('Unauthorized') &&
+          !errorMessage.includes('No token found') &&
+          !errorMessage.includes('No authentication token found')
+        ) {
+          console.error('Failed to check attendance before logout', err);
         }
       }
+    }
 
+    // Proceed with logout
+    try {
       const refreshToken = authApi.tokenStorage.getRefreshToken();
       const userId = user?.id;
-      
       if (refreshToken && userId) {
         await authApi.logout(refreshToken, userId);
       }
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      // Only clear local storage if logout wasn't canceled
-      if (shouldProceed) {
-        authApi.tokenStorage.clear();
-        setUser(null);
-        setWorkspace(null);
-        setWorkspaces([]);
-        router.push('/login');
-      }
+      authApi.tokenStorage.clear();
+      setUser(null);
+      setWorkspace(null);
+      setWorkspaces([]);
+      router.push('/login');
     }
   };
 

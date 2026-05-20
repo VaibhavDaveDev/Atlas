@@ -84,6 +84,73 @@ export class WorkspaceService {
     return this.getWorkspace(workspaceId);
   }
 
+  /**
+   * Setup a new workspace (used by new users or when creating a secondary workspace)
+   */
+  async setup(userId: string, data: { name: string; subdomain: string; industry?: string; workspaceSize?: string }) {
+    // Check if subdomain is already taken
+    const existing = await this.prisma.workspace.findUnique({
+      where: { subdomain: data.subdomain },
+    });
+    if (existing) {
+      throw new BadRequestException('Subdomain is already taken');
+    }
+
+    return await this.prisma.$transaction(async (tx) => {
+      // 1. Create Workspace
+      const workspace = await tx.workspace.create({
+        data: {
+          name: data.name,
+          subdomain: data.subdomain,
+          status: 'ACTIVE',
+        },
+      });
+
+      // 2. Create Default Roles for this workspace
+      const ownerRole = await tx.role.create({
+        data: {
+          workspaceId: workspace.id,
+          name: 'OWNER',
+          description: 'Full Workspace Access',
+        },
+      });
+
+      await tx.role.create({
+        data: {
+          workspaceId: workspace.id,
+          name: 'ADMIN',
+          description: 'Administrative Access',
+        },
+      });
+
+      await tx.role.create({
+        data: {
+          workspaceId: workspace.id,
+          name: 'USER',
+          description: 'Standard User Access',
+        },
+      });
+
+      // 3. Add Creator as Owner
+      await tx.workspaceMember.create({
+        data: {
+          workspaceId: workspace.id,
+          userId: userId,
+          roleId: ownerRole.id,
+        },
+      });
+
+      // 4. Create Default Settings
+      await tx.workspaceSettings.create({
+        data: {
+          workspaceId: workspace.id,
+        },
+      });
+
+      return { success: true, workspace };
+    });
+  }
+
   // ─────────────────────────────────────────────
   // MEMBER MANAGEMENT
   // ─────────────────────────────────────────────
@@ -98,6 +165,7 @@ export class WorkspaceService {
         user: {
           select: { id: true, email: true, username: true, provider: true },
         },
+        role: true,
       },
       orderBy: { joinedAt: 'asc' },
     });
@@ -108,7 +176,7 @@ export class WorkspaceService {
       email: m.user?.email,
       username: m.user?.username,
       provider: m.user?.provider,
-      role: m.role,
+      role: { id: m.role.id, name: m.role.name },
       department: m.department,
       joinedAt: m.joinedAt,
       lastAccessAt: m.lastAccessAt,
@@ -131,9 +199,11 @@ export class WorkspaceService {
     const [caller, target] = await Promise.all([
       this.prisma.workspaceMember.findUnique({
         where: { workspaceId_userId: { workspaceId, userId: callerUserId } },
+        include: { role: true },
       }),
       this.prisma.workspaceMember.findUnique({
         where: { workspaceId_userId: { workspaceId, userId: targetUserId } },
+        include: { role: true },
       }),
     ]);
 
@@ -141,22 +211,32 @@ export class WorkspaceService {
     if (!target) throw new NotFoundException('Target member not found');
 
     // Only OWNERs can promote/demote — ADMINs cannot change roles
-    if (caller.role !== 'OWNER') {
+    if (caller.role.name !== 'OWNER') {
       throw new ForbiddenException('Only workspace owners can change member roles');
     }
 
     // Cannot demote another OWNER without transferring first
-    if (target.role === 'OWNER' && newRole !== 'OWNER') {
+    if (target.role.name === 'OWNER' && newRole !== 'OWNER') {
       throw new BadRequestException(
         'Cannot demote another owner. Transfer ownership first.',
       );
     }
+    
+    // Find new role id
+    const roleRecord = await this.prisma.role.findUnique({
+      where: { workspaceId_name: { workspaceId, name: newRole } }
+    });
+    
+    if (!roleRecord) {
+      throw new NotFoundException(`Role ${newRole} not found in this workspace`);
+    }
 
     return this.prisma.workspaceMember.update({
       where: { workspaceId_userId: { workspaceId, userId: targetUserId } },
-      data: { role: newRole as any },
+      data: { roleId: roleRecord.id },
       include: {
         user: { select: { id: true, email: true, username: true } },
+        role: true,
       },
     });
   }
@@ -177,10 +257,11 @@ export class WorkspaceService {
     const [caller, target] = await Promise.all([
       this.prisma.workspaceMember.findUnique({
         where: { workspaceId_userId: { workspaceId, userId: callerUserId } },
+        include: { role: true },
       }),
       this.prisma.workspaceMember.findUnique({
         where: { workspaceId_userId: { workspaceId, userId: targetUserId } },
-        include: { user: { select: { email: true, username: true } } },
+        include: { user: { select: { email: true, username: true } }, role: true },
       }),
     ]);
 
@@ -188,12 +269,12 @@ export class WorkspaceService {
     if (!target) throw new NotFoundException('Target member not found');
 
     // OWNERs cannot be removed
-    if (target.role === 'OWNER') {
+    if (target.role.name === 'OWNER') {
       throw new ForbiddenException('Workspace owners cannot be removed');
     }
 
     // ADMINs can only be removed by OWNERs
-    if (target.role === 'ADMIN' && caller.role !== 'OWNER') {
+    if (target.role.name === 'ADMIN' && caller.role.name !== 'OWNER') {
       throw new ForbiddenException('Only workspace owners can remove admins');
     }
 
@@ -248,18 +329,27 @@ export class WorkspaceService {
       where: { workspaceId, email },
     });
 
+    // Find role id
+    const roleRecord = await this.prisma.role.findUnique({
+      where: { workspaceId_name: { workspaceId, name: role } }
+    });
+    
+    if (!roleRecord) {
+      throw new NotFoundException(`Role ${role} not found in this workspace`);
+    }
+
     let invite;
     if (existingInvite) {
       invite = await this.prisma.workspaceInvite.update({
         where: { id: existingInvite.id },
-        data: { token, expiresAt, status: 'PENDING', role: role as any, invitedById },
+        data: { token, expiresAt, status: 'PENDING', roleId: roleRecord.id, invitedById },
       });
     } else {
       invite = await this.prisma.workspaceInvite.create({
         data: {
           workspaceId,
           email,
-          role: role as any,
+          roleId: roleRecord.id,
           token,
           status: 'PENDING',
           invitedById,
@@ -288,11 +378,56 @@ export class WorkspaceService {
   }
 
   /**
+   * List all invites for a workspace
+   */
+  async listInvites(workspaceId: string) {
+    return this.prisma.workspaceInvite.findMany({
+      where: { workspaceId },
+      include: {
+        role: { select: { name: true } },
+        invitedBy: { select: { username: true, email: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  /**
+   * Cancel/Revoke a pending invite
+   */
+  async cancelInvite(workspaceId: string, inviteId: string) {
+    const invite = await this.prisma.workspaceInvite.findUnique({
+      where: { id: inviteId },
+    });
+
+    if (!invite || invite.workspaceId !== workspaceId) {
+      throw new NotFoundException('Invite not found');
+    }
+
+    if (invite.status !== 'PENDING') {
+      throw new BadRequestException(`Cannot cancel invite in ${invite.status} status`);
+    }
+
+    return this.prisma.workspaceInvite.update({
+      where: { id: inviteId },
+      data: { status: 'CANCELLED' },
+    });
+  }
+
+  /**
    * Get pending invites for a specific email
    */
-  async getPendingInvitesByEmail(email: string) {
+  async getPendingInvites(userId: string) {
+    const user = await this.prisma.authUser.findUnique({
+      where: { id: userId },
+      select: { email: true }
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
     return this.prisma.workspaceInvite.findMany({
-      where: { email, status: 'PENDING', expiresAt: { gt: new Date() } },
+      where: { email: user.email, status: 'PENDING', expiresAt: { gt: new Date() } },
       include: {
         workspace: { select: { name: true, subdomain: true } },
         invitedBy: { select: { email: true, username: true } },
@@ -303,15 +438,24 @@ export class WorkspaceService {
   /**
    * Accept an invite
    */
-  async acceptInvite(token: string, userId: string, userEmail: string) {
+  async acceptInvite(token: string, userId: string) {
     const invite = await this.prisma.workspaceInvite.findUnique({ where: { token } });
     if (!invite) throw new NotFoundException('Invite not found or invalid');
     if (invite.status !== 'PENDING' || invite.expiresAt < new Date()) {
       throw new BadRequestException('Invite has expired or already been processed');
     }
 
+    const user = await this.prisma.authUser.findUnique({
+      where: { id: userId },
+      select: { email: true }
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
     // Ensure the invite matches the logged in user's email
-    if (invite.email.toLowerCase() !== userEmail.toLowerCase()) {
+    if (invite.email.toLowerCase() !== user.email.toLowerCase()) {
       throw new BadRequestException('This invite is not for your email address');
     }
 
@@ -325,14 +469,14 @@ export class WorkspaceService {
         // Re-activate previously removed member
         await tx.workspaceMember.update({
           where: { workspaceId_userId: { workspaceId: invite.workspaceId, userId } },
-          data: { isActive: true, role: invite.role },
+          data: { isActive: true, roleId: invite.roleId },
         });
       } else {
         await tx.workspaceMember.create({
           data: {
             workspaceId: invite.workspaceId,
             userId,
-            role: invite.role,
+            roleId: invite.roleId,
           },
         });
       }
@@ -343,7 +487,12 @@ export class WorkspaceService {
       });
     });
 
-    return { success: true, workspaceId: invite.workspaceId, message: 'Invite accepted' };
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: invite.workspaceId },
+      select: { id: true, name: true, subdomain: true },
+    });
+
+    return { success: true, workspace, message: 'Invite accepted' };
   }
 
   async getMemberByEmail(workspaceId: string, email: string) {
@@ -352,7 +501,7 @@ export class WorkspaceService {
         workspaceId,
         user: { email },
       },
-      include: { user: { select: { id: true, username: true, email: true } } },
+      include: { user: { select: { id: true, username: true, email: true } }, role: true },
     });
   }
 }

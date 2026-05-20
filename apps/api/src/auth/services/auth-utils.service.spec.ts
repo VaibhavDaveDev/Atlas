@@ -6,9 +6,9 @@ describe('AuthUtilsService', () => {
   let service: AuthUtilsService;
 
   const mockRedisService = {
-    set: jest.fn(),
-    get: jest.fn(),
-    del: jest.fn(),
+    set: vi.fn(),
+    get: vi.fn(),
+    del: vi.fn(),
   };
 
   beforeEach(async () => {

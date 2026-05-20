@@ -10,48 +10,48 @@ describe('GoogleOAuthService', () => {
   let service: GoogleOAuthService;
 
   const mockCustomLoggerService = {
-    log: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
+    log: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
   };
 
   const mockRedisService = {
-    get: jest.fn(),
-    set: jest.fn(),
-    del: jest.fn(),
-    setNX: jest.fn(),
+    get: vi.fn(),
+    set: vi.fn(),
+    del: vi.fn(),
+    setNX: vi.fn(),
   };
 
   const mockPrismaService = {
     authUser: {
-      findFirst: jest.fn(),
-      findUnique: jest.fn(),
-      create: jest.fn(),
+      findFirst: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
     },
     authSecurity: {
-      create: jest.fn(),
+      create: vi.fn(),
     },
     userProfile: {
-      create: jest.fn(),
+      create: vi.fn(),
     },
     loginHistory: {
-      create: jest.fn(),
+      create: vi.fn(),
     },
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
-    $transaction: jest.fn((fn) => fn(mockPrismaService)),
+    $transaction: vi.fn((fn) => fn(mockPrismaService)),
   };
 
   const mockActivityLogService = {
-    logCreate: jest.fn(),
-    logCustomEvent: jest.fn(),
+    logCreate: vi.fn(),
+    logCustomEvent: vi.fn(),
   };
 
   const mockAuthUtilsService = {
-    generateSecureId: jest.fn().mockReturnValue('test-jti-id'),
-    createAccessToken: jest.fn().mockReturnValue('test-access-token'),
-    createRefreshToken: jest.fn().mockReturnValue('test-refresh-token'),
-    hashToken: jest.fn().mockReturnValue('hashed-token'),
+    generateSecureId: vi.fn().mockReturnValue('test-jti-id'),
+    createAccessToken: vi.fn().mockReturnValue('test-access-token'),
+    createRefreshToken: vi.fn().mockReturnValue('test-refresh-token'),
+    hashToken: vi.fn().mockReturnValue('hashed-token'),
   };
 
   beforeEach(async () => {
@@ -92,7 +92,7 @@ describe('GoogleOAuthService', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('should be defined', () => {

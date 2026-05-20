@@ -36,14 +36,6 @@ enum WorkspaceStatus {
   CANCELLED
 }
 
-enum WorkspaceRole {
-  OWNER
-  ADMIN
-  MANAGER
-  USER
-  VIEWER
-}
-
 enum InviteStatus {
   PENDING
   ACCEPTED
@@ -286,6 +278,7 @@ model Workspace {
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   
+  roles       Role[]
   members     WorkspaceMember[]
   settings    WorkspaceSettings?
   invites     WorkspaceInvite[]
@@ -302,7 +295,8 @@ model WorkspaceMember {
   userId      String
   user        AuthUser      @relation(fields: [userId], references: [id], onDelete: Cascade)
   
-  role        WorkspaceRole @default(USER)
+  roleId      String
+  role        Role          @relation(fields: [roleId], references: [id])
   department  String?
   isActive    Boolean       @default(true)
   
@@ -310,7 +304,7 @@ model WorkspaceMember {
   lastAccessAt DateTime?
   
   @@unique([workspaceId, userId])
-  @@index([workspaceId, role])
+  @@index([workspaceId, roleId])
   @@map("workspace_members")
 }
 
@@ -335,7 +329,8 @@ model WorkspaceInvite {
   workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   
   email       String
-  role        WorkspaceRole @default(USER)
+  roleId      String
+  role        Role          @relation(fields: [roleId], references: [id])
   token       String        @unique
   status      InviteStatus  @default(PENDING)
   
@@ -355,6 +350,25 @@ model WorkspaceInvite {
 // ============================================
 // PERMISSIONS (3-Tier Model)
 // ============================================
+
+model Role {
+  id          String   @id @default(uuid(7))
+  workspaceId String
+  name        String
+  description String?
+  
+  workspace   Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  members     WorkspaceMember[]
+  invites     WorkspaceInvite[]
+  permissions RolePermission[]
+  
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+  @@map("roles")
+}
 
 model Permission {
   id          String   @id @default(uuid(7))
@@ -378,14 +392,15 @@ model Permission {
 model RolePermission {
   id           String        @id @default(uuid(7))
   workspaceId  String
-  role         WorkspaceRole
+  roleId       String
+  role         Role          @relation(fields: [roleId], references: [id], onDelete: Cascade)
   permissionId String
   permission   Permission    @relation(fields: [permissionId], references: [id], onDelete: Cascade)
   
   createdAt    DateTime      @default(now())
   
-  @@unique([workspaceId, role, permissionId])
-  @@index([workspaceId, role])
+  @@unique([workspaceId, roleId, permissionId])
+  @@index([workspaceId, roleId])
   @@map("role_permissions")
 }
 
@@ -750,7 +765,7 @@ model Attendance {
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   
-  @@unique([workspaceId, employeeId, attendanceDate])
+  @@index([workspaceId, employeeId, attendanceDate])
   @@index([workspaceId, attendanceDate])
   @@map("attendances")
 }

@@ -4,6 +4,7 @@ import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { CustomLoggerService } from '../common/services/custom-logger.service';
+import { AuthGuard } from '../common/guards/auth.guard';
 
 describe('UserController', () => {
   let controller: UserController;
@@ -11,19 +12,20 @@ describe('UserController', () => {
   let service: UserService;
 
   const mockUserService = {
-    create: jest.fn(),
-    findAll: jest.fn(),
-    findOne: jest.fn(),
-    update: jest.fn(),
-    remove: jest.fn(),
+    create: vi.fn(),
+    findAll: vi.fn(),
+    findOne: vi.fn(),
+    update: vi.fn(),
+    remove: vi.fn(),
+    checkUsernameAvailability: vi.fn(),
   };
 
   const mockCustomLoggerService = {
-    log: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-    debug: jest.fn(),
-    verbose: jest.fn(),
+    log: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+    verbose: vi.fn(),
   };
 
   beforeEach(async () => {
@@ -39,14 +41,17 @@ describe('UserController', () => {
           useValue: mockCustomLoggerService,
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(AuthGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<UserController>(UserController);
     service = module.get<UserService>(UserService);
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('should be defined', () => {
@@ -131,18 +136,8 @@ describe('UserController', () => {
       const result = controller.findOne(userId);
 
       expect(result).toBe(expectedResult);
-      expect(mockUserService.findOne).toHaveBeenCalledWith(1);
+      expect(mockUserService.findOne).toHaveBeenCalledWith(userId);
       expect(mockUserService.findOne).toHaveBeenCalledTimes(1);
-    });
-
-    it('should convert string id to number', () => {
-      const userId = '42';
-
-      mockUserService.findOne.mockReturnValue('result');
-
-      controller.findOne(userId);
-
-      expect(mockUserService.findOne).toHaveBeenCalledWith(42);
     });
 
     it('should work with different ids', () => {
@@ -152,7 +147,7 @@ describe('UserController', () => {
 
       controller.findOne(userId);
 
-      expect(mockUserService.findOne).toHaveBeenCalledWith(999);
+      expect(mockUserService.findOne).toHaveBeenCalledWith(userId);
     });
 
     it('should return whatever the service returns', () => {
@@ -178,19 +173,8 @@ describe('UserController', () => {
       const result = controller.update(userId, updateUserDto);
 
       expect(result).toBe(expectedResult);
-      expect(mockUserService.update).toHaveBeenCalledWith(1, updateUserDto);
+      expect(mockUserService.update).toHaveBeenCalledWith(userId, updateUserDto);
       expect(mockUserService.update).toHaveBeenCalledTimes(1);
-    });
-
-    it('should convert string id to number', () => {
-      const userId = '10';
-      const updateUserDto: UpdateUserDto = {};
-
-      mockUserService.update.mockReturnValue('result');
-
-      controller.update(userId, updateUserDto);
-
-      expect(mockUserService.update).toHaveBeenCalledWith(10, updateUserDto);
     });
 
     it('should pass the correct DTO to the service', () => {
@@ -201,7 +185,7 @@ describe('UserController', () => {
 
       controller.update(userId, updateUserDto);
 
-      expect(mockUserService.update).toHaveBeenCalledWith(7, updateUserDto);
+      expect(mockUserService.update).toHaveBeenCalledWith(userId, updateUserDto);
     });
 
     it('should return whatever the service returns', () => {
@@ -227,18 +211,8 @@ describe('UserController', () => {
       const result = controller.remove(userId);
 
       expect(result).toBe(expectedResult);
-      expect(mockUserService.remove).toHaveBeenCalledWith(1);
+      expect(mockUserService.remove).toHaveBeenCalledWith(userId);
       expect(mockUserService.remove).toHaveBeenCalledTimes(1);
-    });
-
-    it('should convert string id to number', () => {
-      const userId = '25';
-
-      mockUserService.remove.mockReturnValue('result');
-
-      controller.remove(userId);
-
-      expect(mockUserService.remove).toHaveBeenCalledWith(25);
     });
 
     it('should work with different ids', () => {
@@ -248,7 +222,7 @@ describe('UserController', () => {
 
       controller.remove(userId);
 
-      expect(mockUserService.remove).toHaveBeenCalledWith(888);
+      expect(mockUserService.remove).toHaveBeenCalledWith(userId);
     });
 
     it('should return whatever the service returns', () => {

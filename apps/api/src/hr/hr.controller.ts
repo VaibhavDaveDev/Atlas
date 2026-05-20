@@ -14,17 +14,20 @@ import { HrService } from './hr.service';
 import { AuthGuard } from '../common/guards/auth.guard';
 import { WorkspaceGuard } from '../auth/guards/workspace.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { PermissionGuard } from '../auth/guards/permission.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import type { Request } from 'express';
 
 @ApiTags('hr')
 @Controller('hr')
-@UseGuards(AuthGuard, WorkspaceGuard, RolesGuard)
+@UseGuards(AuthGuard, WorkspaceGuard, RolesGuard, PermissionGuard)
 @ApiBearerAuth('JWT-auth')
 export class HrController {
   constructor(private readonly hrService: HrService) {}
 
   @Get('departments')
+  @RequirePermission({ resource: 'departments', action: 'read', scope: 'all' })
   @ApiOperation({ summary: 'Get workspace departments' })
   async getDepartments(@Req() req: Request) {
     const user = (req as any).user;
@@ -32,6 +35,7 @@ export class HrController {
   }
 
   @Post('departments')
+  @RequirePermission({ resource: 'departments', action: 'create', scope: 'all' })
   @ApiOperation({ summary: 'Create a new department' })
   async createDepartment(@Body() body: any, @Req() req: Request) {
     const user = (req as any).user;
@@ -39,6 +43,7 @@ export class HrController {
   }
 
   @Get('departments/:id')
+  @RequirePermission({ resource: 'departments', action: 'read', scope: 'all' })
   @ApiOperation({ summary: 'Get department by id' })
   async getDepartmentById(@Param('id') id: string, @Req() req: Request) {
     const user = (req as any).user;
@@ -46,6 +51,7 @@ export class HrController {
   }
 
   @Put('departments/:id')
+  @RequirePermission({ resource: 'departments', action: 'update', scope: 'all' })
   @ApiOperation({ summary: 'Update a department' })
   async updateDepartment(@Param('id') id: string, @Body() body: any, @Req() req: Request) {
     const user = (req as any).user;
@@ -53,7 +59,7 @@ export class HrController {
   }
 
   @Delete('departments/:id')
-  @Roles('OWNER', 'ADMIN', 'MANAGER')
+  @RequirePermission({ resource: 'departments', action: 'delete', scope: 'all' })
   @ApiOperation({ summary: 'Delete a department' })
   async deleteDepartment(@Param('id') id: string, @Req() req: Request) {
     const user = (req as any).user;
@@ -61,6 +67,7 @@ export class HrController {
   }
 
   @Get('designations')
+  @RequirePermission({ resource: 'designations', action: 'read', scope: 'all' })
   @ApiOperation({ summary: 'Get workspace designations' })
   async getDesignations(@Req() req: Request) {
     const user = (req as any).user;
@@ -68,6 +75,7 @@ export class HrController {
   }
 
   @Post('designations')
+  @RequirePermission({ resource: 'designations', action: 'create', scope: 'all' })
   @ApiOperation({ summary: 'Create a new designation' })
   async createDesignation(@Body() body: any, @Req() req: Request) {
     const user = (req as any).user;
@@ -75,6 +83,7 @@ export class HrController {
   }
 
   @Get('employees')
+  @RequirePermission({ resource: 'employees', action: 'read', scope: 'all' })
   @ApiOperation({ summary: 'Get workspace employees' })
   async getEmployees(@Req() req: Request): Promise<any> {
     const user = (req as any).user;
@@ -82,6 +91,7 @@ export class HrController {
   }
 
   @Post('employees')
+  @RequirePermission({ resource: 'employees', action: 'create', scope: 'all' })
   @ApiOperation({ summary: 'Create a new employee' })
   async createEmployee(@Body() body: any, @Req() req: Request): Promise<any> {
     const user = (req as any).user;
@@ -89,6 +99,7 @@ export class HrController {
   }
 
   @Get('employees/:id')
+  @RequirePermission({ resource: 'employees', action: 'read', scope: 'all' })
   @ApiOperation({ summary: 'Get employee by id' })
   async getEmployeeById(@Param('id') id: string, @Req() req: Request): Promise<any> {
     const user = (req as any).user;
@@ -96,6 +107,7 @@ export class HrController {
   }
 
   @Put('employees/:id')
+  @RequirePermission({ resource: 'employees', action: 'update', scope: 'all' })
   @ApiOperation({ summary: 'Update an employee' })
   async updateEmployee(@Param('id') id: string, @Body() body: any, @Req() req: Request): Promise<any> {
     const user = (req as any).user;
@@ -103,7 +115,7 @@ export class HrController {
   }
 
   @Delete('employees/:id')
-  @Roles('OWNER', 'ADMIN', 'MANAGER')
+  @RequirePermission({ resource: 'employees', action: 'delete', scope: 'all' })
   @ApiOperation({ summary: 'Delete an employee' })
   async deleteEmployee(@Param('id') id: string, @Req() req: Request): Promise<any> {
     const user = (req as any).user;
@@ -114,6 +126,7 @@ export class HrController {
   // ATTENDANCE
   // ====================
   @Get('attendance')
+  @RequirePermission({ resource: 'attendance', action: 'read', scope: 'all' })
   @ApiOperation({ summary: 'Get attendance logs' })
   async getAttendanceLogs(@Req() req: Request): Promise<any> {
     const user = (req as any).user;
@@ -121,6 +134,7 @@ export class HrController {
   }
 
   @Get('attendance/me')
+  @RequirePermission({ resource: 'attendance', action: 'read', scope: 'own' })
   @ApiOperation({ summary: 'Get current user attendance' })
   async getMyAttendance(@Req() req: Request): Promise<any> {
     const user = (req as any).user;
@@ -128,6 +142,7 @@ export class HrController {
   }
 
   @Post('attendance/check-in')
+  @RequirePermission({ resource: 'attendance', action: 'create', scope: 'own' })
   @ApiOperation({ summary: 'Check in for today' })
   async checkIn(@Req() req: Request): Promise<any> {
     const user = (req as any).user;
@@ -135,6 +150,7 @@ export class HrController {
   }
 
   @Post('attendance/check-out')
+  @RequirePermission({ resource: 'attendance', action: 'update', scope: 'own' })
   @ApiOperation({ summary: 'Check out for today' })
   async checkOut(@Req() req: Request): Promise<any> {
     const user = (req as any).user;
@@ -145,6 +161,7 @@ export class HrController {
   // LEAVE TYPES
   // ====================
   @Get('leaves/types')
+  @RequirePermission({ resource: 'leave', action: 'read', scope: 'all' })
   @ApiOperation({ summary: 'Get leave types' })
   async getLeaveTypes(@Req() req: Request): Promise<any> {
     const user = (req as any).user;
@@ -152,6 +169,7 @@ export class HrController {
   }
 
   @Post('leaves/types')
+  @RequirePermission({ resource: 'leave', action: 'create', scope: 'all' })
   @ApiOperation({ summary: 'Create leave type' })
   async createLeaveType(@Body() body: any, @Req() req: Request): Promise<any> {
     const user = (req as any).user;
@@ -159,6 +177,7 @@ export class HrController {
   }
 
   @Put('leaves/types/:id')
+  @RequirePermission({ resource: 'leave', action: 'update', scope: 'all' })
   @ApiOperation({ summary: 'Update leave type' })
   async updateLeaveType(@Param('id') id: string, @Body() body: any, @Req() req: Request): Promise<any> {
     const user = (req as any).user;
@@ -166,7 +185,7 @@ export class HrController {
   }
 
   @Delete('leaves/types/:id')
-  @Roles('OWNER', 'ADMIN')
+  @RequirePermission({ resource: 'leave', action: 'delete', scope: 'all' })
   @ApiOperation({ summary: 'Delete leave type' })
   async deleteLeaveType(@Param('id') id: string, @Req() req: Request): Promise<any> {
     const user = (req as any).user;
@@ -177,6 +196,7 @@ export class HrController {
   // LEAVE APPLICATIONS
   // ====================
   @Get('leaves/applications')
+  @RequirePermission({ resource: 'leave', action: 'read', scope: 'all' })
   @ApiOperation({ summary: 'Get leave applications' })
   async getLeaveApplications(@Req() req: Request): Promise<any> {
     const user = (req as any).user;
@@ -184,6 +204,7 @@ export class HrController {
   }
 
   @Post('leaves/applications')
+  @RequirePermission({ resource: 'leave', action: 'create', scope: 'own' })
   @ApiOperation({ summary: 'Apply for leave' })
   async createLeaveApplication(@Body() body: any, @Req() req: Request): Promise<any> {
     const user = (req as any).user;
@@ -191,6 +212,7 @@ export class HrController {
   }
 
   @Post('leaves/applications/:id/status')
+  @RequirePermission({ resource: 'leave', action: 'manage', scope: 'all' })
   @ApiOperation({ summary: 'Approve or reject leave' })
   async updateLeaveStatus(
     @Req() req: Request,
@@ -208,6 +230,7 @@ export class HrController {
   }
 
   @Get('leaves/balances/:employeeId')
+  @RequirePermission({ resource: 'leave', action: 'read', scope: 'all' })
   @ApiOperation({ summary: 'Get employee leave balances' })
   async getLeaveBalances(@Param('employeeId') employeeId: string, @Req() req: Request) {
     const user = (req as any).user;
@@ -218,6 +241,7 @@ export class HrController {
   // SALARY COMPONENTS
   // ====================
   @Get('payroll/salary-components')
+  @RequirePermission({ resource: 'payroll', action: 'read', scope: 'all' })
   @ApiOperation({ summary: 'Get salary components' })
   async getSalaryComponents(@Req() req: Request) {
     const user = (req as any).user;
@@ -225,6 +249,7 @@ export class HrController {
   }
 
   @Post('payroll/salary-components')
+  @RequirePermission({ resource: 'payroll', action: 'manage', scope: 'all' })
   @ApiOperation({ summary: 'Create salary component' })
   async createSalaryComponent(@Body() body: any, @Req() req: Request) {
     const user = (req as any).user;
@@ -235,6 +260,7 @@ export class HrController {
   // SALARY STRUCTURES
   // ====================
   @Get('payroll/salary-structures')
+  @RequirePermission({ resource: 'payroll', action: 'read', scope: 'all' })
   @ApiOperation({ summary: 'Get salary structures' })
   async getSalaryStructures(@Req() req: Request) {
     const user = (req as any).user;
@@ -242,6 +268,7 @@ export class HrController {
   }
 
   @Post('payroll/salary-structures')
+  @RequirePermission({ resource: 'payroll', action: 'manage', scope: 'all' })
   @ApiOperation({ summary: 'Create salary structure' })
   async createSalaryStructure(@Body() body: any, @Req() req: Request) {
     const user = (req as any).user;
@@ -249,6 +276,7 @@ export class HrController {
   }
 
   @Post('payroll/salary-structures/assign')
+  @RequirePermission({ resource: 'payroll', action: 'manage', scope: 'all' })
   @ApiOperation({ summary: 'Assign salary structure to employee' })
   async assignSalaryStructure(@Body() body: any, @Req() req: Request) {
     const user = (req as any).user;
@@ -256,6 +284,7 @@ export class HrController {
   }
 
   @Get('payroll/salary-assignments/:employeeId')
+  @RequirePermission({ resource: 'payroll', action: 'read', scope: 'all' })
   @ApiOperation({ summary: 'Get employee salary assignment' })
   async getSalaryAssignment(@Param('employeeId') employeeId: string, @Req() req: Request) {
     const user = (req as any).user;
@@ -266,6 +295,7 @@ export class HrController {
   // LEAVE POLICIES & ALLOCATION
   // ====================
   @Get('leaves/policies')
+  @RequirePermission({ resource: 'leave', action: 'read', scope: 'all' })
   @ApiOperation({ summary: 'Get leave policies' })
   async getLeavePolicies(@Req() req: Request) {
     const user = (req as any).user;
@@ -273,6 +303,7 @@ export class HrController {
   }
 
   @Post('leaves/policies')
+  @RequirePermission({ resource: 'leave', action: 'manage', scope: 'all' })
   @ApiOperation({ summary: 'Create leave policy' })
   async createLeavePolicy(@Body() body: any, @Req() req: Request) {
     const user = (req as any).user;
@@ -280,6 +311,7 @@ export class HrController {
   }
 
   @Put('leaves/policies/:id')
+  @RequirePermission({ resource: 'leave', action: 'manage', scope: 'all' })
   @ApiOperation({ summary: 'Update leave policy' })
   async updateLeavePolicy(@Param('id') id: string, @Body() body: any, @Req() req: Request) {
     const user = (req as any).user;
@@ -287,7 +319,7 @@ export class HrController {
   }
 
   @Delete('leaves/policies/:id')
-  @Roles('OWNER', 'ADMIN')
+  @RequirePermission({ resource: 'leave', action: 'manage', scope: 'all' })
   @ApiOperation({ summary: 'Delete leave policy' })
   async deleteLeavePolicy(@Param('id') id: string, @Req() req: Request) {
     const user = (req as any).user;
@@ -295,6 +327,7 @@ export class HrController {
   }
 
   @Post('leaves/allocate')
+  @RequirePermission({ resource: 'leave', action: 'manage', scope: 'all' })
   @ApiOperation({ summary: 'Allocate leaves based on policy' })
   async allocateLeaves(@Body() body: any, @Req() req: Request) {
     const user = (req as any).user;
@@ -305,6 +338,7 @@ export class HrController {
   // TAXATION
   // ====================
   @Get('payroll/tax-slabs')
+  @RequirePermission({ resource: 'payroll', action: 'read', scope: 'all' })
   @ApiOperation({ summary: 'Get income tax slabs' })
   async getTaxSlabs(@Req() req: Request) {
     const user = (req as any).user;
@@ -312,6 +346,7 @@ export class HrController {
   }
 
   @Post('payroll/tax-slabs')
+  @RequirePermission({ resource: 'payroll', action: 'manage', scope: 'all' })
   @ApiOperation({ summary: 'Create income tax slab' })
   async createTaxSlab(@Body() body: any, @Req() req: Request) {
     const user = (req as any).user;
@@ -322,6 +357,7 @@ export class HrController {
   // ONBOARDING
   // ====================
   @Get('onboarding/templates')
+  @RequirePermission({ resource: 'employees', action: 'read', scope: 'all' })
   @ApiOperation({ summary: 'Get onboarding templates' })
   async getOnboardingTemplates(@Req() req: Request) {
     const user = (req as any).user;
@@ -329,6 +365,7 @@ export class HrController {
   }
 
   @Post('onboarding/templates')
+  @RequirePermission({ resource: 'employees', action: 'manage', scope: 'all' })
   @ApiOperation({ summary: 'Create onboarding template' })
   async createOnboardingTemplate(@Body() body: any, @Req() req: Request) {
     const user = (req as any).user;
@@ -336,6 +373,7 @@ export class HrController {
   }
 
   @Post('onboarding/initiate')
+  @RequirePermission({ resource: 'employees', action: 'manage', scope: 'all' })
   @ApiOperation({ summary: 'Initiate onboarding for employee' })
   async initiateOnboarding(@Body() body: { employeeId: string; templateId: string }, @Req() req: Request) {
     const user = (req as any).user;
@@ -343,6 +381,7 @@ export class HrController {
   }
 
   @Get('onboarding/tasks/:employeeId')
+  @RequirePermission({ resource: 'employees', action: 'read', scope: 'all' })
   @ApiOperation({ summary: 'Get onboarding tasks for employee' })
   async getOnboardingTasks(@Param('employeeId') employeeId: string, @Req() req: Request) {
     const user = (req as any).user;
@@ -350,6 +389,7 @@ export class HrController {
   }
 
   @Post('onboarding/tasks/:taskId/status')
+  @RequirePermission({ resource: 'employees', action: 'manage', scope: 'all' })
   @ApiOperation({ summary: 'Update onboarding task status' })
   async updateOnboardingTask(
     @Param('taskId') taskId: string,
@@ -364,6 +404,7 @@ export class HrController {
   // PAYROLL RUNS
   // ====================
   @Get('payroll/runs')
+  @RequirePermission({ resource: 'payroll', action: 'read', scope: 'all' })
   @ApiOperation({ summary: 'Get payroll runs' })
   async getPayrollRuns(@Req() req: Request): Promise<any> {
     const user = (req as any).user;
@@ -371,6 +412,7 @@ export class HrController {
   }
 
   @Post('payroll/runs')
+  @RequirePermission({ resource: 'payroll', action: 'manage', scope: 'all' })
   @ApiOperation({ summary: 'Create a payroll run' })
   async createPayrollRun(@Body() body: any, @Req() req: Request): Promise<any> {
     const user = (req as any).user;
@@ -378,6 +420,7 @@ export class HrController {
   }
 
   @Get('payroll/runs/:id')
+  @RequirePermission({ resource: 'payroll', action: 'read', scope: 'all' })
   @ApiOperation({ summary: 'Get payroll run by id' })
   async getPayrollRunById(@Param('id') id: string, @Req() req: Request): Promise<any> {
     const user = (req as any).user;
@@ -388,6 +431,7 @@ export class HrController {
   // PAYROLL ENTRIES
   // ====================
   @Post('payroll/entries/:entryId/earnings')
+  @RequirePermission({ resource: 'payroll', action: 'manage', scope: 'all' })
   @ApiOperation({ summary: 'Add earning to payslip' })
   async addEarning(@Param('entryId') entryId: string, @Body() body: any, @Req() req: Request): Promise<any> {
     const user = (req as any).user;
@@ -395,6 +439,7 @@ export class HrController {
   }
 
   @Post('payroll/entries/:entryId/deductions')
+  @RequirePermission({ resource: 'payroll', action: 'manage', scope: 'all' })
   @ApiOperation({ summary: 'Add deduction to payslip' })
   async addDeduction(@Param('entryId') entryId: string, @Body() body: any, @Req() req: Request): Promise<any> {
     const user = (req as any).user;
@@ -405,6 +450,7 @@ export class HrController {
   // INDIA COMPLIANCE
   // ====================
   @Get('compliance/india/settings')
+  @RequirePermission({ resource: 'payroll', action: 'read', scope: 'all' })
   @ApiOperation({ summary: 'Get India compliance settings' })
   async getIndiaComplianceSettings(@Req() req: Request) {
     const user = (req as any).user;
@@ -412,6 +458,7 @@ export class HrController {
   }
 
   @Put('compliance/india/settings')
+  @RequirePermission({ resource: 'payroll', action: 'manage', scope: 'all' })
   @ApiOperation({ summary: 'Update India compliance settings' })
   async updateIndiaComplianceSettings(@Body() body: any, @Req() req: Request): Promise<any> {
     const user = (req as any).user;
@@ -419,6 +466,7 @@ export class HrController {
   }
 
   @Get('compliance/india/statutory-status')
+  @RequirePermission({ resource: 'payroll', action: 'read', scope: 'all' })
   @ApiOperation({ summary: 'Get statutory compliance status (PAN, PF, TDS) as real percentages from employee data' })
   async getStatutoryStatus(@Req() req: Request) {
     const user = (req as any).user;
@@ -426,6 +474,7 @@ export class HrController {
   }
 
   @Get('compliance/india/report/pf-esi')
+  @RequirePermission({ resource: 'payroll', action: 'read', scope: 'all' })
   @ApiOperation({ summary: 'Get PF/ESI report' })
   async getPfEsiReport(
     @Req() req: Request,
@@ -440,6 +489,7 @@ export class HrController {
   }
 
   @Get('compliance/india/declarations/:employeeId')
+  @RequirePermission({ resource: 'payroll', action: 'read', scope: 'all' })
   @ApiOperation({ summary: 'Get employee tax exemption declaration' })
   async getTaxExemptionDeclaration(@Param('employeeId') employeeId: string, @Req() req: Request) {
     const user = (req as any).user;
@@ -447,6 +497,7 @@ export class HrController {
   }
 
   @Post('compliance/india/declarations')
+  @RequirePermission({ resource: 'payroll', action: 'create', scope: 'own' })
   @ApiOperation({ summary: 'Submit tax exemption declaration' })
   async submitTaxExemptionDeclaration(@Body() body: any, @Req() req: Request) {
     const user = (req as any).user;
@@ -457,6 +508,7 @@ export class HrController {
   // EMPLOYEE MOVEMENT
   // ====================
   @Get('movements')
+  @RequirePermission({ resource: 'employees', action: 'read', scope: 'all' })
   @ApiOperation({ summary: 'Get employee movements' })
   async getEmployeeMovements(@Req() req: Request) {
     const user = (req as any).user;
@@ -464,6 +516,7 @@ export class HrController {
   }
 
   @Post('movements')
+  @RequirePermission({ resource: 'employees', action: 'manage', scope: 'all' })
   @ApiOperation({ summary: 'Propose employee movement' })
   async createEmployeeMovement(@Body() body: any, @Req() req: Request) {
     const user = (req as any).user;
@@ -471,6 +524,7 @@ export class HrController {
   }
 
   @Post('movements/:id/approve')
+  @RequirePermission({ resource: 'employees', action: 'manage', scope: 'all' })
   @ApiOperation({ summary: 'Approve employee movement' })
   async approveEmployeeMovement(@Param('id') id: string, @Req() req: Request) {
     const user = (req as any).user;
@@ -481,6 +535,7 @@ export class HrController {
   // RECRUITMENT
   // ====================
   @Get('applicants')
+  @RequirePermission({ resource: 'employees', action: 'read', scope: 'all' })
   @ApiOperation({ summary: 'Get job applicants' })
   async getJobApplicants(@Req() req: Request) {
     const user = (req as any).user;
@@ -488,6 +543,7 @@ export class HrController {
   }
 
   @Post('applicants')
+  @RequirePermission({ resource: 'employees', action: 'manage', scope: 'all' })
   @ApiOperation({ summary: 'Create job applicant' })
   async createJobApplicant(@Body() body: any, @Req() req: Request) {
     const user = (req as any).user;
@@ -495,6 +551,7 @@ export class HrController {
   }
 
   @Post('interviews')
+  @RequirePermission({ resource: 'employees', action: 'manage', scope: 'all' })
   @ApiOperation({ summary: 'Schedule interview' })
   async scheduleInterview(@Body() body: any, @Req() req: Request) {
     const user = (req as any).user;
@@ -502,6 +559,7 @@ export class HrController {
   }
 
   @Put('interviews/:id/feedback')
+  @RequirePermission({ resource: 'employees', action: 'manage', scope: 'all' })
   @ApiOperation({ summary: 'Update interview feedback' })
   async updateInterviewFeedback(@Param('id') id: string, @Body() body: any, @Req() req: Request) {
     const user = (req as any).user;
@@ -512,6 +570,7 @@ export class HrController {
   // SHIFTS
   // ====================
   @Get('shifts/types')
+  @RequirePermission({ resource: 'employees', action: 'read', scope: 'all' })
   @ApiOperation({ summary: 'Get shift types' })
   async getShiftTypes(@Req() req: Request) {
     const user = (req as any).user;
@@ -519,6 +578,7 @@ export class HrController {
   }
 
   @Post('shifts/types')
+  @RequirePermission({ resource: 'employees', action: 'manage', scope: 'all' })
   @ApiOperation({ summary: 'Create shift type' })
   async createShiftType(@Body() body: any, @Req() req: Request) {
     const user = (req as any).user;
@@ -526,6 +586,7 @@ export class HrController {
   }
 
   @Post('shifts/assign')
+  @RequirePermission({ resource: 'employees', action: 'manage', scope: 'all' })
   @ApiOperation({ summary: 'Assign shift to employee' })
   async assignShift(@Body() body: any, @Req() req: Request) {
     const user = (req as any).user;

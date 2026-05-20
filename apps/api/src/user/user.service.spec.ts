@@ -3,16 +3,23 @@ import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { CustomLoggerService } from '../common/services/custom-logger.service';
+import { PrismaService } from '../common/services/prisma.service';
 
 describe('UserService', () => {
   let service: UserService;
 
   const mockCustomLoggerService = {
-    log: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-    debug: jest.fn(),
-    verbose: jest.fn(),
+    log: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+    verbose: vi.fn(),
+  };
+
+  const mockPrismaService = {
+    authUser: {
+      findUnique: vi.fn(),
+    },
   };
 
   beforeEach(async () => {
@@ -22,6 +29,10 @@ describe('UserService', () => {
         {
           provide: CustomLoggerService,
           useValue: mockCustomLoggerService,
+        },
+        {
+          provide: PrismaService,
+          useValue: mockPrismaService,
         },
       ],
     }).compile();

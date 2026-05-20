@@ -990,12 +990,13 @@ export class AuthService {
             userId,
           },
         },
+        include: { role: true },
       });
 
       if (membership && membership.isActive) {
         workspaceContext = {
           workspaceId: membership.workspaceId,
-          workspaceRole: membership.role,
+          workspaceRole: membership.role.name,
           department: membership.department,
         };
       }
@@ -1320,6 +1321,7 @@ export class AuthService {
             status: true,
           },
         },
+        role: true,
       },
     });
 
@@ -1328,7 +1330,7 @@ export class AuthService {
       workspaceName: wm.workspace.name,
       subdomain: wm.workspace.subdomain,
       status: wm.workspace.status,
-      role: wm.role,
+      role: wm.role.name,
       department: wm.department,
       joinedAt: wm.joinedAt,
     }));
@@ -1365,6 +1367,7 @@ export class AuthService {
             globalRole: true,
           },
         },
+        role: true,
       },
     });
 
@@ -1409,7 +1412,7 @@ export class AuthService {
       role: member.user.globalRole as unknown as UserRole,
       tokenVersion: userRecord?.tokenVersion ?? 0,
       workspaceId: member.workspace.id,
-      workspaceRole: member.role,
+      workspaceRole: member.role.name,
       department: member.department,
     });
 
@@ -1420,7 +1423,7 @@ export class AuthService {
         workspaceName: member.workspace.name,
         subdomain: member.workspace.subdomain,
         status: member.workspace.status,
-        role: member.role,
+        role: member.role.name,
         department: member.department,
       },
     };

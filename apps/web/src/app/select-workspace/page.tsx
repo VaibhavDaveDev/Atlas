@@ -16,18 +16,18 @@ import {
   Check,
   Bell,
 } from 'lucide-react';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { Workspace } from '@/lib/auth';
+import { Logo } from '@/components/common/Logo';
 
 const roleConfig: Record<string, { label: string; icon: typeof Crown; color: string }> = {
-  OWNER: { label: 'Owner', icon: Crown, color: 'text-amber-500' },
-  ADMIN: { label: 'Admin', icon: Shield, color: 'text-blue-500' },
-  MANAGER: { label: 'Manager', icon: Briefcase, color: 'text-violet-500' },
-  USER: { label: 'Member', icon: User, color: 'text-slate-500' },
-  VIEWER: { label: 'Viewer', icon: Eye, color: 'text-slate-400' },
+  OWNER: { label: 'Owner', icon: Crown, color: 'text-amber-600 dark:text-amber-500' },
+  ADMIN: { label: 'Admin', icon: Shield, color: 'text-blue-600 dark:text-blue-500' },
+  MANAGER: { label: 'Manager', icon: Briefcase, color: 'text-violet-600 dark:text-violet-500' },
+  USER: { label: 'Member', icon: User, color: 'text-zinc-600 dark:text-zinc-400' },
+  VIEWER: { label: 'Viewer', icon: Eye, color: 'text-zinc-500 dark:text-zinc-500' },
 };
 
 const statusVariant: Record<string, 'success' | 'warning' | 'destructive' | 'secondary'> = {
@@ -55,41 +55,41 @@ function WorkspaceCard({
       onClick={() => onSelect(workspace.workspaceId)}
       disabled={isLoading || !isActive}
       className={cn(
-        'group w-full rounded-xl border bg-card text-left p-5 transition-all duration-200',
-        'hover:border-primary/40 hover:-translate-y-px hover:shadow-sm',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'group w-full rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] text-left p-5 transition-all duration-200 shadow-none',
+        'hover:border-[#111111] dark:hover:border-[#f4f4f5]',
+        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#111111] dark:focus-visible:ring-[#f4f4f5]',
         'disabled:pointer-events-none disabled:opacity-50',
         'flex items-center gap-4',
       )}
     >
       {/* Workspace avatar */}
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary font-bold text-lg select-none">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[#f5f1ec] dark:bg-[#18181b] text-[#111111] dark:text-[#f4f4f5] font-bold text-lg select-none border border-[#d3cec6] dark:border-[#27272a]">
         {workspace.workspaceName.charAt(0).toUpperCase()}
       </div>
 
       {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-semibold text-sm truncate">{workspace.workspaceName}</span>
-          <Badge variant={statusVariant[workspace.status] ?? 'secondary'} className="text-[10px] py-0">
+          <span className="font-semibold text-sm text-[#111111] dark:text-[#f4f4f5] truncate">{workspace.workspaceName}</span>
+          <Badge variant={statusVariant[workspace.status] ?? 'secondary'} className="text-[10px] py-0 font-medium">
             {workspace.status}
           </Badge>
         </div>
-        <p className="text-xs text-muted-foreground mt-0.5">@{workspace.subdomain}</p>
-        <div className="mt-1.5 flex items-center gap-1.5 text-xs">
+        <p className="text-xs text-[#626260] dark:text-[#a1a1aa] mt-0.5">@{workspace.subdomain}</p>
+        <div className="mt-1.5 flex items-center gap-1.5 text-xs text-[#7b7b78] dark:text-[#71717a]">
           <RoleIcon className={cn('h-3 w-3', role.color)} />
-          <span className="text-muted-foreground">{role.label}</span>
+          <span>{role.label}</span>
           {workspace.department && (
             <>
-              <span className="text-border">·</span>
-              <span className="text-muted-foreground">{workspace.department}</span>
+              <span>·</span>
+              <span>{workspace.department}</span>
             </>
           )}
         </div>
       </div>
 
       {/* Arrow */}
-      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 group-hover:text-primary transition-colors" />
+      <ChevronRight className="h-4 w-4 text-[#626260] dark:text-[#a1a1aa] shrink-0 group-hover:text-[#111111] dark:group-hover:text-[#f4f4f5] transition-colors" />
     </button>
   );
 }
@@ -201,8 +201,8 @@ export default function SelectWorkspacePage() {
   if (authLoading || (workspaces.length === 1 && invites.length === 0 && !loadingInvites)) {
     // Show spinner while auto-selecting
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <div className="min-h-screen bg-[#f5f1ec] dark:bg-[#09090b] flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-[#111111] dark:text-[#f4f4f5]" />
       </div>
     );
   }
@@ -212,146 +212,141 @@ export default function SelectWorkspacePage() {
   const hasNothing = !hasWorkspaces && !hasInvites && !loadingInvites;
 
   return (
-    <div className="min-h-screen bg-muted/30 flex flex-col items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md animate-fade-in">
-        {/* Logo + header */}
-        <div className="mb-8 flex flex-col items-center text-center">
-          <Image
-            src="/images/logo-mark-light-nobg.PNG"
-            alt="Atlas ERP"
-            width={40}
-            height={40}
-            className="mb-4 block dark:hidden"
-            priority
-          />
-          <Image
-            src="/images/logo-mark-dark-nobg.PNG"
-            alt="Atlas ERP"
-            width={40}
-            height={40}
-            className="mb-4 hidden dark:block"
-            priority
-          />
-          <h1 className="text-2xl font-bold">Select workspace</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Welcome back,{' '}
-            <span className="font-medium text-foreground">{user?.username}</span>
-          </p>
-        </div>
+    <div className="min-h-screen bg-[#f5f1ec] dark:bg-[#09090b] flex flex-col justify-between transition-colors duration-300">
+      {/* Top spacing */}
+      <div className="py-4" />
 
-        {/* Error */}
-        {error && (
-          <div className="mb-4 rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            {error}
+      {/* Centered content */}
+      <div className="flex flex-1 items-center justify-center px-4 pb-20 pt-8">
+        <div className="w-full max-w-md animate-fade-in">
+          {/* Logo + header */}
+          <div className="mb-8 flex flex-col items-center text-center">
+            <Logo variant="mark" width={44} height={44} className="mb-4" />
+            <h1 className="text-2xl font-semibold tracking-[-0.02em] text-[#111111] dark:text-[#f4f4f5]">Select workspace</h1>
+            <p className="mt-1.5 text-sm text-[#626260] dark:text-[#a1a1aa]">
+              Welcome back,{' '}
+              <span className="font-semibold text-[#111111] dark:text-[#f4f4f5]">{user?.username}</span>
+            </p>
           </div>
-        )}
 
-        <div className="space-y-6">
-          {/* Your Workspaces */}
-          {hasWorkspaces && (
-            <div className="space-y-2">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
-                Your Workspaces
-              </h2>
-              {workspaces.map((ws) => (
-                <WorkspaceCard
-                  key={ws.workspaceId}
-                  workspace={ws}
-                  onSelect={handleSelect}
-                  isLoading={selectingId !== null}
-                />
-              ))}
+          {/* Error */}
+          {error && (
+            <div className="mb-6 rounded-lg border border-red-200/50 bg-red-50/50 dark:bg-red-950/20 dark:border-red-900/30 px-4 py-3 text-sm text-red-600 dark:text-red-400">
+              {error}
             </div>
           )}
 
-          {/* Pending Invites */}
-          <div className="space-y-2">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1 flex items-center gap-1.5">
-              <Bell className="h-3 w-3" />
-              Pending Invites
-              {hasInvites && (
-                <span className="ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground px-1">
-                  {invites.length}
-                </span>
-              )}
-            </h2>
-
-            {loadingInvites ? (
-              <div className="rounded-xl border border-border bg-card/50 p-6 flex justify-center">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              </div>
-            ) : hasInvites ? (
-              <div className="space-y-2">
-                {invites.map((invite) => (
-                  <div
-                    key={invite.id}
-                    className="rounded-xl border border-border bg-card p-4 flex items-center justify-between"
-                  >
-                    <div className="min-w-0 pr-4">
-                      <p className="font-semibold text-sm truncate">{invite.workspace?.name}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Invited by {invite.invitedBy?.username || invite.invitedBy?.email}
-                      </p>
-                      <Badge variant="secondary" className="mt-2 text-[10px] py-0">
-                        {invite.role}
-                      </Badge>
-                    </div>
-                    <Button
-                      size="sm"
-                      onClick={() => handleAcceptInvite(invite.token)}
-                      disabled={acceptingToken === invite.token}
-                    >
-                      {acceptingToken === invite.token ? (
-                        <Loader2 className="h-3 w-3 animate-spin mr-1.5" />
-                      ) : (
-                        <Check className="h-3 w-3 mr-1.5" />
-                      )}
-                      Accept
-                    </Button>
-                  </div>
+          <div className="space-y-6">
+            {/* Your Workspaces */}
+            {hasWorkspaces && (
+              <div className="space-y-2.5">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-[#7b7b78] dark:text-[#71717a] mb-2 px-1">
+                  Your Workspaces
+                </h2>
+                {workspaces.map((ws) => (
+                  <WorkspaceCard
+                    key={ws.workspaceId}
+                    workspace={ws}
+                    onSelect={handleSelect}
+                    isLoading={selectingId !== null}
+                  />
                 ))}
               </div>
-            ) : (
-              <div className="rounded-xl border border-dashed border-border bg-card/50 p-4 text-center">
-                <p className="text-xs text-muted-foreground">No pending invites</p>
+            )}
+
+            {/* Pending Invites */}
+            <div className="space-y-2.5">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-[#7b7b78] dark:text-[#71717a] mb-2 px-1 flex items-center gap-1.5">
+                <Bell className="h-3 w-3" />
+                Pending Invites
+                {hasInvites && (
+                  <span className="ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#111111] dark:bg-[#f4f4f5] text-[10px] font-bold text-[#ffffff] dark:text-[#09090b] px-1">
+                    {invites.length}
+                  </span>
+                )}
+              </h2>
+
+              {loadingInvites ? (
+                <div className="rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] p-6 flex justify-center shadow-none">
+                  <Loader2 className="h-5 w-5 animate-spin text-[#7b7b78] dark:text-[#71717a]" />
+                </div>
+              ) : hasInvites ? (
+                <div className="space-y-2.5">
+                  {invites.map((invite) => (
+                    <div
+                      key={invite.id}
+                      className="rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] p-4 flex items-center justify-between shadow-none"
+                    >
+                      <div className="min-w-0 pr-4">
+                        <p className="font-semibold text-sm text-[#111111] dark:text-[#f4f4f5] truncate">{invite.workspace?.name}</p>
+                        <p className="text-xs text-[#626260] dark:text-[#a1a1aa] mt-0.5">
+                          Invited by {invite.invitedBy?.username || invite.invitedBy?.email}
+                        </p>
+                        <Badge variant="secondary" className="mt-2 text-[10px] py-0 font-medium">
+                          {invite.role}
+                        </Badge>
+                      </div>
+                      <Button
+                        size="sm"
+                        className="bg-[#111111] hover:bg-[#222222] text-[#ffffff] dark:bg-[#f4f4f5] dark:hover:bg-[#e4e4e7] dark:text-[#09090b] font-semibold transition-all rounded-md"
+                        onClick={() => handleAcceptInvite(invite.token)}
+                        disabled={acceptingToken === invite.token}
+                      >
+                        {acceptingToken === invite.token ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                        ) : (
+                          <Check className="h-3.5 w-3.5 mr-1.5" />
+                        )}
+                        Accept
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff]/50 dark:bg-[#121214]/50 p-4 text-center">
+                  <p className="text-xs text-[#7b7b78] dark:text-[#71717a]">No pending invites</p>
+                </div>
+              )}
+            </div>
+
+            {/* No workspace + no invites: show help card */}
+            {hasNothing && (
+              <div className="rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] p-6 text-center shadow-none">
+                <MailWarning className="mx-auto mb-3 h-10 w-10 text-amber-500" />
+                <h3 className="font-semibold text-[#111111] dark:text-[#f4f4f5] mb-2">Action Required</h3>
+                <p className="text-sm text-[#626260] dark:text-[#a1a1aa] mb-4 leading-relaxed">
+                  You haven&apos;t been added to any workspace yet. Please wait for your IT or HR admin
+                  to assign you a role and invite you to your workspace.
+                </p>
+                <div className="space-y-1.5 text-xs text-[#7b7b78] dark:text-[#71717a] pt-2 border-t border-[#f5f1ec] dark:border-[#27272a]">
+                  <p>Need help? Contact support:</p>
+                  <p className="font-semibold text-[#111111] dark:text-[#f4f4f5]">support@atlas.amdox.in</p>
+                  <p className="font-semibold text-[#111111] dark:text-[#f4f4f5]">hr@atlas.amdox.in</p>
+                </div>
               </div>
             )}
           </div>
 
-          {/* No workspace + no invites: show help card */}
-          {hasNothing && (
-            <div className="rounded-xl border border-border bg-card p-6 text-center shadow-sm">
-              <MailWarning className="mx-auto mb-3 h-10 w-10 text-amber-500/80" />
-              <h3 className="font-semibold mb-2">Action Required</h3>
-              <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
-                You haven&apos;t been added to any workspace yet. Please wait for your IT or HR admin
-                to assign you a role and invite you to your workspace.
-              </p>
-              <div className="space-y-1.5 text-xs text-muted-foreground">
-                <p>Need help? Contact support:</p>
-                <p className="font-medium text-primary">support@atlas.amdox.in</p>
-                <p className="font-medium text-primary">hr@atlas.amdox.in</p>
-              </div>
-            </div>
-          )}
-        </div>
+          <p className="mt-8 text-center text-xs text-[#7b7b78] dark:text-[#71717a]">
+            Signed in as <span className="font-semibold text-[#111111] dark:text-[#f4f4f5]">{user?.email}</span>
+          </p>
 
-        <p className="mt-6 text-center text-xs text-muted-foreground">
-          Signed in as <span className="font-medium">{user?.email}</span>
-        </p>
-
-        {/* Logout Button */}
-        <div className="mt-4 flex justify-center">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-            onClick={() => logout()}
-          >
-            Sign out
-          </Button>
+          {/* Logout Button */}
+          <div className="mt-4 flex justify-center">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-[#7b7b78] dark:text-[#71717a] hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20"
+              onClick={() => logout()}
+            >
+              Sign out
+            </Button>
+          </div>
         </div>
       </div>
+
+      {/* Empty footer area for visual balance */}
+      <div className="py-4" />
     </div>
   );
 }
