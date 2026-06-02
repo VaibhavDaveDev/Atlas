@@ -11,6 +11,7 @@ export interface User {
   username: string;
   role: string;
   verified: boolean;
+  image?: string | null;
 }
 
 export interface Workspace {

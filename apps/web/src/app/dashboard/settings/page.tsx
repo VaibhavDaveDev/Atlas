@@ -3,23 +3,46 @@
 import { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useAuth } from '@/contexts/AuthContext';
-import { User, Mail, Shield, Key, Loader2, Moon, Sun, Monitor } from 'lucide-react';
+import { User, Mail, Shield, Key, Loader2, Moon, Sun, Monitor, Save, Check, Globe, Dice6, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useTheme } from 'next-themes';
 import { useUserStore } from '@/stores/useUserStore';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
+import { cn, md5 } from '@/lib/utils';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger,
+  DialogFooter
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function ProfileSettingsPage() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const { theme, setTheme } = useTheme();
   const { setProfileSettings } = useUserStore();
   
   const [username, setUsername] = useState(user?.username || '');
   const [email] = useState(user?.email || ''); // Non-editable
+  const [avatar, setAvatar] = useState(user?.image || `https://api.dicebear.com/7.x/lorelei/svg?seed=${user?.username || 'user'}`);
   const [isSaving, setIsSaving] = useState(false);
+  const [showAvatarDialog, setShowAvatarDialog] = useState(false);
+
+  // Gravatar URL generation
+  const gravatarUrl = `https://www.gravatar.com/avatar/${md5(email.toLowerCase().trim())}?s=200&d=identicon`;
+  const isUsingGravatar = avatar.includes('gravatar.com');
+
+  const diceBearSeeds = [
+    'Felix', 'Aneka', 'Milo', 'Luna', 'Jack', 'Mia', 'Oliver', 'Sophie', 
+    'Charlie', 'Lily', 'Leo', 'Zoe', 'Max', 'Chloe', 'Jasper', 'Bella',
+    'Oscar', 'Daisy', 'Toby', 'Ruby', 'Simba', 'Nala', 'Rocky', 'Coco',
+    'Arlo', 'Willow', 'Finn', 'Ivy', 'Archie', 'Hazel'
+  ];
 
   // Password change state
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -41,12 +64,35 @@ export default function ProfileSettingsPage() {
     e.preventDefault();
     setIsSaving(true);
     
-    // Simulate API call for now
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    setProfileSettings({ username });
-    toast.success('Profile updated successfully');
-    setIsSaving(false);
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/${user?.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+        body: JSON.stringify({ 
+          username,
+          image: avatar
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to update profile');
+      }
+
+      const responseData = await response.json();
+      const updatedUser = responseData.data || responseData;
+      
+      updateUser(updatedUser);
+      setProfileSettings({ username, avatar: updatedUser.image });
+      toast.success('Profile updated successfully');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update profile');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleRequestOtp = async () => {
@@ -120,16 +166,92 @@ export default function ProfileSettingsPage() {
         <div className="grid gap-8 md:grid-cols-3">
           <div className="md:col-span-1 space-y-6">
             <div className="rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] p-6 flex flex-col items-center text-center space-y-5 shadow-none">
-              <div className="h-20 w-20 rounded-2xl bg-[#f5f1ec] dark:bg-[#09090b] border border-[#d3cec6] dark:border-[#27272a] flex items-center justify-center shadow-sm">
-                <User className="h-10 w-10 text-[#7b7b78] dark:text-[#71717a]" />
+              <div className="h-24 w-24 rounded-full bg-[#fcfaf8] dark:bg-[#e2e2e2] border border-[#d3cec6] dark:border-[#27272a] flex items-center justify-center shadow-sm overflow-hidden relative group transition-all">
+                <img src={avatar} alt="Profile" className="h-full w-full object-cover" />
               </div>
-              <div>
+              
+              <div className="w-full pt-4 border-t border-[#f5f1ec] dark:border-[#27272a]">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-bold uppercase tracking-wider text-[#7b7b78] dark:text-[#71717a] text-left">Choose Avatar</p>
+                  
+                  <div className="flex gap-1.5">
+                    <button 
+                      onClick={() => setAvatar(gravatarUrl)}
+                      className={cn(
+                        "p-1.5 rounded-md border transition-all",
+                        isUsingGravatar ? "bg-[#111111] border-[#111111] text-white dark:bg-[#f4f4f5] dark:text-[#09090b]" : "border-[#d3cec6] dark:border-[#27272a] hover:bg-[#f5f1ec] dark:hover:bg-[#1c1c1f]"
+                      )}
+                      title="Use Gravatar"
+                    >
+                      <Globe className="h-3.5 w-3.5" />
+                    </button>
+                    <Dialog open={showAvatarDialog} onOpenChange={setShowAvatarDialog}>
+                      <DialogTrigger asChild>
+                        <button className="p-1.5 rounded-md border border-[#d3cec6] dark:border-[#27272a] hover:bg-[#f5f1ec] dark:hover:bg-[#1c1c1f] transition-all">
+                          <Plus className="h-3.5 w-3.5" />
+                        </button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-2xl border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] rounded-2xl">
+                        <DialogHeader>
+                          <DialogTitle className="text-xl font-bold">Select an Avatar</DialogTitle>
+                          <DialogDescription>Choose a style that represents you. Powered by DiceBear.</DialogDescription>
+                        </DialogHeader>
+                        <ScrollArea className="h-[400px] mt-4 pr-4">
+                          <div className="grid grid-cols-4 sm:grid-cols-6 gap-4 p-1">
+                            {diceBearSeeds.map((seed) => {
+                              const url = `https://api.dicebear.com/7.x/lorelei/svg?seed=${seed}`;
+                              return (
+                                <button
+                                  key={seed}
+                                  onClick={() => {
+                                    setAvatar(url);
+                                    setShowAvatarDialog(false);
+                                  }}
+                                  className={cn(
+                                    "aspect-square rounded-xl border-2 transition-all p-1 hover:scale-105",
+                                    avatar === url ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10" : "border-transparent bg-[#f5f1ec] dark:bg-[#1c1c1c] hover:border-[#d3cec6]"
+                                  )}
+                                >
+                                  <img src={url} alt={seed} className="w-full h-full" />
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </ScrollArea>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-4 gap-2">
+                  {diceBearSeeds.slice(0, 8).map((seed) => {
+                    const avatarUrl = `https://api.dicebear.com/7.x/lorelei/svg?seed=${seed}`;
+                    return (
+                      <button
+                        key={seed}
+                        type="button"
+                        onClick={() => setAvatar(avatarUrl)}
+                        className={cn(
+                          "h-10 w-10 rounded-lg border flex items-center justify-center transition-all overflow-hidden bg-[#f5f1ec] dark:bg-[#e2e2e2]",
+                          avatar === avatarUrl
+                            ? "border-[#111111] dark:border-[#f4f4f5] ring-2 ring-primary/10 shadow-sm"
+                            : "border-transparent hover:border-[#d3cec6]"
+                        )}
+                      >
+                        <img src={avatarUrl} alt={seed} className="h-full w-full" />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-[#f5f1ec] dark:border-[#27272a] w-full text-center">
                 <h3 className="font-semibold text-lg text-[#111111] dark:text-[#f4f4f5] tracking-tight">{username || 'User'}</h3>
-                <p className="text-xs text-[#626260] dark:text-[#a1a1aa] font-medium">{email}</p>
+                <p className="text-xs text-[#626260] dark:text-[#a1a1aa] font-medium mb-3">{email}</p>
+                <Badge variant="secondary" className="capitalize border border-[#d3cec6] dark:border-[#27272a] bg-[#f5f1ec] dark:bg-[#18181b] text-[#111111] dark:text-[#f4f4f5] px-3 py-1 font-bold tracking-tight">
+                  {user?.role?.toLowerCase() || 'User'}
+                </Badge>
               </div>
-              <Badge variant="secondary" className="capitalize border border-[#d3cec6] dark:border-[#27272a] bg-[#f5f1ec] dark:bg-[#18181b] text-[#111111] dark:text-[#f4f4f5] px-3 py-1 font-bold tracking-tight">
-                {user?.role?.toLowerCase() || 'User'}
-              </Badge>
             </div>
 
             <div className="rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] p-6 space-y-5 shadow-none">

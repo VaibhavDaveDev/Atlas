@@ -1,9 +1,9 @@
-import { Injectable, Inject, OnModuleInit } from '@nestjs/common';
-import { Redis as RedisType } from 'ioredis';
-import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { Logger } from 'winston';
+import { Injectable, Inject, OnModuleInit } from "@nestjs/common";
+import { Redis as RedisType } from "ioredis";
+import { WINSTON_MODULE_PROVIDER } from "nest-winston";
+import { Logger } from "winston";
 
-export const REDIS_CLIENT = 'REDIS_CLIENT';
+export const REDIS_CLIENT = "REDIS_CLIENT";
 
 /**
  * Redis Service - Production-grade caching service
@@ -28,12 +28,12 @@ export class RedisService implements OnModuleInit {
   async onModuleInit(): Promise<void> {
     try {
       await this.ping();
-      this.logger.info('Redis health check passed', {
-        context: 'RedisService',
+      this.logger.info("Redis health check passed", {
+        context: "RedisService",
       });
     } catch (error) {
-      this.logger.error('Redis health check failed', {
-        context: 'RedisService',
+      this.logger.error("Redis health check failed", {
+        context: "RedisService",
         error: error instanceof Error ? error.message : String(error),
       });
     }
@@ -50,7 +50,7 @@ export class RedisService implements OnModuleInit {
    * Check if Redis is connected and ready
    */
   isReady(): boolean {
-    return this.client.status === 'ready';
+    return this.client.status === "ready";
   }
 
   /**
@@ -65,7 +65,7 @@ export class RedisService implements OnModuleInit {
       return JSON.parse(data) as T;
     } catch (error) {
       this.logger.error(`Error getting key "${key}"`, {
-        context: 'RedisService',
+        context: "RedisService",
         key,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -94,7 +94,7 @@ export class RedisService implements OnModuleInit {
       return true;
     } catch (error) {
       this.logger.error(`Error setting key "${key}"`, {
-        context: 'RedisService',
+        context: "RedisService",
         key,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -116,8 +116,8 @@ export class RedisService implements OnModuleInit {
   ): Promise<boolean> {
     try {
       const data = JSON.stringify(value);
-      const result = await this.client.set(key, data, 'EX', ttlSeconds, 'NX');
-      return result === 'OK';
+      const result = await this.client.set(key, data, "EX", ttlSeconds, "NX");
+      return result === "OK";
     } catch (error) {
       this.logger.error(`Error setting NX key "${key}":`, error);
       return false;
@@ -148,7 +148,7 @@ export class RedisService implements OnModuleInit {
     try {
       return await this.client.del(...keys);
     } catch (error) {
-      this.logger.error('Error deleting multiple keys:', error);
+      this.logger.error("Error deleting multiple keys:", error);
       return 0;
     }
   }
@@ -162,16 +162,16 @@ export class RedisService implements OnModuleInit {
    * @returns Number of keys deleted
    */
   async deleteByPattern(pattern: string, batchSize = 100): Promise<number> {
-    let cursor = '0';
+    let cursor = "0";
     let totalDeleted = 0;
 
     try {
       do {
         const [newCursor, keys] = await this.client.scan(
           cursor,
-          'MATCH',
+          "MATCH",
           pattern,
-          'COUNT',
+          "COUNT",
           batchSize,
         );
         cursor = newCursor;
@@ -180,7 +180,7 @@ export class RedisService implements OnModuleInit {
           const deleted = await this.client.del(...keys);
           totalDeleted += deleted;
         }
-      } while (cursor !== '0');
+      } while (cursor !== "0");
 
       if (totalDeleted > 0) {
         this.logger.debug(`Deleted ${totalDeleted} keys matching "${pattern}"`);
@@ -257,7 +257,7 @@ export class RedisService implements OnModuleInit {
    */
   async hset(key: string, field: string, value: unknown): Promise<boolean> {
     try {
-      const data = typeof value === 'string' ? value : JSON.stringify(value);
+      const data = typeof value === "string" ? value : JSON.stringify(value);
       await this.client.hset(key, field, data);
       return true;
     } catch (error) {
@@ -409,11 +409,11 @@ export class RedisService implements OnModuleInit {
    * Only for development/testing environments
    */
   async flushAll(): Promise<void> {
-    if (process.env.NODE_ENV === 'production') {
-      this.logger.error('flushAll() is disabled in production');
+    if (process.env.NODE_ENV === "production") {
+      this.logger.error("flushAll() is disabled in production");
       return;
     }
     await this.client.flushall();
-    this.logger.warn('All Redis data has been flushed');
+    this.logger.warn("All Redis data has been flushed");
   }
 }

@@ -6,14 +6,14 @@ import {
   Injectable,
   NestInterceptor,
   Inject,
-} from '@nestjs/common';
-import { map, Observable, tap } from 'rxjs';
-import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { Logger } from 'winston';
+} from "@nestjs/common";
+import { map, Observable, tap } from "rxjs";
+import { WINSTON_MODULE_PROVIDER } from "nest-winston";
+import { Logger } from "winston";
 
 @Injectable()
 export class TransformInterceptor<T> implements NestInterceptor<T, any> {
-  private readonly defaultMessage: string = 'Success';
+  private readonly defaultMessage: string = "Success";
   private readonly defaultStatusCode = 200;
 
   constructor(
@@ -27,16 +27,16 @@ export class TransformInterceptor<T> implements NestInterceptor<T, any> {
     const startTime = Date.now();
 
     // Skip transformation for metrics endpoint (needs raw Prometheus format)
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    if (path === '/metrics' || path.startsWith('/metrics?')) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+    if (path === "/metrics" || path.startsWith("/metrics?")) {
       return next.handle();
     }
 
     return next.handle().pipe(
       tap(() => {
         const duration = Date.now() - startTime;
-        this.logger.info('Request processed', {
-          context: 'TransformInterceptor',
+        this.logger.info("Request processed", {
+          context: "TransformInterceptor",
           method,
           path,
           duration,

@@ -8,34 +8,40 @@ import {
   Res,
   Logger,
   UseGuards,
-} from '@nestjs/common';
-import { ApiTags, ApiBody, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { Throttle, SkipThrottle } from '@nestjs/throttler';
-import { AuthService } from './auth.service';
-import { GoogleOAuthService } from './services/google-oauth.service';
-import { AuthGuard } from '../common/guards/auth.guard';
-import { CreateAuthDto } from './dto/create-auth.dto';
-import { LoginDto } from './dto/login.dto';
-import { VerifyEmailDto } from './dto/verify-email.dto';
-import { ResendVerificationDto } from './dto/resend-verification.dto';
-import { RefreshTokenDto } from './dto/refresh-token.dto';
-import { LogoutDto } from './dto/logout.dto';
-import { LogoutAllDto } from './dto/logout-all.dto';
-import { SelectWorkspaceDto } from './dto/select-workspace.dto';
-import { ForgotPasswordDto } from './dto/forgot-password.dto';
-import { ResetPasswordDto } from './dto/reset-password.dto';
-import { ChangePasswordDto } from './dto/change-password.dto';
+} from "@nestjs/common";
+import {
+  ApiTags,
+  ApiBody,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from "@nestjs/swagger";
+import { Throttle, SkipThrottle } from "@nestjs/throttler";
+import { AuthService } from "./auth.service";
+import { GoogleOAuthService } from "./services/google-oauth.service";
+import { AuthGuard } from "../common/guards/auth.guard";
+import { CreateAuthDto } from "./dto/create-auth.dto";
+import { LoginDto } from "./dto/login.dto";
+import { VerifyEmailDto } from "./dto/verify-email.dto";
+import { ResendVerificationDto } from "./dto/resend-verification.dto";
+import { RefreshTokenDto } from "./dto/refresh-token.dto";
+import { LogoutDto } from "./dto/logout.dto";
+import { LogoutAllDto } from "./dto/logout-all.dto";
+import { SelectWorkspaceDto } from "./dto/select-workspace.dto";
+import { ForgotPasswordDto } from "./dto/forgot-password.dto";
+import { ResetPasswordDto } from "./dto/reset-password.dto";
+import { ChangePasswordDto } from "./dto/change-password.dto";
 // import { UpdateAuthDto } from './dto/update-auth.dto';
 import {
   GoogleOAuthInitDto,
   GoogleOAuthCallbackDto,
-} from './dto/google-oauth.dto';
-import type { Request, Response } from 'express';
-import { CustomLoggerService } from '../common/services/custom-logger.service';
-import { THROTTLER_CONFIG } from '../common/config/throttler.config';
+} from "./dto/google-oauth.dto";
+import type { Request, Response } from "express";
+import { CustomLoggerService } from "../common/services/custom-logger.service";
+import { THROTTLER_CONFIG } from "../common/config/throttler.config";
 
-@ApiTags('auth')
-@Controller('auth')
+@ApiTags("auth")
+@Controller("auth")
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
@@ -49,142 +55,156 @@ export class AuthController {
    * Request an OTP for changing password
    */
   @UseGuards(AuthGuard)
-  @ApiBearerAuth('JWT-auth')
-  @Post('change-password/request')
-  @ApiOperation({ summary: 'Request an OTP for changing password' })
+  @ApiBearerAuth("JWT-auth")
+  @Post("change-password/request")
+  @ApiOperation({ summary: "Request an OTP for changing password" })
   async requestChangePasswordOtp(@Req() req: Request) {
     const user = (req as any).user;
     // We need to get the email from the user object or DB
     // In our AuthGuard, user object might only have userId
     // Let's assume user.email is available or fetch it in service
-    // Actually AuthGuard usually puts minimal info. 
+    // Actually AuthGuard usually puts minimal info.
     // I'll update AuthService to handle fetching email if needed.
     const userFull = await this.authService.getCurrentUser(req);
-    return await this.authService.requestPasswordChangeOtp(user.userId, userFull.email);
+    return await this.authService.requestPasswordChangeOtp(
+      user.userId,
+      userFull.email,
+    );
   }
 
   /**
    * Confirm password change using OTP
    */
   @UseGuards(AuthGuard)
-  @ApiBearerAuth('JWT-auth')
-  @Post('change-password/confirm')
-  @ApiOperation({ summary: 'Confirm password change using OTP' })
+  @ApiBearerAuth("JWT-auth")
+  @Post("change-password/confirm")
+  @ApiOperation({ summary: "Confirm password change using OTP" })
   @ApiBody({ type: ChangePasswordDto })
   async changePassword(@Body() dto: ChangePasswordDto, @Req() req: Request) {
     const user = (req as any).user;
     const meta = {
-      ip: req.ip || 'unknown',
-      userAgent: req.headers['user-agent'] || 'unknown',
+      ip: req.ip || "unknown",
+      userAgent: req.headers["user-agent"] || "unknown",
     };
     return await this.authService.changePassword(user.userId, dto, meta);
   }
 
   // Strict rate limit for registration: 5 requests per 15 minutes
   @Throttle({ default: THROTTLER_CONFIG.AUTH })
-  @Post('register')
-  @ApiOperation({ summary: 'Register a new user' })
+  @Post("register")
+  @ApiOperation({ summary: "Register a new user" })
   @ApiBody({ type: CreateAuthDto })
-  @ApiResponse({ 
-    status: 201, 
-    description: 'User registered successfully. Verification email sent.',
+  @ApiResponse({
+    status: 201,
+    description: "User registered successfully. Verification email sent.",
     schema: {
       example: {
         success: true,
-        message: 'Registration successful. Please check your email for verification code.'
-      }
-    }
+        message:
+          "Registration successful. Please check your email for verification code.",
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 400, 
-    description: 'Bad request - validation errors',
+  @ApiResponse({
+    status: 400,
+    description: "Bad request - validation errors",
     schema: {
       example: {
         statusCode: 400,
-        message: ['email must be a valid email', 'password must be at least 8 characters long'],
-        error: 'Bad Request'
-      }
-    }
+        message: [
+          "email must be a valid email",
+          "password must be at least 8 characters long",
+        ],
+        error: "Bad Request",
+      },
+    },
   })
   create(@Body() payload: CreateAuthDto, @Req() req: Request) {
     this.customLogger.log(
       `Registration attempt for email: ${payload.email}`,
-      'AuthController',
+      "AuthController",
     );
     const meta = {
-      ip: req.ip || 'unknown',
-      userAgent: req.headers['user-agent'] || 'unknown',
+      ip: req.ip || "unknown",
+      userAgent: req.headers["user-agent"] || "unknown",
       device:
-        (Array.isArray(req.headers['x-device'])
-          ? req.headers['x-device'][0]
-          : req.headers['x-device']) ||
-        (Array.isArray(req.headers['x-device-id'])
-          ? req.headers['x-device-id'][0]
-          : req.headers['x-device-id']) ||
-        (Array.isArray(req.headers['sec-ch-ua-platform'])
-          ? req.headers['sec-ch-ua-platform'][0]
-          : req.headers['sec-ch-ua-platform']),
+        (Array.isArray(req.headers["x-device"])
+          ? req.headers["x-device"][0]
+          : req.headers["x-device"]) ||
+        (Array.isArray(req.headers["x-device-id"])
+          ? req.headers["x-device-id"][0]
+          : req.headers["x-device-id"]) ||
+        (Array.isArray(req.headers["sec-ch-ua-platform"])
+          ? req.headers["sec-ch-ua-platform"][0]
+          : req.headers["sec-ch-ua-platform"]),
     };
     return this.authService.create(payload, meta);
   }
 
   // Strict rate limit for verification: 5 requests per 15 minutes
   @Throttle({ default: THROTTLER_CONFIG.AUTH })
-  @Post('verify-email')
-  @ApiOperation({ summary: 'Verify user email with verification code' })
+  @Post("verify-email")
+  @ApiOperation({ summary: "Verify user email with verification code" })
   @ApiBody({ type: VerifyEmailDto })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Email verified successfully',
+  @ApiResponse({
+    status: 200,
+    description: "Email verified successfully",
     schema: {
       example: {
         success: true,
-        message: 'Email verified successfully'
-      }
-    }
+        message: "Email verified successfully",
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 400, 
-    description: 'Invalid verification code or email',
+  @ApiResponse({
+    status: 400,
+    description: "Invalid verification code or email",
     schema: {
       example: {
         statusCode: 400,
-        message: 'Invalid verification code',
-        error: 'Bad Request'
-      }
-    }
+        message: "Invalid verification code",
+        error: "Bad Request",
+      },
+    },
   })
   verifyEmail(@Body() verifyEmailDto: VerifyEmailDto, @Req() req: Request) {
     this.customLogger.log(
       `Email verification attempt for: ${verifyEmailDto.email}`,
-      'AuthController',
+      "AuthController",
     );
     const meta = {
-      ip: req.ip || 'unknown',
-      userAgent: req.headers['user-agent'] || 'unknown',
+      ip: req.ip || "unknown",
+      userAgent: req.headers["user-agent"] || "unknown",
     };
-    return this.authService.verifyEmail(verifyEmailDto.email, verifyEmailDto.code, meta);
+    return this.authService.verifyEmail(
+      verifyEmailDto.email,
+      verifyEmailDto.code,
+      meta,
+    );
   }
 
   // Strict rate limit: 5 requests per 15 minutes
   @Throttle({ default: THROTTLER_CONFIG.AUTH })
-  @Post('resend-verification-email')
-  @ApiOperation({ summary: 'Resend verification email' })
+  @Post("resend-verification-email")
+  @ApiOperation({ summary: "Resend verification email" })
   @ApiBody({ type: ResendVerificationDto })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Verification email sent successfully',
+  @ApiResponse({
+    status: 200,
+    description: "Verification email sent successfully",
     schema: {
       example: {
         success: true,
-        message: 'Verification email sent successfully'
-      }
-    }
+        message: "Verification email sent successfully",
+      },
+    },
   })
-  resendVerificationEmail(@Body() resendDto: ResendVerificationDto, @Req() req: Request) {
+  resendVerificationEmail(
+    @Body() resendDto: ResendVerificationDto,
+    @Req() req: Request,
+  ) {
     const meta = {
-      ip: req.ip || 'unknown',
-      userAgent: req.headers['user-agent'] || 'unknown',
+      ip: req.ip || "unknown",
+      userAgent: req.headers["user-agent"] || "unknown",
     };
     return this.authService.resendVerificationEmail(resendDto.email, meta);
   }
@@ -197,28 +217,29 @@ export class AuthController {
    * Request a password reset code (sent to email)
    */
   @Throttle({ default: THROTTLER_CONFIG.STRICT })
-  @Post('forgot-password')
-  @ApiOperation({ summary: 'Request a password reset code' })
+  @Post("forgot-password")
+  @ApiOperation({ summary: "Request a password reset code" })
   @ApiBody({ type: ForgotPasswordDto })
   @ApiResponse({
     status: 200,
-    description: 'Password reset email sent (if email is registered)',
+    description: "Password reset email sent (if email is registered)",
     schema: {
       example: {
         success: true,
-        message: 'If this email is registered, a password reset code has been sent.',
-        resetSessionId: '123e4567-e89b-12d3-a456-426614174000',
+        message:
+          "If this email is registered, a password reset code has been sent.",
+        resetSessionId: "123e4567-e89b-12d3-a456-426614174000",
       },
     },
   })
   async forgotPassword(@Body() dto: ForgotPasswordDto, @Req() req: Request) {
     this.customLogger.log(
       `Forgot password request for: ${dto.email}`,
-      'AuthController',
+      "AuthController",
     );
     const meta = {
-      ip: req.ip || 'unknown',
-      userAgent: req.headers['user-agent'] || 'unknown',
+      ip: req.ip || "unknown",
+      userAgent: req.headers["user-agent"] || "unknown",
     };
     return this.authService.forgotPassword(dto.email, meta);
   }
@@ -227,33 +248,39 @@ export class AuthController {
    * Reset password using the code from email
    */
   @Throttle({ default: THROTTLER_CONFIG.STRICT })
-  @Post('reset-password')
-  @ApiOperation({ summary: 'Reset password using emailed reset code' })
+  @Post("reset-password")
+  @ApiOperation({ summary: "Reset password using emailed reset code" })
   @ApiBody({ type: ResetPasswordDto })
   @ApiResponse({
     status: 200,
-    description: 'Password reset successfully',
+    description: "Password reset successfully",
     schema: {
       example: {
         success: true,
-        message: 'Password has been reset successfully. You can now log in with your new password.',
+        message:
+          "Password has been reset successfully. You can now log in with your new password.",
       },
     },
   })
   @ApiResponse({
     status: 400,
-    description: 'Invalid or expired reset code',
+    description: "Invalid or expired reset code",
   })
   async resetPassword(@Body() dto: ResetPasswordDto, @Req() req: Request) {
     this.customLogger.log(
       `Password reset attempt for session: ${dto.resetSessionId}`,
-      'AuthController',
+      "AuthController",
     );
     const meta = {
-      ip: req.ip || 'unknown',
-      userAgent: req.headers['user-agent'] || 'unknown',
+      ip: req.ip || "unknown",
+      userAgent: req.headers["user-agent"] || "unknown",
     };
-    return this.authService.resetPassword(dto.resetSessionId, dto.code, dto.newPassword, meta);
+    return this.authService.resetPassword(
+      dto.resetSessionId,
+      dto.code,
+      dto.newPassword,
+      meta,
+    );
   }
 
   // ==========================================
@@ -267,31 +294,31 @@ export class AuthController {
    * @example GET /auth/google
    * @example GET /auth/google?redirectUrl=http://localhost:3000/dashboard
    */
-  @Get('google')
-  @ApiOperation({ summary: 'Initiate Google OAuth flow' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Google OAuth URL generated successfully',
+  @Get("google")
+  @ApiOperation({ summary: "Initiate Google OAuth flow" })
+  @ApiResponse({
+    status: 200,
+    description: "Google OAuth URL generated successfully",
     schema: {
       example: {
-        url: 'https://accounts.google.com/oauth/authorize?...',
-        state: 'random-state-string',
-        message: 'Redirect to the provided URL to authenticate with Google'
-      }
-    }
+        url: "https://accounts.google.com/oauth/authorize?...",
+        state: "random-state-string",
+        message: "Redirect to the provided URL to authenticate with Google",
+      },
+    },
   })
   async googleOAuthInit(
     @Query() query: GoogleOAuthInitDto,
     @Req() req: Request,
   ) {
     this.customLogger.log(
-      'Google OAuth initialization requested',
-      'AuthController',
+      "Google OAuth initialization requested",
+      "AuthController",
     );
 
     const meta = {
-      ip: req.ip || 'unknown',
-      userAgent: req.headers['user-agent'] || 'unknown',
+      ip: req.ip || "unknown",
+      userAgent: req.headers["user-agent"] || "unknown",
     };
 
     const { url, state } = await this.googleOAuthService.getAuthorizationUrl(
@@ -302,7 +329,7 @@ export class AuthController {
     return {
       url,
       state,
-      message: 'Redirect to the provided URL to authenticate with Google',
+      message: "Redirect to the provided URL to authenticate with Google",
     };
   }
 
@@ -313,12 +340,12 @@ export class AuthController {
    * For browser-based flows, this redirects to the frontend
    * For API-based flows, returns JSON with tokens
    */
-  @Get('google/callback')
+  @Get("google/callback")
   async googleOAuthCallback(
-    @Query('code') code: string,
-    @Query('state') state: string,
-    @Query('error') error: string,
-    @Query('error_description') errorDescription: string,
+    @Query("code") code: string,
+    @Query("state") state: string,
+    @Query("error") error: string,
+    @Query("error_description") errorDescription: string,
     @Req() req: Request,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     @Res({ passthrough: true }) res: Response,
@@ -327,11 +354,11 @@ export class AuthController {
     if (error) {
       this.customLogger.warn(
         `Google OAuth error: ${error} - ${errorDescription}`,
-        'AuthController',
+        "AuthController",
       );
       Logger.warn(
         `Google OAuth error: ${error} - ${errorDescription}`,
-        'AuthController',
+        "AuthController",
       );
 
       // For browser redirect, you might want to redirect to an error page
@@ -339,34 +366,34 @@ export class AuthController {
         success: false,
         error,
         errorDescription,
-        message: 'Google authentication failed',
+        message: "Google authentication failed",
       };
     }
 
     if (!code || !state) {
       return {
         success: false,
-        error: 'missing_parameters',
-        message: 'Missing authorization code or state parameter',
+        error: "missing_parameters",
+        message: "Missing authorization code or state parameter",
       };
     }
 
-    this.customLogger.log('Google OAuth callback received', 'AuthController');
-    Logger.log('Google OAuth callback received', 'AuthController');
+    this.customLogger.log("Google OAuth callback received", "AuthController");
+    Logger.log("Google OAuth callback received", "AuthController");
 
     const meta = {
-      ip: req.ip || 'unknown',
-      userAgent: req.headers['user-agent'] || 'unknown',
+      ip: req.ip || "unknown",
+      userAgent: req.headers["user-agent"] || "unknown",
       device:
-        (Array.isArray(req.headers['x-device'])
-          ? req.headers['x-device'][0]
-          : req.headers['x-device']) ||
-        (Array.isArray(req.headers['x-device-id'])
-          ? req.headers['x-device-id'][0]
-          : req.headers['x-device-id']) ||
-        (Array.isArray(req.headers['sec-ch-ua-platform'])
-          ? req.headers['sec-ch-ua-platform'][0]
-          : req.headers['sec-ch-ua-platform']),
+        (Array.isArray(req.headers["x-device"])
+          ? req.headers["x-device"][0]
+          : req.headers["x-device"]) ||
+        (Array.isArray(req.headers["x-device-id"])
+          ? req.headers["x-device-id"][0]
+          : req.headers["x-device-id"]) ||
+        (Array.isArray(req.headers["sec-ch-ua-platform"])
+          ? req.headers["sec-ch-ua-platform"][0]
+          : req.headers["sec-ch-ua-platform"]),
     };
 
     const result = await this.googleOAuthService.handleCallback(
@@ -381,8 +408,8 @@ export class AuthController {
     return {
       success: true,
       message: result.isNewUser
-        ? 'Account created successfully via Google'
-        : 'Signed in successfully via Google',
+        ? "Account created successfully via Google"
+        : "Signed in successfully via Google",
       ...result,
     };
   }
@@ -391,29 +418,29 @@ export class AuthController {
    * Alternative POST endpoint for Google OAuth callback
    * Useful for mobile apps or SPAs that handle the callback differently
    */
-  @Post('google/callback')
+  @Post("google/callback")
   async googleOAuthCallbackPost(
     @Body() body: GoogleOAuthCallbackDto,
     @Req() req: Request,
   ) {
     this.customLogger.log(
-      'Google OAuth callback (POST) received',
-      'AuthController',
+      "Google OAuth callback (POST) received",
+      "AuthController",
     );
 
     const meta = {
-      ip: req.ip || 'unknown',
-      userAgent: req.headers['user-agent'] || 'unknown',
+      ip: req.ip || "unknown",
+      userAgent: req.headers["user-agent"] || "unknown",
       device:
-        (Array.isArray(req.headers['x-device'])
-          ? req.headers['x-device'][0]
-          : req.headers['x-device']) ||
-        (Array.isArray(req.headers['x-device-id'])
-          ? req.headers['x-device-id'][0]
-          : req.headers['x-device-id']) ||
-        (Array.isArray(req.headers['sec-ch-ua-platform'])
-          ? req.headers['sec-ch-ua-platform'][0]
-          : req.headers['sec-ch-ua-platform']),
+        (Array.isArray(req.headers["x-device"])
+          ? req.headers["x-device"][0]
+          : req.headers["x-device"]) ||
+        (Array.isArray(req.headers["x-device-id"])
+          ? req.headers["x-device-id"][0]
+          : req.headers["x-device-id"]) ||
+        (Array.isArray(req.headers["sec-ch-ua-platform"])
+          ? req.headers["sec-ch-ua-platform"][0]
+          : req.headers["sec-ch-ua-platform"]),
     };
 
     const result = await this.googleOAuthService.handleCallback(
@@ -425,8 +452,8 @@ export class AuthController {
     return {
       success: true,
       message: result.isNewUser
-        ? 'Account created successfully via Google'
-        : 'Signed in successfully via Google',
+        ? "Account created successfully via Google"
+        : "Signed in successfully via Google",
       data: result,
     };
   }
@@ -440,113 +467,119 @@ export class AuthController {
    */
   // Strict rate limit for login: 5 requests per 15 minutes per IP
   @Throttle({ default: THROTTLER_CONFIG.AUTH })
-  @Post('login')
-  @ApiOperation({ summary: 'Login with email and password' })
+  @Post("login")
+  @ApiOperation({ summary: "Login with email and password" })
   @ApiBody({ type: LoginDto })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Login successful',
+  @ApiResponse({
+    status: 200,
+    description: "Login successful",
     schema: {
       example: {
         statusCode: 200,
-        message: 'Success',
+        message: "Success",
         data: {
-          accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-          refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+          accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+          refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
           user: {
-            id: 'uuid',
-            email: 'owner@acme.com',
-            username: 'owner',
-            role: 'USER',
-            verified: true
+            id: "uuid",
+            email: "owner@acme.com",
+            username: "owner",
+            role: "USER",
+            verified: true,
           },
           workspaces: [
             {
-              workspaceId: 'uuid',
-              workspaceName: 'Acme Corporation',
-              subdomain: 'acme',
-              status: 'ACTIVE',
-              role: 'OWNER',
-              department: null
-            }
+              workspaceId: "uuid",
+              workspaceName: "Acme Corporation",
+              subdomain: "acme",
+              status: "ACTIVE",
+              role: "OWNER",
+              department: null,
+            },
           ],
-          expiresIn: 3600
-        }
-      }
-    }
+          expiresIn: 3600,
+        },
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 401, 
-    description: 'Invalid credentials',
+  @ApiResponse({
+    status: 401,
+    description: "Invalid credentials",
     schema: {
       example: {
         statusCode: 401,
-        message: 'Invalid email or password',
-        error: 'Unauthorized'
-      }
-    }
+        message: "Invalid email or password",
+        error: "Unauthorized",
+      },
+    },
   })
   async login(@Body() loginDto: LoginDto, @Req() req: Request) {
     this.customLogger.log(
       `Login attempt for email: ${loginDto.email}`,
-      'AuthController',
+      "AuthController",
     );
 
     const meta = {
-      ip: req.ip || 'unknown',
-      userAgent: req.headers['user-agent'] || 'unknown',
+      ip: req.ip || "unknown",
+      userAgent: req.headers["user-agent"] || "unknown",
       device:
-        (Array.isArray(req.headers['x-device'])
-          ? req.headers['x-device'][0]
-          : req.headers['x-device']) ||
-        (Array.isArray(req.headers['x-device-id'])
-          ? req.headers['x-device-id'][0]
-          : req.headers['x-device-id']) ||
-        (Array.isArray(req.headers['sec-ch-ua-platform'])
-          ? req.headers['sec-ch-ua-platform'][0]
-          : req.headers['sec-ch-ua-platform']),
+        (Array.isArray(req.headers["x-device"])
+          ? req.headers["x-device"][0]
+          : req.headers["x-device"]) ||
+        (Array.isArray(req.headers["x-device-id"])
+          ? req.headers["x-device-id"][0]
+          : req.headers["x-device-id"]) ||
+        (Array.isArray(req.headers["sec-ch-ua-platform"])
+          ? req.headers["sec-ch-ua-platform"][0]
+          : req.headers["sec-ch-ua-platform"]),
     };
 
-    return await this.authService.login({ email: loginDto.email, password: loginDto.password }, meta);
+    return await this.authService.login(
+      { email: loginDto.email, password: loginDto.password },
+      meta,
+    );
   }
 
   /**
    * Refresh access token using refresh token
    */
-  @Post('refresh-token')
-  @ApiOperation({ summary: 'Refresh access token using refresh token' })
+  @Post("refresh-token")
+  @ApiOperation({ summary: "Refresh access token using refresh token" })
   @ApiBody({ type: RefreshTokenDto })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Token refreshed successfully',
+  @ApiResponse({
+    status: 200,
+    description: "Token refreshed successfully",
     schema: {
       example: {
         success: true,
-        message: 'Token refreshed successfully',
+        message: "Token refreshed successfully",
         data: {
-          accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-          refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-          expiresIn: 3600
-        }
-      }
-    }
+          accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+          refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+          expiresIn: 3600,
+        },
+      },
+    },
   })
-  async refreshToken(@Body() refreshTokenDto: RefreshTokenDto, @Req() req: Request) {
-    this.customLogger.log('Token refresh requested', 'AuthController');
+  async refreshToken(
+    @Body() refreshTokenDto: RefreshTokenDto,
+    @Req() req: Request,
+  ) {
+    this.customLogger.log("Token refresh requested", "AuthController");
 
     const meta = {
-      ip: req.ip || 'unknown',
-      userAgent: req.headers['user-agent'] || 'unknown',
+      ip: req.ip || "unknown",
+      userAgent: req.headers["user-agent"] || "unknown",
       device:
-        (Array.isArray(req.headers['x-device'])
-          ? req.headers['x-device'][0]
-          : req.headers['x-device']) ||
-        (Array.isArray(req.headers['x-device-id'])
-          ? req.headers['x-device-id'][0]
-          : req.headers['x-device-id']) ||
-        (Array.isArray(req.headers['sec-ch-ua-platform'])
-          ? req.headers['sec-ch-ua-platform'][0]
-          : req.headers['sec-ch-ua-platform']),
+        (Array.isArray(req.headers["x-device"])
+          ? req.headers["x-device"][0]
+          : req.headers["x-device"]) ||
+        (Array.isArray(req.headers["x-device-id"])
+          ? req.headers["x-device-id"][0]
+          : req.headers["x-device-id"]) ||
+        (Array.isArray(req.headers["sec-ch-ua-platform"])
+          ? req.headers["sec-ch-ua-platform"][0]
+          : req.headers["sec-ch-ua-platform"]),
     };
 
     return await this.authService.refreshToken(
@@ -561,17 +594,17 @@ export class AuthController {
    * Requires authentication — userId is taken from the verified JWT.
    */
   @UseGuards(AuthGuard)
-  @ApiBearerAuth('JWT-auth')
-  @Post('logout')
-  @ApiOperation({ summary: 'Logout current session' })
+  @ApiBearerAuth("JWT-auth")
+  @Post("logout")
+  @ApiOperation({ summary: "Logout current session" })
   @ApiBody({ type: LogoutDto })
   @ApiResponse({
     status: 200,
-    description: 'Logout successful',
-    schema: { example: { success: true, message: 'Logged out successfully' } },
+    description: "Logout successful",
+    schema: { example: { success: true, message: "Logged out successfully" } },
   })
   async logout(@Body() logoutDto: LogoutDto, @Req() req: Request) {
-    this.customLogger.log('Logout requested', 'AuthController');
+    this.customLogger.log("Logout requested", "AuthController");
     const user = (req as any).user;
 
     // Prevent privilege escalation: always use userId from verified JWT
@@ -583,19 +616,24 @@ export class AuthController {
    * Requires authentication — userId is taken from the verified JWT.
    */
   @UseGuards(AuthGuard)
-  @ApiBearerAuth('JWT-auth')
-  @Post('logout-all')
-  @ApiOperation({ summary: 'Logout from all devices' })
+  @ApiBearerAuth("JWT-auth")
+  @Post("logout-all")
+  @ApiOperation({ summary: "Logout from all devices" })
   @ApiResponse({
     status: 200,
-    description: 'Logout from all devices successful',
-    schema: { example: { success: true, message: 'Logged out from all devices successfully' } },
+    description: "Logout from all devices successful",
+    schema: {
+      example: {
+        success: true,
+        message: "Logged out from all devices successfully",
+      },
+    },
   })
   async logoutAll(@Req() req: Request) {
     const user = (req as any).user;
     this.customLogger.log(
       `Logout all devices requested for user: ${user.userId}`,
-      'AuthController',
+      "AuthController",
     );
 
     return await this.authService.logoutAllDevices(user.userId);
@@ -605,80 +643,78 @@ export class AuthController {
    * Get current user info
    */
   @UseGuards(AuthGuard)
-  @ApiBearerAuth('JWT-auth')
-  @Get('me')
-  @ApiOperation({ summary: 'Get current authenticated user information' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'User information retrieved successfully',
+  @ApiBearerAuth("JWT-auth")
+  @Get("me")
+  @ApiOperation({ summary: "Get current authenticated user information" })
+  @ApiResponse({
+    status: 200,
+    description: "User information retrieved successfully",
     schema: {
       example: {
         statusCode: 200,
-        message: 'Success',
+        message: "Success",
         data: {
-          userId: 'uuid',
-          role: 'USER',
-          tokenVersion: 0
-        }
-      }
-    }
+          userId: "uuid",
+          role: "USER",
+          tokenVersion: 0,
+        },
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 401, 
-    description: 'User not authenticated',
+  @ApiResponse({
+    status: 401,
+    description: "User not authenticated",
     schema: {
       example: {
         statusCode: 401,
-        message: 'No token found',
-        error: 'Unauthorized'
-      }
-    }
+        message: "No token found",
+        error: "Unauthorized",
+      },
+    },
   })
   async getCurrentUser(@Req() req: Request) {
     // This will be protected by AuthGuard
-    const user = (req as any).user;
-    
-    return user;
+    return await this.authService.getCurrentUser(req);
   }
 
   /**
    * Get user's workspaces
    */
   @UseGuards(AuthGuard)
-  @ApiBearerAuth('JWT-auth')
-  @Get('workspaces')
-  @ApiOperation({ summary: 'Get user workspaces' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'User workspaces retrieved successfully',
+  @ApiBearerAuth("JWT-auth")
+  @Get("workspaces")
+  @ApiOperation({ summary: "Get user workspaces" })
+  @ApiResponse({
+    status: 200,
+    description: "User workspaces retrieved successfully",
     schema: {
       example: {
         statusCode: 200,
-        message: 'Success',
+        message: "Success",
         data: [
           {
-            workspaceId: 'uuid',
-            workspaceName: 'Acme Corporation',
-            subdomain: 'acme',
-            status: 'ACTIVE',
-            role: 'OWNER',
+            workspaceId: "uuid",
+            workspaceName: "Acme Corporation",
+            subdomain: "acme",
+            status: "ACTIVE",
+            role: "OWNER",
             department: null,
-            joinedAt: '2024-01-01T00:00:00.000Z'
-          }
-        ]
-      }
-    }
+            joinedAt: "2024-01-01T00:00:00.000Z",
+          },
+        ],
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 401, 
-    description: 'User not authenticated',
+  @ApiResponse({
+    status: 401,
+    description: "User not authenticated",
     schema: {
       example: {
         statusCode: 401,
-        message: 'No token found',
-        error: 'Unauthorized'
-      }
-    }
+        message: "No token found",
+        error: "Unauthorized",
+      },
+    },
   })
   async getUserWorkspaces(@Req() req: Request) {
     // Extract userId from JWT token
@@ -691,45 +727,53 @@ export class AuthController {
    * Select workspace (returns new JWT with workspace context)
    */
   @UseGuards(AuthGuard)
-  @ApiBearerAuth('JWT-auth')
-  @Post('select-workspace')
-  @ApiOperation({ summary: 'Select workspace and get new JWT with workspace context' })
+  @ApiBearerAuth("JWT-auth")
+  @Post("select-workspace")
+  @ApiOperation({
+    summary: "Select workspace and get new JWT with workspace context",
+  })
   @ApiBody({ type: SelectWorkspaceDto })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Workspace selected successfully',
+  @ApiResponse({
+    status: 200,
+    description: "Workspace selected successfully",
     schema: {
       example: {
         statusCode: 200,
-        message: 'Success',
+        message: "Success",
         data: {
-          accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+          accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
           workspace: {
-            id: 'uuid',
-            name: 'Acme Corporation',
-            subdomain: 'acme',
-            status: 'ACTIVE',
-            role: 'OWNER',
-            department: null
-          }
-        }
-      }
-    }
+            id: "uuid",
+            name: "Acme Corporation",
+            subdomain: "acme",
+            status: "ACTIVE",
+            role: "OWNER",
+            department: null,
+          },
+        },
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 401, 
-    description: 'User not authenticated',
+  @ApiResponse({
+    status: 401,
+    description: "User not authenticated",
     schema: {
       example: {
         statusCode: 401,
-        message: 'No token found',
-        error: 'Unauthorized'
-      }
-    }
+        message: "No token found",
+        error: "Unauthorized",
+      },
+    },
   })
-  async selectWorkspace(@Body() selectWorkspaceDto: SelectWorkspaceDto, @Req() req: Request) {
+  async selectWorkspace(
+    @Body() selectWorkspaceDto: SelectWorkspaceDto,
+    @Req() req: Request,
+  ) {
     const user = (req as any).user;
 
-    return await this.authService.selectWorkspace(user.userId, selectWorkspaceDto.workspaceId);
+    return await this.authService.selectWorkspace(
+      user.userId,
+      selectWorkspaceDto.workspaceId,
+    );
   }
 }

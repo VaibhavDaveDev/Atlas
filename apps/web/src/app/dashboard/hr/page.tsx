@@ -144,6 +144,20 @@ export default function HrOverviewPage() {
       href: '/dashboard/hr/payroll',
     },
     {
+      title: 'Performance',
+      desc: 'Appraisals & Goals',
+      icon: Users,
+      color: 'bg-indigo-600 text-white',
+      href: '/dashboard/hr/performance',
+    },
+    {
+      title: 'Helpdesk',
+      desc: 'HR & IT Tickets',
+      icon: AlertCircle,
+      color: 'bg-red-600 text-white',
+      href: '/dashboard/admin/tickets',
+    },
+    {
       title: 'Onboarding',
       desc: 'Start new hire checklist',
       icon: UserPlus,

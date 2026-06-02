@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Bell, Search, LogOut, User, ChevronDown, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
@@ -65,24 +65,15 @@ export function Topbar({ setMobileOpen }: { setMobileOpen?: React.Dispatch<React
               className="flex items-center gap-2 px-2 h-9 text-[#626260] dark:text-[#a1a1aa] hover:text-[#111111] dark:hover:text-[#f4f4f5] hover:bg-[#e8e4dc] dark:hover:bg-[#18181b] rounded-lg"
               aria-label="User menu"
             >
-              <Avatar className="h-7 w-7 border border-[#d3cec6] dark:border-[#27272a]">
+              <Avatar className="h-7 w-7 border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#27272a]">
+                <AvatarImage src={user?.image || `https://api.dicebear.com/7.x/lorelei/svg?seed=${user?.username || 'user'}`} alt={user?.username || 'User'} />
                 <AvatarFallback className="text-[10px] font-bold bg-[#f5f1ec] dark:bg-[#18181b] text-[#111111] dark:text-[#f4f4f5]">{initials}</AvatarFallback>
               </Avatar>
-              <div className="hidden md:flex flex-col items-start leading-none gap-0.5">
-                <span className="text-xs font-semibold text-[#111111] dark:text-[#f4f4f5] tracking-tight">{user?.username}</span>
-              </div>
               <ChevronDown className="h-3 w-3 text-[#7b7b78] dark:text-[#71717a] hidden md:block" />
             </Button>
           </DropdownMenuTrigger>
 
           <DropdownMenuContent align="end" className="w-56 rounded-xl border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] shadow-lg animate-in fade-in zoom-in-95 duration-100">
-            <DropdownMenuLabel className="font-normal p-3">
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-semibold leading-none text-[#111111] dark:text-[#f4f4f5] tracking-tight">{user?.username}</p>
-                <p className="text-xs leading-none text-[#626260] dark:text-[#a1a1aa]">{user?.email}</p>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator className="bg-[#f5f1ec] dark:bg-[#27272a]" />
             {workspace && (
               <>
                 <div className="px-3 py-2">

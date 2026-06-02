@@ -3,591 +3,835 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Body,
   UseGuards,
   Req,
   Param,
-} from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { HrService } from './hr.service';
-import { AuthGuard } from '../common/guards/auth.guard';
-import { WorkspaceGuard } from '../auth/guards/workspace.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { PermissionGuard } from '../auth/guards/permission.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { RequirePermission } from '../auth/decorators/require-permission.decorator';
-import type { Request } from 'express';
+  Query,
+} from "@nestjs/common";
+import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
+import { HrService } from "./hr.service";
+import { AuthGuard } from "../common/guards/auth.guard";
+import { WorkspaceGuard } from "../auth/guards/workspace.guard";
+import { RolesGuard } from "../auth/guards/roles.guard";
+import { PermissionGuard } from "../auth/guards/permission.guard";
+import { Roles } from "../auth/decorators/roles.decorator";
+import { RequirePermission } from "../auth/decorators/require-permission.decorator";
+import type { Request } from "express";
 
-@ApiTags('hr')
-@Controller('hr')
+@ApiTags("hr")
+@Controller("hr")
 @UseGuards(AuthGuard, WorkspaceGuard, RolesGuard, PermissionGuard)
-@ApiBearerAuth('JWT-auth')
+@ApiBearerAuth("JWT-auth")
 export class HrController {
   constructor(private readonly hrService: HrService) {}
 
-  @Get('departments')
-  @RequirePermission({ resource: 'departments', action: 'read', scope: 'all' })
-  @ApiOperation({ summary: 'Get workspace departments' })
+  // ====================
+  // DEPARTMENTS
+  // ====================
+  @Get("departments")
+  @RequirePermission({ resource: "departments", action: "read", scope: "all" })
   async getDepartments(@Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.getDepartments(user.workspaceId);
   }
 
-  @Post('departments')
-  @RequirePermission({ resource: 'departments', action: 'create', scope: 'all' })
-  @ApiOperation({ summary: 'Create a new department' })
+  @Post("departments")
+  @RequirePermission({
+    resource: "departments",
+    action: "create",
+    scope: "all",
+  })
   async createDepartment(@Body() body: any, @Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.createDepartment(user.workspaceId, body);
   }
 
-  @Get('departments/:id')
-  @RequirePermission({ resource: 'departments', action: 'read', scope: 'all' })
-  @ApiOperation({ summary: 'Get department by id' })
-  async getDepartmentById(@Param('id') id: string, @Req() req: Request) {
+  @Get("departments/:id")
+  @RequirePermission({ resource: "departments", action: "read", scope: "all" })
+  async getDepartmentById(@Param("id") id: string, @Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.getDepartmentById(user.workspaceId, id);
   }
 
-  @Put('departments/:id')
-  @RequirePermission({ resource: 'departments', action: 'update', scope: 'all' })
-  @ApiOperation({ summary: 'Update a department' })
-  async updateDepartment(@Param('id') id: string, @Body() body: any, @Req() req: Request) {
+  @Put("departments/:id")
+  @RequirePermission({
+    resource: "departments",
+    action: "update",
+    scope: "all",
+  })
+  async updateDepartment(
+    @Param("id") id: string,
+    @Body() body: any,
+    @Req() req: Request,
+  ) {
     const user = (req as any).user;
     return await this.hrService.updateDepartment(user.workspaceId, id, body);
   }
 
-  @Delete('departments/:id')
-  @RequirePermission({ resource: 'departments', action: 'delete', scope: 'all' })
-  @ApiOperation({ summary: 'Delete a department' })
-  async deleteDepartment(@Param('id') id: string, @Req() req: Request) {
+  @Delete("departments/:id")
+  @RequirePermission({
+    resource: "departments",
+    action: "delete",
+    scope: "all",
+  })
+  async deleteDepartment(@Param("id") id: string, @Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.deleteDepartment(user.workspaceId, id);
   }
 
-  @Get('designations')
-  @RequirePermission({ resource: 'designations', action: 'read', scope: 'all' })
-  @ApiOperation({ summary: 'Get workspace designations' })
+  // ====================
+  // DESIGNATIONS
+  // ====================
+  @Get("designations")
+  @RequirePermission({ resource: "designations", action: "read", scope: "all" })
   async getDesignations(@Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.getDesignations(user.workspaceId);
   }
 
-  @Post('designations')
-  @RequirePermission({ resource: 'designations', action: 'create', scope: 'all' })
-  @ApiOperation({ summary: 'Create a new designation' })
+  @Post("designations")
+  @RequirePermission({
+    resource: "designations",
+    action: "create",
+    scope: "all",
+  })
   async createDesignation(@Body() body: any, @Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.createDesignation(user.workspaceId, body);
   }
 
-  @Get('employees')
-  @RequirePermission({ resource: 'employees', action: 'read', scope: 'all' })
-  @ApiOperation({ summary: 'Get workspace employees' })
-  async getEmployees(@Req() req: Request): Promise<any> {
+  // ====================
+  // EMPLOYEES
+  // ====================
+  @Get("employees")
+  @RequirePermission({ resource: "employees", action: "read", scope: "all" })
+  async getEmployees(@Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.getEmployees(user.workspaceId);
   }
 
-  @Post('employees')
-  @RequirePermission({ resource: 'employees', action: 'create', scope: 'all' })
-  @ApiOperation({ summary: 'Create a new employee' })
-  async createEmployee(@Body() body: any, @Req() req: Request): Promise<any> {
+  @Post("employees")
+  @RequirePermission({ resource: "employees", action: "create", scope: "all" })
+  async createEmployee(@Body() body: any, @Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.createEmployee(user.workspaceId, body);
   }
 
-  @Get('employees/:id')
-  @RequirePermission({ resource: 'employees', action: 'read', scope: 'all' })
-  @ApiOperation({ summary: 'Get employee by id' })
-  async getEmployeeById(@Param('id') id: string, @Req() req: Request): Promise<any> {
+  @Get("employees/:id")
+  @RequirePermission({ resource: "employees", action: "read", scope: "all" })
+  async getEmployeeById(@Param("id") id: string, @Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.getEmployeeById(user.workspaceId, id);
   }
 
-  @Put('employees/:id')
-  @RequirePermission({ resource: 'employees', action: 'update', scope: 'all' })
-  @ApiOperation({ summary: 'Update an employee' })
-  async updateEmployee(@Param('id') id: string, @Body() body: any, @Req() req: Request): Promise<any> {
+  @Put("employees/:id")
+  @RequirePermission({ resource: "employees", action: "update", scope: "all" })
+  async updateEmployee(
+    @Param("id") id: string,
+    @Body() body: any,
+    @Req() req: Request,
+  ) {
     const user = (req as any).user;
     return await this.hrService.updateEmployee(user.workspaceId, id, body);
   }
 
-  @Delete('employees/:id')
-  @RequirePermission({ resource: 'employees', action: 'delete', scope: 'all' })
-  @ApiOperation({ summary: 'Delete an employee' })
-  async deleteEmployee(@Param('id') id: string, @Req() req: Request): Promise<any> {
+  @Delete("employees/:id")
+  @RequirePermission({ resource: "employees", action: "delete", scope: "all" })
+  async deleteEmployee(@Param("id") id: string, @Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.deleteEmployee(user.workspaceId, id);
   }
 
   // ====================
-  // ATTENDANCE
+  // LEAVES
   // ====================
-  @Get('attendance')
-  @RequirePermission({ resource: 'attendance', action: 'read', scope: 'all' })
-  @ApiOperation({ summary: 'Get attendance logs' })
-  async getAttendanceLogs(@Req() req: Request): Promise<any> {
-    const user = (req as any).user;
-    return await this.hrService.getAttendanceLogs(user.workspaceId);
-  }
-
-  @Get('attendance/me')
-  @RequirePermission({ resource: 'attendance', action: 'read', scope: 'own' })
-  @ApiOperation({ summary: 'Get current user attendance' })
-  async getMyAttendance(@Req() req: Request): Promise<any> {
-    const user = (req as any).user;
-    return await this.hrService.getMyAttendance(user.workspaceId, user.userId);
-  }
-
-  @Post('attendance/check-in')
-  @RequirePermission({ resource: 'attendance', action: 'create', scope: 'own' })
-  @ApiOperation({ summary: 'Check in for today' })
-  async checkIn(@Req() req: Request): Promise<any> {
-    const user = (req as any).user;
-    return await this.hrService.checkIn(user.workspaceId, user.userId);
-  }
-
-  @Post('attendance/check-out')
-  @RequirePermission({ resource: 'attendance', action: 'update', scope: 'own' })
-  @ApiOperation({ summary: 'Check out for today' })
-  async checkOut(@Req() req: Request): Promise<any> {
-    const user = (req as any).user;
-    return await this.hrService.checkOut(user.workspaceId, user.userId);
-  }
-
-  // ====================
-  // LEAVE TYPES
-  // ====================
-  @Get('leaves/types')
-  @RequirePermission({ resource: 'leave', action: 'read', scope: 'all' })
-  @ApiOperation({ summary: 'Get leave types' })
-  async getLeaveTypes(@Req() req: Request): Promise<any> {
+  @Get("leaves/types")
+  @RequirePermission({ resource: "leaves", action: "read", scope: "all" })
+  async getLeaveTypes(@Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.getLeaveTypes(user.workspaceId);
   }
 
-  @Post('leaves/types')
-  @RequirePermission({ resource: 'leave', action: 'create', scope: 'all' })
-  @ApiOperation({ summary: 'Create leave type' })
-  async createLeaveType(@Body() body: any, @Req() req: Request): Promise<any> {
+  @Post("leaves/types")
+  @RequirePermission({ resource: "leaves", action: "manage", scope: "all" })
+  async createLeaveType(@Body() body: any, @Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.createLeaveType(user.workspaceId, body);
   }
 
-  @Put('leaves/types/:id')
-  @RequirePermission({ resource: 'leave', action: 'update', scope: 'all' })
-  @ApiOperation({ summary: 'Update leave type' })
-  async updateLeaveType(@Param('id') id: string, @Body() body: any, @Req() req: Request): Promise<any> {
+  @Put("leaves/types/:id")
+  @RequirePermission({ resource: "leaves", action: "manage", scope: "all" })
+  async updateLeaveType(
+    @Param("id") id: string,
+    @Body() body: any,
+    @Req() req: Request,
+  ) {
     const user = (req as any).user;
     return await this.hrService.updateLeaveType(user.workspaceId, id, body);
   }
 
-  @Delete('leaves/types/:id')
-  @RequirePermission({ resource: 'leave', action: 'delete', scope: 'all' })
-  @ApiOperation({ summary: 'Delete leave type' })
-  async deleteLeaveType(@Param('id') id: string, @Req() req: Request): Promise<any> {
+  @Delete("leaves/types/:id")
+  @RequirePermission({ resource: "leaves", action: "manage", scope: "all" })
+  async deleteLeaveType(@Param("id") id: string, @Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.deleteLeaveType(user.workspaceId, id);
   }
 
-  // ====================
-  // LEAVE APPLICATIONS
-  // ====================
-  @Get('leaves/applications')
-  @RequirePermission({ resource: 'leave', action: 'read', scope: 'all' })
-  @ApiOperation({ summary: 'Get leave applications' })
-  async getLeaveApplications(@Req() req: Request): Promise<any> {
+  @Get("leaves/applications")
+  @RequirePermission({ resource: "leaves", action: "read", scope: "all" })
+  async getLeaveApplications(@Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.getLeaveApplications(user.workspaceId);
   }
 
-  @Post('leaves/applications')
-  @RequirePermission({ resource: 'leave', action: 'create', scope: 'own' })
-  @ApiOperation({ summary: 'Apply for leave' })
-  async createLeaveApplication(@Body() body: any, @Req() req: Request): Promise<any> {
+  @Post("leaves/applications")
+  @RequirePermission({ resource: "leaves", action: "manage", scope: "all" })
+  async createLeaveApplication(@Body() body: any, @Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.createLeaveApplication(user.workspaceId, body);
   }
 
-  @Post('leaves/applications/:id/status')
-  @RequirePermission({ resource: 'leave', action: 'manage', scope: 'all' })
-  @ApiOperation({ summary: 'Approve or reject leave' })
+  @Post("leaves/applications/:id/status")
+  @RequirePermission({ resource: "leaves", action: "manage", scope: "all" })
   async updateLeaveStatus(
+    @Param("id") id: string,
+    @Body() body: { status: string; remarks?: string },
     @Req() req: Request,
-    @Param('id') id: string,
-    @Body() body: { status: string; remarks?: string }
-  ): Promise<any> {
+  ) {
     const user = (req as any).user;
     return await this.hrService.updateLeaveStatus(
       user.workspaceId,
       id,
       body.status,
       user.userId,
-      body.remarks
+      body.remarks,
     );
   }
 
-  @Get('leaves/balances/:employeeId')
-  @RequirePermission({ resource: 'leave', action: 'read', scope: 'all' })
-  @ApiOperation({ summary: 'Get employee leave balances' })
-  async getLeaveBalances(@Param('employeeId') employeeId: string, @Req() req: Request) {
+  @Get("leaves/balances/:employeeId")
+  @RequirePermission({ resource: "leaves", action: "read", scope: "all" })
+  async getLeaveBalances(
+    @Param("employeeId") employeeId: string,
+    @Req() req: Request,
+  ) {
     const user = (req as any).user;
-    return await this.hrService.getAllLeaveBalances(user.workspaceId, employeeId);
+    return await this.hrService.getAllLeaveBalances(
+      user.workspaceId,
+      employeeId,
+    );
   }
 
-  // ====================
-  // SALARY COMPONENTS
-  // ====================
-  @Get('payroll/salary-components')
-  @RequirePermission({ resource: 'payroll', action: 'read', scope: 'all' })
-  @ApiOperation({ summary: 'Get salary components' })
-  async getSalaryComponents(@Req() req: Request) {
-    const user = (req as any).user;
-    return await this.hrService.getSalaryComponents(user.workspaceId);
-  }
-
-  @Post('payroll/salary-components')
-  @RequirePermission({ resource: 'payroll', action: 'manage', scope: 'all' })
-  @ApiOperation({ summary: 'Create salary component' })
-  async createSalaryComponent(@Body() body: any, @Req() req: Request) {
-    const user = (req as any).user;
-    return await this.hrService.createSalaryComponent(user.workspaceId, body);
-  }
-
-  // ====================
-  // SALARY STRUCTURES
-  // ====================
-  @Get('payroll/salary-structures')
-  @RequirePermission({ resource: 'payroll', action: 'read', scope: 'all' })
-  @ApiOperation({ summary: 'Get salary structures' })
-  async getSalaryStructures(@Req() req: Request) {
-    const user = (req as any).user;
-    return await this.hrService.getSalaryStructures(user.workspaceId);
-  }
-
-  @Post('payroll/salary-structures')
-  @RequirePermission({ resource: 'payroll', action: 'manage', scope: 'all' })
-  @ApiOperation({ summary: 'Create salary structure' })
-  async createSalaryStructure(@Body() body: any, @Req() req: Request) {
-    const user = (req as any).user;
-    return await this.hrService.createSalaryStructure(user.workspaceId, body);
-  }
-
-  @Post('payroll/salary-structures/assign')
-  @RequirePermission({ resource: 'payroll', action: 'manage', scope: 'all' })
-  @ApiOperation({ summary: 'Assign salary structure to employee' })
-  async assignSalaryStructure(@Body() body: any, @Req() req: Request) {
-    const user = (req as any).user;
-    return await this.hrService.assignSalaryStructure(user.workspaceId, body);
-  }
-
-  @Get('payroll/salary-assignments/:employeeId')
-  @RequirePermission({ resource: 'payroll', action: 'read', scope: 'all' })
-  @ApiOperation({ summary: 'Get employee salary assignment' })
-  async getSalaryAssignment(@Param('employeeId') employeeId: string, @Req() req: Request) {
-    const user = (req as any).user;
-    return await this.hrService.getSalaryAssignment(user.workspaceId, employeeId);
-  }
-
-  // ====================
-  // LEAVE POLICIES & ALLOCATION
-  // ====================
-  @Get('leaves/policies')
-  @RequirePermission({ resource: 'leave', action: 'read', scope: 'all' })
-  @ApiOperation({ summary: 'Get leave policies' })
+  @Get("leaves/policies")
+  @RequirePermission({ resource: "leaves", action: "read", scope: "all" })
   async getLeavePolicies(@Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.getLeavePolicies(user.workspaceId);
   }
 
-  @Post('leaves/policies')
-  @RequirePermission({ resource: 'leave', action: 'manage', scope: 'all' })
-  @ApiOperation({ summary: 'Create leave policy' })
+  @Post("leaves/policies")
+  @RequirePermission({ resource: "leaves", action: "manage", scope: "all" })
   async createLeavePolicy(@Body() body: any, @Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.createLeavePolicy(user.workspaceId, body);
   }
 
-  @Put('leaves/policies/:id')
-  @RequirePermission({ resource: 'leave', action: 'manage', scope: 'all' })
-  @ApiOperation({ summary: 'Update leave policy' })
-  async updateLeavePolicy(@Param('id') id: string, @Body() body: any, @Req() req: Request) {
+  @Put("leaves/policies/:id")
+  @RequirePermission({ resource: "leaves", action: "manage", scope: "all" })
+  async updateLeavePolicy(
+    @Param("id") id: string,
+    @Body() body: any,
+    @Req() req: Request,
+  ) {
     const user = (req as any).user;
     return await this.hrService.updateLeavePolicy(user.workspaceId, id, body);
   }
 
-  @Delete('leaves/policies/:id')
-  @RequirePermission({ resource: 'leave', action: 'manage', scope: 'all' })
-  @ApiOperation({ summary: 'Delete leave policy' })
-  async deleteLeavePolicy(@Param('id') id: string, @Req() req: Request) {
+  @Delete("leaves/policies/:id")
+  @RequirePermission({ resource: "leaves", action: "manage", scope: "all" })
+  async deleteLeavePolicy(@Param("id") id: string, @Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.deleteLeavePolicy(user.workspaceId, id);
   }
 
-  @Post('leaves/allocate')
-  @RequirePermission({ resource: 'leave', action: 'manage', scope: 'all' })
-  @ApiOperation({ summary: 'Allocate leaves based on policy' })
+  @Post("leaves/allocate")
+  @RequirePermission({ resource: "leaves", action: "manage", scope: "all" })
   async allocateLeaves(@Body() body: any, @Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.allocateLeaves(user.workspaceId, body);
   }
 
   // ====================
-  // TAXATION
+  // PAYROLL CONFIGURATION
   // ====================
-  @Get('payroll/tax-slabs')
-  @RequirePermission({ resource: 'payroll', action: 'read', scope: 'all' })
-  @ApiOperation({ summary: 'Get income tax slabs' })
+  @Get("payroll/salary-components")
+  @RequirePermission({ resource: "payroll", action: "read", scope: "all" })
+  async getSalaryComponents(@Req() req: Request) {
+    const user = (req as any).user;
+    return await this.hrService.getSalaryComponents(user.workspaceId);
+  }
+
+  @Post("payroll/salary-components")
+  @RequirePermission({ resource: "payroll", action: "manage", scope: "all" })
+  async createSalaryComponent(@Body() body: any, @Req() req: Request) {
+    const user = (req as any).user;
+    return await this.hrService.createSalaryComponent(user.workspaceId, body);
+  }
+
+  @Get("payroll/salary-structures")
+  @RequirePermission({ resource: "payroll", action: "read", scope: "all" })
+  async getSalaryStructures(@Req() req: Request) {
+    const user = (req as any).user;
+    return await this.hrService.getSalaryStructures(user.workspaceId);
+  }
+
+  @Post("payroll/salary-structures")
+  @RequirePermission({ resource: "payroll", action: "manage", scope: "all" })
+  async createSalaryStructure(@Body() body: any, @Req() req: Request) {
+    const user = (req as any).user;
+    return await this.hrService.createSalaryStructure(user.workspaceId, body);
+  }
+
+  @Post("payroll/salary-structures/assign")
+  @RequirePermission({ resource: "payroll", action: "manage", scope: "all" })
+  async assignSalaryStructure(@Body() body: any, @Req() req: Request) {
+    const user = (req as any).user;
+    return await this.hrService.assignSalaryStructure(user.workspaceId, body);
+  }
+
+  @Get("payroll/salary-assignments/:employeeId")
+  @RequirePermission({ resource: "payroll", action: "read", scope: "all" })
+  async getSalaryAssignment(
+    @Param("employeeId") employeeId: string,
+    @Req() req: Request,
+  ) {
+    const user = (req as any).user;
+    return await this.hrService.getSalaryAssignment(
+      user.workspaceId,
+      employeeId,
+    );
+  }
+
+  @Get("payroll/tax-slabs")
+  @RequirePermission({ resource: "payroll", action: "read", scope: "all" })
   async getTaxSlabs(@Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.getTaxSlabs(user.workspaceId);
   }
 
-  @Post('payroll/tax-slabs')
-  @RequirePermission({ resource: 'payroll', action: 'manage', scope: 'all' })
-  @ApiOperation({ summary: 'Create income tax slab' })
+  @Post("payroll/tax-slabs")
+  @RequirePermission({ resource: "payroll", action: "manage", scope: "all" })
   async createTaxSlab(@Body() body: any, @Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.createTaxSlab(user.workspaceId, body);
   }
 
   // ====================
-  // ONBOARDING
-  // ====================
-  @Get('onboarding/templates')
-  @RequirePermission({ resource: 'employees', action: 'read', scope: 'all' })
-  @ApiOperation({ summary: 'Get onboarding templates' })
-  async getOnboardingTemplates(@Req() req: Request) {
-    const user = (req as any).user;
-    return await this.hrService.getOnboardingTemplates(user.workspaceId);
-  }
-
-  @Post('onboarding/templates')
-  @RequirePermission({ resource: 'employees', action: 'manage', scope: 'all' })
-  @ApiOperation({ summary: 'Create onboarding template' })
-  async createOnboardingTemplate(@Body() body: any, @Req() req: Request) {
-    const user = (req as any).user;
-    return await this.hrService.createOnboardingTemplate(user.workspaceId, body);
-  }
-
-  @Post('onboarding/initiate')
-  @RequirePermission({ resource: 'employees', action: 'manage', scope: 'all' })
-  @ApiOperation({ summary: 'Initiate onboarding for employee' })
-  async initiateOnboarding(@Body() body: { employeeId: string; templateId: string }, @Req() req: Request) {
-    const user = (req as any).user;
-    return await this.hrService.initiateOnboarding(user.workspaceId, body.employeeId, body.templateId);
-  }
-
-  @Get('onboarding/tasks/:employeeId')
-  @RequirePermission({ resource: 'employees', action: 'read', scope: 'all' })
-  @ApiOperation({ summary: 'Get onboarding tasks for employee' })
-  async getOnboardingTasks(@Param('employeeId') employeeId: string, @Req() req: Request) {
-    const user = (req as any).user;
-    return await this.hrService.getOnboardingTasks(user.workspaceId, employeeId);
-  }
-
-  @Post('onboarding/tasks/:taskId/status')
-  @RequirePermission({ resource: 'employees', action: 'manage', scope: 'all' })
-  @ApiOperation({ summary: 'Update onboarding task status' })
-  async updateOnboardingTask(
-    @Param('taskId') taskId: string,
-    @Body() body: { status: string },
-    @Req() req: Request
-  ) {
-    const user = (req as any).user;
-    return await this.hrService.updateOnboardingTask(user.workspaceId, taskId, body.status, user.userId);
-  }
-
-  // ====================
   // PAYROLL RUNS
   // ====================
-  @Get('payroll/runs')
-  @RequirePermission({ resource: 'payroll', action: 'read', scope: 'all' })
-  @ApiOperation({ summary: 'Get payroll runs' })
-  async getPayrollRuns(@Req() req: Request): Promise<any> {
+  @Get("payroll/runs")
+  @RequirePermission({ resource: "payroll", action: "read", scope: "all" })
+  async getPayrollRuns(@Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.getPayrollRuns(user.workspaceId);
   }
 
-  @Post('payroll/runs')
-  @RequirePermission({ resource: 'payroll', action: 'manage', scope: 'all' })
-  @ApiOperation({ summary: 'Create a payroll run' })
-  async createPayrollRun(@Body() body: any, @Req() req: Request): Promise<any> {
-    const user = (req as any).user;
-    return await this.hrService.createPayrollRun(user.workspaceId, body, user.userId);
-  }
-
-  @Get('payroll/runs/:id')
-  @RequirePermission({ resource: 'payroll', action: 'read', scope: 'all' })
-  @ApiOperation({ summary: 'Get payroll run by id' })
-  async getPayrollRunById(@Param('id') id: string, @Req() req: Request): Promise<any> {
+  @Get("payroll/runs/:id")
+  @RequirePermission({ resource: "payroll", action: "read", scope: "all" })
+  async getPayrollRunById(@Param("id") id: string, @Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.getPayrollRunById(user.workspaceId, id);
   }
 
-  // ====================
-  // PAYROLL ENTRIES
-  // ====================
-  @Post('payroll/entries/:entryId/earnings')
-  @RequirePermission({ resource: 'payroll', action: 'manage', scope: 'all' })
-  @ApiOperation({ summary: 'Add earning to payslip' })
-  async addEarning(@Param('entryId') entryId: string, @Body() body: any, @Req() req: Request): Promise<any> {
+  @Post("payroll/runs")
+  @RequirePermission({ resource: "payroll", action: "manage", scope: "all" })
+  async createPayrollRun(@Body() body: any, @Req() req: Request) {
+    const user = (req as any).user;
+    return await this.hrService.createPayrollRun(
+      user.workspaceId,
+      body,
+      user.userId,
+    );
+  }
+
+  @Post("payroll/entries/:entryId/earnings")
+  @RequirePermission({ resource: "payroll", action: "manage", scope: "all" })
+  async addPayrollEarning(
+    @Param("entryId") entryId: string,
+    @Body() body: any,
+    @Req() req: Request,
+  ) {
     const user = (req as any).user;
     return await this.hrService.addEarning(user.workspaceId, entryId, body);
   }
 
-  @Post('payroll/entries/:entryId/deductions')
-  @RequirePermission({ resource: 'payroll', action: 'manage', scope: 'all' })
-  @ApiOperation({ summary: 'Add deduction to payslip' })
-  async addDeduction(@Param('entryId') entryId: string, @Body() body: any, @Req() req: Request): Promise<any> {
+  @Post("payroll/entries/:entryId/deductions")
+  @RequirePermission({ resource: "payroll", action: "manage", scope: "all" })
+  async addPayrollDeduction(
+    @Param("entryId") entryId: string,
+    @Body() body: any,
+    @Req() req: Request,
+  ) {
     const user = (req as any).user;
     return await this.hrService.addDeduction(user.workspaceId, entryId, body);
   }
 
   // ====================
-  // INDIA COMPLIANCE
+  // ONBOARDING
   // ====================
-  @Get('compliance/india/settings')
-  @RequirePermission({ resource: 'payroll', action: 'read', scope: 'all' })
-  @ApiOperation({ summary: 'Get India compliance settings' })
+  @Get("onboarding/templates")
+  @RequirePermission({ resource: "employees", action: "read", scope: "all" })
+  async getOnboardingTemplates(@Req() req: Request) {
+    const user = (req as any).user;
+    return await this.hrService.getOnboardingTemplates(user.workspaceId);
+  }
+
+  @Post("onboarding/templates")
+  @RequirePermission({ resource: "employees", action: "manage", scope: "all" })
+  async createOnboardingTemplate(@Body() body: any, @Req() req: Request) {
+    const user = (req as any).user;
+    return await this.hrService.createOnboardingTemplate(
+      user.workspaceId,
+      body,
+    );
+  }
+
+  @Post("onboarding/initiate")
+  @RequirePermission({ resource: "employees", action: "manage", scope: "all" })
+  async initiateOnboarding(@Body() body: any, @Req() req: Request) {
+    const user = (req as any).user;
+    return await this.hrService.initiateOnboarding(
+      user.workspaceId,
+      body.employeeId,
+      body.templateId,
+    );
+  }
+
+  @Get("onboarding/tasks/:employeeId")
+  @RequirePermission({ resource: "employees", action: "read", scope: "all" })
+  async getOnboardingTasks(
+    @Param("employeeId") employeeId: string,
+    @Req() req: Request,
+  ) {
+    const user = (req as any).user;
+    return await this.hrService.getOnboardingTasks(
+      user.workspaceId,
+      employeeId,
+    );
+  }
+
+  @Post("onboarding/tasks/:taskId/status")
+  @RequirePermission({ resource: "employees", action: "manage", scope: "all" })
+  async updateOnboardingTask(
+    @Param("taskId") taskId: string,
+    @Body("status") status: string,
+    @Req() req: Request,
+  ) {
+    const user = (req as any).user;
+    return await this.hrService.updateOnboardingTask(
+      user.workspaceId,
+      taskId,
+      status,
+      user.userId,
+    );
+  }
+
+  // ====================
+  // ATTENDANCE
+  // ====================
+  @Post("attendance/check-in")
+  @RequirePermission({ resource: "attendance", action: "create", scope: "own" })
+  async checkIn(@Req() req: Request) {
+    const user = (req as any).user;
+    return await this.hrService.checkIn(user.workspaceId, user.userId);
+  }
+
+  @Post("attendance/check-out")
+  @RequirePermission({ resource: "attendance", action: "update", scope: "own" })
+  async checkOut(@Req() req: Request) {
+    const user = (req as any).user;
+    return await this.hrService.checkOut(user.workspaceId, user.userId);
+  }
+
+  @Get("attendance")
+  @RequirePermission({ resource: "attendance", action: "read", scope: "all" })
+  async getAttendanceLogs(@Req() req: Request) {
+    const user = (req as any).user;
+    return await this.hrService.getAttendanceLogs(user.workspaceId);
+  }
+
+  @Get("attendance/me")
+  @RequirePermission({ resource: "attendance", action: "read", scope: "own" })
+  async getMyAttendance(@Req() req: Request) {
+    const user = (req as any).user;
+    return await this.hrService.getMyAttendance(user.workspaceId, user.userId);
+  }
+
+  // ====================
+  // INDIA STATUTORY
+  // ====================
+  @Get("compliance/india/settings")
+  @RequirePermission({ resource: "payroll", action: "read", scope: "all" })
   async getIndiaComplianceSettings(@Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.getIndiaComplianceSettings(user.workspaceId);
   }
 
-  @Put('compliance/india/settings')
-  @RequirePermission({ resource: 'payroll', action: 'manage', scope: 'all' })
-  @ApiOperation({ summary: 'Update India compliance settings' })
-  async updateIndiaComplianceSettings(@Body() body: any, @Req() req: Request): Promise<any> {
+  @Put("compliance/india/settings")
+  @RequirePermission({ resource: "payroll", action: "manage", scope: "all" })
+  async updateIndiaComplianceSettings(@Body() body: any, @Req() req: Request) {
     const user = (req as any).user;
-    return await this.hrService.updateIndiaComplianceSettings(user.workspaceId, body);
+    return await this.hrService.updateIndiaComplianceSettings(
+      user.workspaceId,
+      body,
+    );
   }
 
-  @Get('compliance/india/statutory-status')
-  @RequirePermission({ resource: 'payroll', action: 'read', scope: 'all' })
-  @ApiOperation({ summary: 'Get statutory compliance status (PAN, PF, TDS) as real percentages from employee data' })
+  @Get("compliance/india/report/pf-esi")
+  @RequirePermission({ resource: "payroll", action: "read", scope: "all" })
+  async getPfEsiReport(
+    @Query("month") month: string,
+    @Query("year") year: string,
+    @Req() req: Request,
+  ) {
+    const user = (req as any).user;
+    return await this.hrService.getPfEsiReport(
+      user.workspaceId,
+      parseInt(month),
+      parseInt(year),
+    );
+  }
+
+  @Get("compliance/india/declarations/:employeeId")
+  @RequirePermission({ resource: "payroll", action: "read", scope: "all" })
+  async getTaxExemptionDeclaration(
+    @Param("employeeId") employeeId: string,
+    @Req() req: Request,
+  ) {
+    const user = (req as any).user;
+    return await this.hrService.getTaxExemptionDeclaration(
+      user.workspaceId,
+      employeeId,
+    );
+  }
+
+  @Post("compliance/india/declarations")
+  @RequirePermission({ resource: "payroll", action: "manage", scope: "all" })
+  async submitTaxExemptionDeclaration(@Body() body: any, @Req() req: Request) {
+    const user = (req as any).user;
+    // Assuming body contains employeeId
+    return await this.hrService.submitTaxExemptionDeclaration(
+      user.workspaceId,
+      body.employeeId,
+      body,
+    );
+  }
+
+  @Get("compliance/india/declarations")
+  @RequirePermission({ resource: "payroll", action: "read", scope: "all" })
+  async getAllTaxDeclarations(@Req() req: Request) {
+    const user = (req as any).user;
+    return await this.hrService.getAllTaxDeclarations(user.workspaceId);
+  }
+
+  @Patch("compliance/india/declarations/:id/status")
+  @RequirePermission({ resource: "payroll", action: "manage", scope: "all" })
+  async updateTaxDeclarationStatus(
+    @Param("id") id: string,
+    @Body("status") status: string,
+    @Req() req: Request,
+  ) {
+    const user = (req as any).user;
+    return await this.hrService.updateTaxDeclarationStatus(
+      user.workspaceId,
+      id,
+      status,
+    );
+  }
+
+  @Get("compliance/india/statutory-status")
+  @RequirePermission({ resource: "payroll", action: "read", scope: "all" })
   async getStatutoryStatus(@Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.getStatutoryStatus(user.workspaceId);
   }
 
-  @Get('compliance/india/report/pf-esi')
-  @RequirePermission({ resource: 'payroll', action: 'read', scope: 'all' })
-  @ApiOperation({ summary: 'Get PF/ESI report' })
-  async getPfEsiReport(
+  // ====================
+  // ADMIN: HELPDESK
+  // ====================
+  @Get("tickets")
+  @RequirePermission({ resource: "helpdesk", action: "read", scope: "all" })
+  async getHelpdeskTickets(
     @Req() req: Request,
-    @Param('month') month: number,
-    @Param('year') year: number
+    @Query("type") type?: string,
+    @Query("categoryGroup") categoryGroup?: "HR" | "IT",
   ): Promise<any> {
     const user = (req as any).user;
-    // Use query params instead if not provided in path
-    const m = month ?? (req.query.month ? parseInt(req.query.month as string) : new Date().getMonth());
-    const y = year ?? (req.query.year ? parseInt(req.query.year as string) : new Date().getFullYear());
-    return await this.hrService.getPfEsiReport(user.workspaceId, m, y);
+    return await this.hrService.getHelpdeskTickets(
+      user.workspaceId,
+      type,
+      categoryGroup,
+    );
   }
 
-  @Get('compliance/india/declarations/:employeeId')
-  @RequirePermission({ resource: 'payroll', action: 'read', scope: 'all' })
-  @ApiOperation({ summary: 'Get employee tax exemption declaration' })
-  async getTaxExemptionDeclaration(@Param('employeeId') employeeId: string, @Req() req: Request) {
+  @Patch("tickets/:id/status")
+  @RequirePermission({ resource: "helpdesk", action: "manage", scope: "all" })
+  async updateTicketStatus(
+    @Param("id") id: string,
+    @Body() body: any,
+    @Req() req: Request,
+  ) {
     const user = (req as any).user;
-    return await this.hrService.getTaxExemptionDeclaration(user.workspaceId, employeeId);
+    return await this.hrService.updateTicket(user.workspaceId, id, body);
   }
 
-  @Post('compliance/india/declarations')
-  @RequirePermission({ resource: 'payroll', action: 'create', scope: 'own' })
-  @ApiOperation({ summary: 'Submit tax exemption declaration' })
-  async submitTaxExemptionDeclaration(@Body() body: any, @Req() req: Request) {
+  @Post("tickets/:id/comments")
+  @RequirePermission({ resource: "helpdesk", action: "manage", scope: "all" })
+  async addAdminTicketComment(
+    @Param("id") id: string,
+    @Body("message") message: string,
+    @Req() req: Request,
+  ) {
     const user = (req as any).user;
-    return await this.hrService.submitTaxExemptionDeclaration(user.workspaceId, user.userId, body);
+    return await this.hrService.addAdminTicketComment(
+      user.workspaceId,
+      user.userId,
+      id,
+      message,
+    );
   }
 
   // ====================
-  // EMPLOYEE MOVEMENT
+  // EVENTS & HOLIDAYS
   // ====================
-  @Get('movements')
-  @RequirePermission({ resource: 'employees', action: 'read', scope: 'all' })
-  @ApiOperation({ summary: 'Get employee movements' })
+  @Get("events")
+  @RequirePermission({ resource: "CompanyEvent", action: "read", scope: "all" })
+  async getCompanyEvents(@Req() req: Request) {
+    const user = (req as any).user;
+    return await this.hrService.getCompanyEvents(user.workspaceId);
+  }
+
+  @Post("events")
+  @RequirePermission({
+    resource: "CompanyEvent",
+    action: "create",
+    scope: "all",
+  })
+  async createCompanyEvent(@Body() body: any, @Req() req: Request) {
+    const user = (req as any).user;
+    return await this.hrService.createCompanyEvent(
+      user.workspaceId,
+      user.userId,
+      body,
+    );
+  }
+
+  @Patch("events/:id")
+  @RequirePermission({
+    resource: "CompanyEvent",
+    action: "update",
+    scope: "all",
+  })
+  async updateCompanyEvent(
+    @Param("id") id: string,
+    @Body() body: any,
+    @Req() req: Request,
+  ) {
+    // Add logic here if/when implemented in HrService
+    return {};
+  }
+
+  @Delete("events/:id")
+  @RequirePermission({
+    resource: "CompanyEvent",
+    action: "delete",
+    scope: "all",
+  })
+  async deleteCompanyEvent(@Param("id") id: string, @Req() req: Request) {
+    // Add logic here if/when implemented in HrService
+    return {};
+  }
+
+  // ====================
+  // MOVEMENTS
+  // ====================
+  @Get("movements")
+  @RequirePermission({ resource: "employees", action: "read", scope: "all" })
   async getEmployeeMovements(@Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.getEmployeeMovements(user.workspaceId);
   }
 
-  @Post('movements')
-  @RequirePermission({ resource: 'employees', action: 'manage', scope: 'all' })
-  @ApiOperation({ summary: 'Propose employee movement' })
+  @Post("movements")
+  @RequirePermission({ resource: "employees", action: "manage", scope: "all" })
   async createEmployeeMovement(@Body() body: any, @Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.createEmployeeMovement(user.workspaceId, body);
   }
 
-  @Post('movements/:id/approve')
-  @RequirePermission({ resource: 'employees', action: 'manage', scope: 'all' })
-  @ApiOperation({ summary: 'Approve employee movement' })
-  async approveEmployeeMovement(@Param('id') id: string, @Req() req: Request) {
+  @Post("movements/:id/approve")
+  @RequirePermission({ resource: "employees", action: "manage", scope: "all" })
+  async approveEmployeeMovement(@Param("id") id: string, @Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.approveEmployeeMovement(user.workspaceId, id);
   }
 
   // ====================
+  // SEPARATIONS & OFFBOARDING
+  // ====================
+  @Get("separations")
+  @RequirePermission({ resource: "employees", action: "read", scope: "all" })
+  async getSeparations(@Req() req: Request) {
+    const user = (req as any).user;
+    return await this.hrService.getSeparations(user.workspaceId);
+  }
+
+  @Post("separations")
+  @RequirePermission({ resource: "employees", action: "manage", scope: "all" })
+  async createSeparation(@Body() body: any, @Req() req: Request) {
+    const user = (req as any).user;
+    return await this.hrService.createSeparation(user.workspaceId, body);
+  }
+
+  @Post("separations/:id/approve")
+  @RequirePermission({ resource: "employees", action: "manage", scope: "all" })
+  async approveSeparation(@Param("id") id: string, @Req() req: Request) {
+    const user = (req as any).user;
+    return await this.hrService.approveSeparation(user.workspaceId, id);
+  }
+
+  @Post("offboarding/initiate")
+  @RequirePermission({ resource: "employees", action: "manage", scope: "all" })
+  async initiateOffboarding(@Body() body: any, @Req() req: Request) {
+    const user = (req as any).user;
+    return await this.hrService.initiateOffboarding(
+      user.workspaceId,
+      body.employeeId,
+      body.templateId,
+    );
+  }
+
+  @Get("offboarding/templates")
+  @RequirePermission({ resource: "employees", action: "read", scope: "all" })
+  async getOffboardingTemplates(@Req() req: Request) {
+    const user = (req as any).user;
+    return await this.hrService.getOffboardingTemplates(user.workspaceId);
+  }
+
+  @Get("offboarding/tasks/:employeeId")
+  @RequirePermission({ resource: "employees", action: "read", scope: "all" })
+  async getOffboardingTasks(
+    @Param("employeeId") employeeId: string,
+    @Req() req: Request,
+  ) {
+    const user = (req as any).user;
+    return await this.hrService.getOffboardingTasks(
+      user.workspaceId,
+      employeeId,
+    );
+  }
+
+  @Post("offboarding/tasks/:taskId/status")
+  @RequirePermission({ resource: "employees", action: "manage", scope: "all" })
+  async updateOffboardingTask(
+    @Param("taskId") taskId: string,
+    @Body("status") status: string,
+    @Req() req: Request,
+  ) {
+    const user = (req as any).user;
+    return await this.hrService.updateOffboardingTask(
+      user.workspaceId,
+      taskId,
+      status,
+      user.userId,
+    );
+  }
+
+  // ====================
+  // PERFORMANCE
+  // ====================
+  @Get("performance/cycles")
+  @RequirePermission({ resource: "employees", action: "read", scope: "all" })
+  async getAppraisalCycles(@Req() req: Request) {
+    const user = (req as any).user;
+    return await this.hrService.getAppraisalCycles(user.workspaceId);
+  }
+
+  @Post("performance/cycles")
+  @RequirePermission({ resource: "employees", action: "manage", scope: "all" })
+  async createAppraisalCycle(@Body() body: any, @Req() req: Request) {
+    const user = (req as any).user;
+    return await this.hrService.createAppraisalCycle(user.workspaceId, body);
+  }
+
+  @Get("performance/goals")
+  @RequirePermission({ resource: "employees", action: "read", scope: "all" })
+  async getEmployeeGoals(
+    @Req() req: Request,
+    @Query("employeeId") employeeId?: string,
+    @Query("cycleId") cycleId?: string,
+  ) {
+    const user = (req as any).user;
+    return await this.hrService.getEmployeeGoals(
+      user.workspaceId,
+      employeeId,
+      cycleId,
+    );
+  }
+
+  @Post("performance/goals")
+  @RequirePermission({ resource: "employees", action: "manage", scope: "all" })
+  async createEmployeeGoal(@Body() body: any, @Req() req: Request) {
+    const user = (req as any).user;
+    return await this.hrService.createEmployeeGoal(user.workspaceId, body);
+  }
+
+  @Get("performance/appraisals")
+  @RequirePermission({ resource: "employees", action: "read", scope: "all" })
+  async getAppraisals(
+    @Req() req: Request,
+    @Query("employeeId") employeeId?: string,
+    @Query("cycleId") cycleId?: string,
+  ) {
+    const user = (req as any).user;
+    return await this.hrService.getAppraisals(
+      user.workspaceId,
+      employeeId,
+      cycleId,
+    );
+  }
+
+  // ====================
   // RECRUITMENT
   // ====================
-  @Get('applicants')
-  @RequirePermission({ resource: 'employees', action: 'read', scope: 'all' })
-  @ApiOperation({ summary: 'Get job applicants' })
+  @Get("applicants")
+  @RequirePermission({ resource: "employees", action: "read", scope: "all" })
   async getJobApplicants(@Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.getJobApplicants(user.workspaceId);
   }
 
-  @Post('applicants')
-  @RequirePermission({ resource: 'employees', action: 'manage', scope: 'all' })
-  @ApiOperation({ summary: 'Create job applicant' })
-  async createJobApplicant(@Body() body: any, @Req() req: Request) {
-    const user = (req as any).user;
-    return await this.hrService.createJobApplicant(user.workspaceId, body);
-  }
-
-  @Post('interviews')
-  @RequirePermission({ resource: 'employees', action: 'manage', scope: 'all' })
-  @ApiOperation({ summary: 'Schedule interview' })
-  async scheduleInterview(@Body() body: any, @Req() req: Request) {
-    const user = (req as any).user;
-    return await this.hrService.scheduleInterview(user.workspaceId, body);
-  }
-
-  @Put('interviews/:id/feedback')
-  @RequirePermission({ resource: 'employees', action: 'manage', scope: 'all' })
-  @ApiOperation({ summary: 'Update interview feedback' })
-  async updateInterviewFeedback(@Param('id') id: string, @Body() body: any, @Req() req: Request) {
-    const user = (req as any).user;
-    return await this.hrService.updateInterviewFeedback(user.workspaceId, id, body);
-  }
-
   // ====================
-  // SHIFTS
+  // SHIFT MANAGEMENT
   // ====================
-  @Get('shifts/types')
-  @RequirePermission({ resource: 'employees', action: 'read', scope: 'all' })
-  @ApiOperation({ summary: 'Get shift types' })
+  @Get("shifts")
+  @RequirePermission({ resource: "attendance", action: "read", scope: "all" })
   async getShiftTypes(@Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.getShiftTypes(user.workspaceId);
   }
 
-  @Post('shifts/types')
-  @RequirePermission({ resource: 'employees', action: 'manage', scope: 'all' })
-  @ApiOperation({ summary: 'Create shift type' })
+  @Post("shifts")
+  @RequirePermission({ resource: "attendance", action: "manage", scope: "all" })
   async createShiftType(@Body() body: any, @Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.createShiftType(user.workspaceId, body);
   }
 
-  @Post('shifts/assign')
-  @RequirePermission({ resource: 'employees', action: 'manage', scope: 'all' })
-  @ApiOperation({ summary: 'Assign shift to employee' })
+  @Post("shifts/assign")
+  @RequirePermission({ resource: "attendance", action: "manage", scope: "all" })
   async assignShift(@Body() body: any, @Req() req: Request) {
     const user = (req as any).user;
     return await this.hrService.assignShift(user.workspaceId, body);

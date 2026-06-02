@@ -1,21 +1,20 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-import { Injectable } from '@nestjs/common';
-import { CreateAuthDto } from './dto/create-auth.dto';
-import { AuthUtilsService } from './services/auth-utils.service';
-import { AUTH_CONFIG } from './config/auth.config';
-import { PrismaService } from '../common/services/prisma.service';
-import { ActivityLogService } from '../common/services/activity-log.service';
-import { RedisService } from '../common/services/redis.service';
-import { EmailQueueService } from '../common/queues/email/email.queue';
-import { CustomLoggerService } from '../common/services/custom-logger.service';
-import AppError from '../common/errors/app.error';
-import * as bcrypt from 'bcryptjs';
-import config from '../common/config/app.config';
+import { Injectable } from "@nestjs/common";
+import { CreateAuthDto } from "./dto/create-auth.dto";
+import { AuthUtilsService } from "./services/auth-utils.service";
+import { AUTH_CONFIG } from "./config/auth.config";
+import { PrismaService } from "../common/services/prisma.service";
+import { ActivityLogService } from "../common/services/activity-log.service";
+import { RedisService } from "../common/services/redis.service";
+import { EmailQueueService } from "../common/queues/email/email.queue";
+import { CustomLoggerService } from "../common/services/custom-logger.service";
+import AppError from "../common/errors/app.error";
+import * as bcrypt from "bcryptjs";
+import config from "../common/config/app.config";
 import {
   ILoginResponse,
   IStoredRefreshToken,
   UserRole,
-} from './interfaces/auth.interface';
+} from "./interfaces/auth.interface";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
@@ -41,7 +40,7 @@ export class AuthService {
 
     this.customLogger.log(
       `Registration attempt for email: ${email}, username: ${username}`,
-      'AuthService',
+      "AuthService",
     );
 
     const { LOGIN_MAX_ATTEMPTS, LOGIN_WINDOW_MS } = AUTH_CONFIG.RATE_LIMIT;
@@ -63,7 +62,7 @@ export class AuthService {
 
     // Validate password strength
     if (!this.authUtilsService.validatePassword(password)) {
-      throw AppError.badRequest('Password does not meet security requirements');
+      throw AppError.badRequest("Password does not meet security requirements");
     }
 
     // Check if user already exists with email or username
@@ -77,16 +76,16 @@ export class AuthService {
       if (existingUser.email === email) {
         this.customLogger.warn(
           `Registration failed: Email already exists - ${email}`,
-          'AuthService',
+          "AuthService",
         );
-        throw AppError.conflict('Email already exists!');
+        throw AppError.conflict("Email already exists!");
       }
       if (existingUser.username === username) {
         this.customLogger.warn(
           `Registration failed: Username already exists - ${username}`,
-          'AuthService',
+          "AuthService",
         );
-        throw AppError.conflict('Username already exists!');
+        throw AppError.conflict("Username already exists!");
       }
     }
 
@@ -110,10 +109,10 @@ export class AuthService {
             email,
             username,
             password: hashedPassword,
-            globalRole: 'USER',
+            globalRole: "USER",
             verified: false,
-            status: 'ACTIVE',
-            provider: 'local',
+            status: "ACTIVE",
+            provider: "local",
           },
         });
 
@@ -132,10 +131,10 @@ export class AuthService {
           data: {
             authId: user.id,
             emailTo: email,
-            emailType: 'verification',
-            subject: 'Verify your email address',
+            emailType: "verification",
+            subject: "Verify your email address",
             messageId: `verify-${user.id}-${Date.now()}`,
-            emailStatus: 'pending',
+            emailStatus: "pending",
             ipAddress: ip,
             userAgent: userAgent,
           },
@@ -143,15 +142,15 @@ export class AuthService {
 
         // Log user registration activity
         await this.activityLogService.logCreate(
-          'authUser',
+          "authUser",
           user.id,
           {
             email,
             username,
-            globalRole: 'USER',
-            status: 'ACTIVE',
-            verified: 'false',
-            provider: 'local',
+            globalRole: "USER",
+            status: "ACTIVE",
+            verified: "false",
+            provider: "local",
           },
           { ip, userAgent, actionedBy: user.id, device },
           tx,
@@ -160,7 +159,7 @@ export class AuthService {
         return {
           id: user.id,
           email: user.email,
-          username: user.username || email.split('@')[0],
+          username: user.username || email.split("@")[0],
         };
       },
     );
@@ -190,26 +189,26 @@ export class AuthService {
       );
       this.customLogger.log(
         `User registered successfully: ${email}, verification email queued`,
-        'AuthService',
+        "AuthService",
       );
     } catch (error) {
       this.customLogger.error(
         `Failed to queue verification email for ${email}`,
         error instanceof Error ? error.stack : undefined,
-        'AuthService',
+        "AuthService",
       );
-      console.error('Failed to queue verification email:', error);
+      console.error("Failed to queue verification email:", error);
       // Update email history status to 'failed'
       await this.prismaService.emailHistory.updateMany({
         where: {
           authId: newUser.id,
-          emailType: 'verification',
-          emailStatus: 'pending',
+          emailType: "verification",
+          emailStatus: "pending",
         },
         data: {
-          emailStatus: 'failed',
+          emailStatus: "failed",
           errorMessage:
-            error instanceof Error ? error.message : 'Failed to queue email',
+            error instanceof Error ? error.message : "Failed to queue email",
         },
       });
       // Don't throw error, user is created, just email failed
@@ -228,7 +227,7 @@ export class AuthService {
 
     this.customLogger.log(
       `Email verification attempt for: ${email}`,
-      'AuthService',
+      "AuthService",
     );
     const verificationKey = `${config.redis_cache_key_prefix}:${AUTH_CONFIG.CACHE_PREFIXES.VERIFICATION_TOKEN}:${email}`;
 
@@ -243,10 +242,10 @@ export class AuthService {
     if (!verificationData) {
       this.customLogger.warn(
         `Verification failed: Code expired or invalid for ${email}`,
-        'AuthService',
+        "AuthService",
       );
       throw AppError.badRequest(
-        'Verification code expired or invalid. Please request a new code.',
+        "Verification code expired or invalid. Please request a new code.",
       );
     }
 
@@ -254,9 +253,9 @@ export class AuthService {
     if (verificationData.code !== code) {
       this.customLogger.warn(
         `Verification failed: Invalid code for ${email}`,
-        'AuthService',
+        "AuthService",
       );
-      throw AppError.badRequest('Invalid verification code');
+      throw AppError.badRequest("Invalid verification code");
     }
 
     // Find user
@@ -265,11 +264,11 @@ export class AuthService {
     });
 
     if (!user) {
-      throw AppError.notFound('User not found');
+      throw AppError.notFound("User not found");
     }
 
     if (user.verified) {
-      throw AppError.badRequest('Email already verified');
+      throw AppError.badRequest("Email already verified");
     }
 
     // Update user as verified
@@ -281,15 +280,15 @@ export class AuthService {
 
       // Log verification activity
       await this.activityLogService.logCustomEvent(
-        'authUser',
+        "authUser",
         user.id,
-        'profile_update',
+        "profile_update",
         { ip, userAgent, actionedBy: user.id },
         [
           {
-            fieldName: 'verified',
-            oldValue: 'false',
-            newValue: 'true',
+            fieldName: "verified",
+            oldValue: "false",
+            newValue: "true",
           },
         ],
         tx,
@@ -303,24 +302,24 @@ export class AuthService {
     try {
       await this.emailQueueService.sendWelcomeEmail(
         email,
-        user.username || email.split('@')[0],
+        user.username || email.split("@")[0],
         user.id,
       );
       this.customLogger.log(
         `Email verified successfully for: ${email}, welcome email queued`,
-        'AuthService',
+        "AuthService",
       );
     } catch (error) {
       this.customLogger.error(
         `Verification successful but failed to queue welcome email for ${email}`,
         error instanceof Error ? error.stack : undefined,
-        'AuthService',
+        "AuthService",
       );
-      console.error('Failed to queue welcome email:', error);
+      console.error("Failed to queue welcome email:", error);
       // Don't throw, verification is successful
     }
 
-    return { message: 'Email verified successfully' };
+    return { message: "Email verified successfully" };
   }
 
   /**
@@ -335,7 +334,7 @@ export class AuthService {
 
     this.customLogger.log(
       `Resend verification email requested for: ${email}`,
-      'AuthService',
+      "AuthService",
     );
 
     // Check rate limiting
@@ -353,7 +352,10 @@ export class AuthService {
     // SECURITY: Return the same message regardless of whether the email exists.
     // This prevents user enumeration attacks.
     if (!user || user.verified) {
-      return { message: 'If this email exists and is unverified, a new code has been sent.' };
+      return {
+        message:
+          "If this email exists and is unverified, a new code has been sent.",
+      };
     }
 
     // Generate new verification code
@@ -382,10 +384,10 @@ export class AuthService {
       data: {
         authId: user.id,
         emailTo: email,
-        emailType: 'verification',
-        subject: 'Verify your email address',
+        emailType: "verification",
+        subject: "Verify your email address",
         messageId: `verify-resend-${user.id}-${Date.now()}`,
-        emailStatus: 'pending',
+        emailStatus: "pending",
         ipAddress: ip,
         userAgent: userAgent,
       },
@@ -395,29 +397,29 @@ export class AuthService {
     try {
       await this.emailQueueService.sendVerificationEmail(
         email,
-        user.username || email.split('@')[0],
+        user.username || email.split("@")[0],
         verificationCode,
         user.id,
       );
     } catch (error) {
-      console.error('Failed to queue verification email:', error);
+      console.error("Failed to queue verification email:", error);
       // Update email history status to 'failed'
       await this.prismaService.emailHistory.updateMany({
         where: {
           authId: user.id,
-          emailType: 'verification',
-          emailStatus: 'pending',
+          emailType: "verification",
+          emailStatus: "pending",
         },
         data: {
-          emailStatus: 'failed',
+          emailStatus: "failed",
           errorMessage:
-            error instanceof Error ? error.message : 'Failed to queue email',
+            error instanceof Error ? error.message : "Failed to queue email",
         },
       });
-      throw AppError.badRequest('Failed to send verification email');
+      throw AppError.badRequest("Failed to send verification email");
     }
 
-    return { message: 'Verification email sent successfully' };
+    return { message: "Verification email sent successfully" };
   }
 
   /**
@@ -433,7 +435,7 @@ export class AuthService {
 
     this.customLogger.log(
       `Forgot password request for: ${email}`,
-      'AuthService',
+      "AuthService",
     );
 
     // Rate limit per email to prevent abuse
@@ -446,24 +448,32 @@ export class AuthService {
     // Look up user — return generic response either way (enumeration prevention)
     const user = await this.prismaService.authUser.findUnique({
       where: { email },
-      select: { id: true, email: true, username: true, provider: true, status: true },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        provider: true,
+        status: true,
+      },
     });
 
     const resetSessionId = crypto.randomUUID();
 
     // SECURITY: Always return the same message regardless of user existence
-    if (!user || user.status !== 'ACTIVE') {
-      return { 
-        message: 'If this email is registered, a password reset code has been sent.',
-        resetSessionId
+    if (!user || user.status !== "ACTIVE") {
+      return {
+        message:
+          "If this email is registered, a password reset code has been sent.",
+        resetSessionId,
       };
     }
 
     // SECURITY: OAuth accounts cannot use local password reset
-    if (user.provider !== 'local') {
+    if (user.provider !== "local") {
       // Return same generic message to prevent enumeration
       return {
-        message: 'If this email is registered, a password reset code has been sent.',
+        message:
+          "If this email is registered, a password reset code has been sent.",
         resetSessionId,
       };
     }
@@ -485,26 +495,27 @@ export class AuthService {
     try {
       await this.emailQueueService.sendPasswordResetEmail(
         email,
-        user.username || email.split('@')[0],
+        user.username || email.split("@")[0],
         resetCode,
         user.id,
       );
       this.customLogger.log(
         `Password reset email queued for: ${email}`,
-        'AuthService',
+        "AuthService",
       );
     } catch (error) {
       this.customLogger.error(
         `Failed to queue password reset email for ${email}`,
         error instanceof Error ? error.stack : undefined,
-        'AuthService',
+        "AuthService",
       );
       // Don't reveal failure to caller — log only
     }
 
-    return { 
-      message: 'If this email is registered, a password reset code has been sent.',
-      resetSessionId 
+    return {
+      message:
+        "If this email is registered, a password reset code has been sent.",
+      resetSessionId,
     };
   }
 
@@ -519,12 +530,12 @@ export class AuthService {
   ): Promise<{ message: string }> {
     this.customLogger.log(
       `Password reset attempt for session: ${resetSessionId}`,
-      'AuthService',
+      "AuthService",
     );
 
     // Validate new password strength before doing anything expensive
     if (!this.authUtilsService.validatePassword(newPassword)) {
-      throw AppError.badRequest('Password does not meet security requirements');
+      throw AppError.badRequest("Password does not meet security requirements");
     }
 
     // Retrieve reset code from Redis
@@ -538,10 +549,10 @@ export class AuthService {
     if (!storedData || storedData.code !== code) {
       this.customLogger.warn(
         `Password reset failed: invalid or expired code for session ${resetSessionId}`,
-        'AuthService',
+        "AuthService",
       );
       throw AppError.badRequest(
-        'Invalid or expired reset code. Please request a new one.',
+        "Invalid or expired reset code. Please request a new one.",
       );
     }
 
@@ -551,14 +562,14 @@ export class AuthService {
       select: { id: true, email: true, status: true, provider: true },
     });
 
-    if (!user || user.status !== 'ACTIVE') {
-      throw AppError.badRequest('User account is not available');
+    if (!user || user.status !== "ACTIVE") {
+      throw AppError.badRequest("User account is not available");
     }
 
     // SECURITY: OAuth accounts cannot have their local password reset
-    if (user.provider !== 'local') {
+    if (user.provider !== "local") {
       throw AppError.badRequest(
-        'Invalid or expired reset code. Please request a new one.',
+        "Invalid or expired reset code. Please request a new one.",
       );
     }
 
@@ -581,19 +592,28 @@ export class AuthService {
 
     // Log the password reset activity
     void this.activityLogService.logCustomEvent(
-      'authUser',
+      "authUser",
       user.id,
-      'profile_update',
+      "profile_update",
       { ip: meta.ip, userAgent: meta.userAgent, actionedBy: user.id },
-      [{ fieldName: 'password', oldValue: '[redacted]', newValue: '[redacted]' }],
+      [
+        {
+          fieldName: "password",
+          oldValue: "[redacted]",
+          newValue: "[redacted]",
+        },
+      ],
     );
 
     this.customLogger.log(
       `Password reset successfully for user: ${user.id} via session ${resetSessionId}`,
-      'AuthService',
+      "AuthService",
     );
 
-    return { message: 'Password has been reset successfully. You can now log in with your new password.' };
+    return {
+      message:
+        "Password has been reset successfully. You can now log in with your new password.",
+    };
   }
 
   async login(
@@ -634,6 +654,7 @@ export class AuthService {
         status: true,
         provider: true,
         tokenVersion: true,
+        image: true,
         security: {
           select: {
             id: true,
@@ -647,14 +668,14 @@ export class AuthService {
 
     // Generic error message to prevent user enumeration
     const invalidCredentialsError = AppError.unauthorized(
-      'Invalid email or password',
+      "Invalid email or password",
     );
 
     // CRITICAL: Timing attack prevention
     // Always run bcrypt.compare even if user doesn't exist
     // This ensures consistent response time regardless of user existence
     const fakePasswordHash =
-      '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.G4.4.G4.G4.G4.G';
+      "$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.G4.4.G4.G4.G4.G";
 
     if (!user) {
       // Run fake bcrypt to prevent timing attacks (~200ms)
@@ -667,21 +688,21 @@ export class AuthService {
         userAgent,
         device,
         success: false,
-        failureReason: 'user_not_found',
+        failureReason: "user_not_found",
       });
 
       throw invalidCredentialsError;
     }
 
     // Check OAuth provider if they haven't set a local password
-    if (user.provider !== 'local' && (!user.password || user.password === '')) {
+    if (user.provider !== "local" && (!user.password || user.password === "")) {
       throw AppError.badRequest(
         `Please login using ${user.provider} authentication`,
       );
     }
 
     // Check account status
-    if (user.status === 'BLOCKED' || user.status === 'SUSPENDED') {
+    if (user.status === "BLOCKED" || user.status === "SUSPENDED") {
       void this.logLoginAttempt({
         authId: user.id,
         ip,
@@ -695,7 +716,7 @@ export class AuthService {
       );
     }
 
-    if (user.status === 'DELETED' || user.status === 'INACTIVE') {
+    if (user.status === "DELETED" || user.status === "INACTIVE") {
       // Run bcrypt to maintain consistent timing
       await bcrypt.compare(password, user.password);
       throw invalidCredentialsError;
@@ -713,7 +734,7 @@ export class AuthService {
         userAgent,
         device,
         success: false,
-        failureReason: 'account_locked',
+        failureReason: "account_locked",
         attemptNumber: security.failedAttempts + 1,
       });
       throw AppError.forbidden(
@@ -743,20 +764,20 @@ export class AuthService {
         userAgent,
         device,
         success: false,
-        failureReason: 'email_not_verified',
+        failureReason: "email_not_verified",
       });
       throw AppError.forbidden(
-        'Please verify your email address before logging in',
+        "Please verify your email address before logging in",
       );
     }
 
     // Distributed lock to prevent concurrent login race conditions
     const lockKey = `${config.redis_cache_key_prefix}:lock:login:${user.id}`;
-    const lockAcquired = await this.redisService.setNX(lockKey, '1', 5); // 5 second TTL
+    const lockAcquired = await this.redisService.setNX(lockKey, "1", 5); // 5 second TTL
 
     if (!lockAcquired) {
       throw AppError.conflict(
-        'Another login is in progress. Please try again in a moment.',
+        "Another login is in progress. Please try again in a moment.",
       );
     }
 
@@ -808,13 +829,13 @@ export class AuthService {
           refreshTokenTTL,
         );
       } catch (error) {
-        console.error('Failed to store refresh token in Redis:', {
+        console.error("Failed to store refresh token in Redis:", {
           userId: user.id,
           jti,
           error: error instanceof Error ? error.message : String(error),
         });
         throw AppError.serviceUnavailable(
-          'Authentication service temporarily unavailable. Please try again.',
+          "Authentication service temporarily unavailable. Please try again.",
         );
       }
 
@@ -822,7 +843,7 @@ export class AuthService {
         // CRITICAL: Track session in user's session list
         await this.addUserSession(user.id, jti, refreshTokenTTL);
       } catch (error) {
-        console.error('Failed to add user session to Redis:', {
+        console.error("Failed to add user session to Redis:", {
           userId: user.id,
           jti,
           error: error instanceof Error ? error.message : String(error),
@@ -830,7 +851,7 @@ export class AuthService {
 
         // Rollback: Remove the refresh token we just stored
         await this.redisService.del(refreshTokenKey).catch((rollbackError) => {
-          console.error('CRITICAL: Failed to rollback refresh token:', {
+          console.error("CRITICAL: Failed to rollback refresh token:", {
             userId: user.id,
             jti,
             error:
@@ -841,7 +862,7 @@ export class AuthService {
         });
 
         throw AppError.serviceUnavailable(
-          'Authentication service temporarily unavailable. Please try again.',
+          "Authentication service temporarily unavailable. Please try again.",
         );
       }
 
@@ -852,7 +873,7 @@ export class AuthService {
           AUTH_CONFIG.SESSION.MAX_DEVICES_PER_USER,
         );
       } catch (error) {
-        console.error('Failed to enforce max devices (non-critical):', {
+        console.error("Failed to enforce max devices (non-critical):", {
           userId: user.id,
           error: error instanceof Error ? error.message : String(error),
         });
@@ -880,8 +901,8 @@ export class AuthService {
         }),
       ]).then((results) => {
         results.forEach((result) => {
-          if (result.status === 'rejected') {
-            console.error('Non-critical login post-process failed:', result);
+          if (result.status === "rejected") {
+            console.error("Non-critical login post-process failed:", result);
           }
         });
       });
@@ -895,9 +916,10 @@ export class AuthService {
         user: {
           id: user.id,
           email: user.email,
-          username: user.username || '',
+          username: user.username || "",
           role: user.globalRole,
           verified: user.verified,
+          image: user.image,
         },
         workspaces,
         expiresIn: this.parseExpiryToSeconds(AUTH_CONFIG.TOKEN_EXPIRY.ACCESS),
@@ -926,7 +948,7 @@ export class AuthService {
 
       // JTI comes from JWT standard claims (set via jwtid option)
       if (!payload.jti) {
-        throw new Error('Missing JTI in token');
+        throw new Error("Missing JTI in token");
       }
 
       decoded = {
@@ -934,12 +956,12 @@ export class AuthService {
         jti: payload.jti,
       };
     } catch {
-      throw AppError.unauthorized('Invalid or expired refresh token');
+      throw AppError.unauthorized("Invalid or expired refresh token");
     }
 
     const { userId, jti } = decoded;
     if (!userId || !jti) {
-      throw AppError.unauthorized('Invalid refresh token payload');
+      throw AppError.unauthorized("Invalid refresh token payload");
     }
 
     // Get stored token data from Redis
@@ -952,7 +974,7 @@ export class AuthService {
       // This could indicate a replay attack - revoke all user tokens
       await this.revokeAllUserTokens(userId);
       throw AppError.unauthorized(
-        'Refresh token has been revoked. Please login again.',
+        "Refresh token has been revoked. Please login again.",
       );
     }
 
@@ -961,7 +983,7 @@ export class AuthService {
     if (storedData.tokenHash !== tokenHash) {
       // Token mismatch - potential attack, revoke all tokens
       await this.revokeAllUserTokens(userId);
-      throw AppError.unauthorized('Invalid refresh token');
+      throw AppError.unauthorized("Invalid refresh token");
     }
 
     // Fetch user to get current role (may have changed)
@@ -970,9 +992,9 @@ export class AuthService {
       select: { id: true, globalRole: true, status: true, tokenVersion: true },
     });
 
-    if (!user || user.status !== 'ACTIVE') {
+    if (!user || user.status !== "ACTIVE") {
       await this.revokeAllUserTokens(userId);
-      throw AppError.unauthorized('User account is not active');
+      throw AppError.unauthorized("User account is not active");
     }
 
     // If workspaceId is provided, verify membership to preserve context
@@ -1069,11 +1091,11 @@ export class AuthService {
       decoded = this.authUtilsService.verifyRefreshToken(refreshToken);
     } catch {
       // Token already invalid, just return success
-      return { message: 'Logged out successfully' };
+      return { message: "Logged out successfully" };
     }
 
     if (decoded.userId !== userId) {
-      throw AppError.unauthorized('Invalid token');
+      throw AppError.unauthorized("Invalid token");
     }
 
     const { jti } = decoded;
@@ -1086,7 +1108,7 @@ export class AuthService {
       ]);
     }
 
-    return { message: 'Logged out successfully' };
+    return { message: "Logged out successfully" };
   }
 
   /**
@@ -1096,7 +1118,7 @@ export class AuthService {
     await this.revokeAllUserTokens(userId);
     // Increment tokenVersion to immediately invalidate all access tokens
     await this.incrementTokenVersion(userId);
-    return { message: 'Logged out from all devices successfully' };
+    return { message: "Logged out from all devices successfully" };
   }
 
   /**
@@ -1192,9 +1214,17 @@ export class AuthService {
     const shouldLock = newFailedAttempts >= maxAttempts;
 
     await Promise.all([
-      this.prismaService.authSecurity.update({
+      this.prismaService.authSecurity.upsert({
         where: { authId: userId },
-        data: {
+        create: {
+          authId: userId,
+          failedAttempts: newFailedAttempts,
+          lastFailedAt: new Date(),
+          ...(shouldLock && {
+            lockExpiresAt: new Date(Date.now() + lockoutDuration),
+          }),
+        },
+        update: {
           failedAttempts: newFailedAttempts,
           lastFailedAt: new Date(),
           ...(shouldLock && {
@@ -1208,7 +1238,7 @@ export class AuthService {
         userAgent: meta.userAgent,
         device: meta.device,
         success: false,
-        failureReason: shouldLock ? 'account_locked' : 'invalid_password',
+        failureReason: shouldLock ? "account_locked" : "invalid_password",
         attemptNumber: newFailedAttempts,
       }),
     ]);
@@ -1243,7 +1273,7 @@ export class AuthService {
           ipAddress: data.ip,
           userAgent: data.userAgent,
           device_id: data.device,
-          action: 'login',
+          action: "login",
           success: data.success,
           failureReason: data.failureReason,
           attemptNumber: data.attemptNumber || 1,
@@ -1252,7 +1282,7 @@ export class AuthService {
       })
       .then(() => undefined)
       .catch((error) => {
-        console.error('Failed to log login attempt:', error);
+        console.error("Failed to log login attempt:", error);
       });
   }
 
@@ -1267,15 +1297,21 @@ export class AuthService {
     }
 
     const value = parseInt(match[1], 10);
-    const unit = match[2] || 's';
+    const unit = match[2] || "s";
 
     switch (unit) {
-      case 's': return value;
-      case 'm': return value * 60;
-      case 'h': return value * 60 * 60;
-      case 'd': return value * 60 * 60 * 24;
-      case 'w': return value * 60 * 60 * 24 * 7;
-      default:  return value;
+      case "s":
+        return value;
+      case "m":
+        return value * 60;
+      case "h":
+        return value * 60 * 60;
+      case "d":
+        return value * 60 * 60 * 24;
+      case "w":
+        return value * 60 * 60 * 24 * 7;
+      default:
+        return value;
     }
   }
 
@@ -1299,7 +1335,7 @@ export class AuthService {
 
     this.customLogger.log(
       `Token version incremented for user ${userId}`,
-      'AuthService.incrementTokenVersion',
+      "AuthService.incrementTokenVersion",
     );
   }
 
@@ -1372,14 +1408,14 @@ export class AuthService {
     });
 
     if (!member) {
-      throw AppError.forbidden('You are not a member of this workspace');
+      throw AppError.forbidden("You are not a member of this workspace");
     }
 
     if (!member.isActive) {
-      throw AppError.forbidden('Your membership in this workspace is inactive');
+      throw AppError.forbidden("Your membership in this workspace is inactive");
     }
 
-    if (member.workspace.status !== 'ACTIVE') {
+    if (member.workspace.status !== "ACTIVE") {
       throw AppError.forbidden(
         `This workspace is ${member.workspace.status.toLowerCase()}`,
       );
@@ -1433,32 +1469,42 @@ export class AuthService {
     const userId = req.user.userId || req.user.id || req.user.sub;
     const user = await this.prismaService.authUser.findUnique({
       where: { id: userId },
-      select: { id: true, email: true, username: true, globalRole: true, verified: true },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        globalRole: true,
+        verified: true,
+        image: true,
+      },
     });
-    if (!user) throw AppError.notFound('User not found');
+    if (!user) throw AppError.notFound("User not found");
     return user;
   }
 
   /**
    * Request a password change OTP
    */
-  async requestPasswordChangeOtp(userId: string, email: string): Promise<{ message: string }> {
+  async requestPasswordChangeOtp(
+    userId: string,
+    email: string,
+  ): Promise<{ message: string }> {
     const otp = this.authUtilsService.generateVerificationCode(); // 6 digit code
     const key = `${config.redis_cache_key_prefix}:${AUTH_CONFIG.CACHE_PREFIXES.VERIFICATION_TOKEN}:password_change:${userId}`;
-    
+
     // Store in Redis for 10 minutes
     await this.redisService.set(key, otp, 600);
-    
+
     // Send email
     await this.emailQueueService.sendSecurityNotification(
       email,
-      'User', // We don't have username here, could fetch it
-      'Password Change Verification Code',
+      "User", // We don't have username here, could fetch it
+      "Password Change Verification Code",
       `Your verification code for password change is: ${otp}. It will expire in 10 minutes.`,
       userId,
     );
-    
-    return { message: 'Verification code sent to your email.' };
+
+    return { message: "Verification code sent to your email." };
   }
 
   /**
@@ -1470,25 +1516,25 @@ export class AuthService {
     meta: { ip: string; userAgent: string },
   ): Promise<{ message: string }> {
     const { newPassword, otp } = payload;
-    
+
     // Validate new password
     if (!this.authUtilsService.validatePassword(newPassword)) {
-      throw AppError.badRequest('Password does not meet security requirements');
+      throw AppError.badRequest("Password does not meet security requirements");
     }
 
     // Verify OTP
     const key = `${config.redis_cache_key_prefix}:${AUTH_CONFIG.CACHE_PREFIXES.VERIFICATION_TOKEN}:password_change:${userId}`;
     const storedOtp = await this.redisService.get<string>(key);
-    
+
     if (!storedOtp || storedOtp !== otp) {
-      throw AppError.badRequest('Invalid or expired verification code');
+      throw AppError.badRequest("Invalid or expired verification code");
     }
 
     const user = await this.prismaService.authUser.findUnique({
       where: { id: userId },
     });
 
-    if (!user) throw AppError.notFound('User not found');
+    if (!user) throw AppError.notFound("User not found");
 
     // Hash new password
     const saltRounds = 12;
@@ -1509,12 +1555,12 @@ export class AuthService {
     // Send notification email
     await this.emailQueueService.sendSecurityNotification(
       user.email,
-      user.username || 'User',
-      'Password Changed Successfully',
+      user.username || "User",
+      "Password Changed Successfully",
       `Your password was changed on ${new Date().toLocaleString()} from IP ${meta.ip}. If this wasn't you, please contact support immediately.`,
       userId,
     );
 
-    return { message: 'Password changed successfully. Please log in again.' };
+    return { message: "Password changed successfully. Please log in again." };
   }
 }

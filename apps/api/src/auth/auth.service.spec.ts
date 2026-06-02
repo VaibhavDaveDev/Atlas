@@ -1,17 +1,17 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { Mocked, vi } from 'vitest';
-import { AuthService } from './auth.service';
-import { AuthUtilsService } from './services/auth-utils.service';
-import { PrismaService } from '../common/services/prisma.service';
-import { ActivityLogService } from '../common/services/activity-log.service';
-import { RedisService } from '../common/services/redis.service';
-import { EmailQueueService } from '../common/queues/email/email.queue';
-import { CustomLoggerService } from '../common/services/custom-logger.service';
-import AppError from '../common/errors/app.error';
-import * as bcrypt from 'bcryptjs';
+import { Test, TestingModule } from "@nestjs/testing";
+import { Mocked, vi } from "vitest";
+import { AuthService } from "./auth.service";
+import { AuthUtilsService } from "./services/auth-utils.service";
+import { PrismaService } from "../common/services/prisma.service";
+import { ActivityLogService } from "../common/services/activity-log.service";
+import { RedisService } from "../common/services/redis.service";
+import { EmailQueueService } from "../common/queues/email/email.queue";
+import { CustomLoggerService } from "../common/services/custom-logger.service";
+import AppError from "../common/errors/app.error";
+import * as bcrypt from "bcryptjs";
 
 // Mock the AUTH_CONFIG to use numeric values for VERIFICATION
-vi.mock('./config/auth.config', () => ({
+vi.mock("./config/auth.config", () => ({
   AUTH_CONFIG: {
     PASSWORD_MIN_LENGTH: 8,
     PASSWORD_REQUIREMENTS: {
@@ -21,10 +21,10 @@ vi.mock('./config/auth.config', () => ({
       SPECIAL_CHARS: true,
     },
     TOKEN_EXPIRY: {
-      ACCESS: '15m',
-      REFRESH: '7d',
-      VERIFICATION: '1440', // 24 hours in minutes as a string number
-      PASSWORD_RESET: '1h',
+      ACCESS: "15m",
+      REFRESH: "7d",
+      VERIFICATION: "1440", // 24 hours in minutes as a string number
+      PASSWORD_RESET: "1h",
     },
     RATE_LIMIT: {
       LOGIN_MAX_ATTEMPTS: 5,
@@ -45,15 +45,15 @@ vi.mock('./config/auth.config', () => ({
       SUPERADMIN: 3,
     },
     CACHE_PREFIXES: {
-      VERIFICATION_TOKEN: 'verification',
-      PASSWORD_RESET_TOKEN: 'password_reset',
-      REFRESH_TOKEN: 'refresh_token',
-      USER_SESSIONS: 'user_sessions',
+      VERIFICATION_TOKEN: "verification",
+      PASSWORD_RESET_TOKEN: "password_reset",
+      REFRESH_TOKEN: "refresh_token",
+      USER_SESSIONS: "user_sessions",
     },
   },
 }));
 
-describe('AuthService', () => {
+describe("AuthService", () => {
   let service: AuthService;
   let prismaService: any;
   let authUtilsService: any;
@@ -149,43 +149,43 @@ describe('AuthService', () => {
     }).compile();
 
     service = module.get<AuthService>(AuthService);
-    prismaService = module.get(PrismaService) as any;
-    authUtilsService = module.get(AuthUtilsService) as any;
-    activityLogService = module.get(ActivityLogService) as any;
-    redisService = module.get(RedisService) as any;
-    emailQueueService = module.get(EmailQueueService) as any;
+    prismaService = module.get(PrismaService);
+    authUtilsService = module.get(AuthUtilsService);
+    activityLogService = module.get(ActivityLogService);
+    redisService = module.get(RedisService);
+    emailQueueService = module.get(EmailQueueService);
   });
 
   afterEach(() => {
     vi.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(service).toBeDefined();
   });
 
-  describe('create', () => {
+  describe("create", () => {
     const createAuthDto = {
-      email: 'test@example.com',
-      username: 'testuser',
-      password: 'Test@1234',
+      email: "test@example.com",
+      username: "testuser",
+      password: "Test@1234",
     };
 
     const meta = {
-      ip: '127.0.0.1',
-      userAgent: 'Jest Test Agent',
-      device: 'test-device',
+      ip: "127.0.0.1",
+      userAgent: "Jest Test Agent",
+      device: "test-device",
     };
 
-    it('should create a new user successfully', async () => {
+    it("should create a new user successfully", async () => {
       // Mock dependencies
       authUtilsService.checkRateLimit.mockResolvedValue(true);
       authUtilsService.validatePassword.mockReturnValue(true);
-      authUtilsService.generateVerificationCode.mockReturnValue('123456');
+      authUtilsService.generateVerificationCode.mockReturnValue("123456");
       prismaService.authUser.findFirst.mockResolvedValue(null);
 
       const mockUser = {
-        id: 'user-123',
+        id: "user-123",
         email: createAuthDto.email,
         username: createAuthDto.username,
       };
@@ -228,17 +228,17 @@ describe('AuthService', () => {
       expect(emailQueueService.sendVerificationEmail).toHaveBeenCalledWith(
         createAuthDto.email,
         createAuthDto.username,
-        '123456',
+        "123456",
         mockUser.id,
       );
     });
 
-    it('should throw error if password is weak', async () => {
+    it("should throw error if password is weak", async () => {
       authUtilsService.checkRateLimit.mockResolvedValue(true);
       authUtilsService.validatePassword.mockReturnValue(false);
 
       await expect(service.create(createAuthDto, meta)).rejects.toThrow(
-        'Password does not meet security requirements',
+        "Password does not meet security requirements",
       );
 
       expect(authUtilsService.validatePassword).toHaveBeenCalledWith(
@@ -246,37 +246,37 @@ describe('AuthService', () => {
       );
     });
 
-    it('should throw error if email already exists', async () => {
+    it("should throw error if email already exists", async () => {
       authUtilsService.checkRateLimit.mockResolvedValue(true);
       authUtilsService.validatePassword.mockReturnValue(true);
       prismaService.authUser.findFirst.mockResolvedValue({
-        id: 'existing-user',
+        id: "existing-user",
         email: createAuthDto.email,
-        username: 'different-username',
+        username: "different-username",
       } as any);
 
       await expect(service.create(createAuthDto, meta)).rejects.toThrow(
-        'Email already exists!',
+        "Email already exists!",
       );
     });
 
-    it('should throw error if username already exists', async () => {
+    it("should throw error if username already exists", async () => {
       authUtilsService.checkRateLimit.mockResolvedValue(true);
       authUtilsService.validatePassword.mockReturnValue(true);
       prismaService.authUser.findFirst.mockResolvedValue({
-        id: 'existing-user',
-        email: 'different@example.com',
+        id: "existing-user",
+        email: "different@example.com",
         username: createAuthDto.username,
       } as any);
 
       await expect(service.create(createAuthDto, meta)).rejects.toThrow(
-        'Username already exists!',
+        "Username already exists!",
       );
     });
 
-    it('should handle rate limiting', async () => {
+    it("should handle rate limiting", async () => {
       authUtilsService.checkRateLimit.mockRejectedValue(
-        AppError.tooManyRequests('Too many attempts'),
+        AppError.tooManyRequests("Too many attempts"),
       );
 
       await expect(service.create(createAuthDto, meta)).rejects.toThrow();
@@ -284,26 +284,26 @@ describe('AuthService', () => {
     });
   });
 
-  describe('verifyEmail', () => {
-    const email = 'test@example.com';
-    const code = '123456';
+  describe("verifyEmail", () => {
+    const email = "test@example.com";
+    const code = "123456";
     const meta = {
-      ip: '127.0.0.1',
-      userAgent: 'Jest Test Agent',
+      ip: "127.0.0.1",
+      userAgent: "Jest Test Agent",
     };
 
-    it('should verify email successfully', async () => {
+    it("should verify email successfully", async () => {
       const mockVerificationData = {
-        code: '123456',
-        userId: 'user-123',
+        code: "123456",
+        userId: "user-123",
         email,
         expiresAt: new Date(Date.now() + 10000).toISOString(),
       };
 
       const mockUser = {
-        id: 'user-123',
+        id: "user-123",
         email,
-        username: 'testuser',
+        username: "testuser",
         verified: false,
       };
 
@@ -313,9 +313,7 @@ describe('AuthService', () => {
       mockTransaction.mockImplementation(async (callback) => {
         return callback({
           authUser: {
-            update: vi
-              .fn()
-              .mockResolvedValue({ ...mockUser, verified: true }),
+            update: vi.fn().mockResolvedValue({ ...mockUser, verified: true }),
           },
         });
       });
@@ -325,7 +323,7 @@ describe('AuthService', () => {
 
       const result = await service.verifyEmail(email, code, meta);
 
-      expect(result).toEqual({ message: 'Email verified successfully' });
+      expect(result).toEqual({ message: "Email verified successfully" });
       expect(redisService.get).toHaveBeenCalled();
       expect(prismaService.authUser.findUnique).toHaveBeenCalledWith({
         where: { email },
@@ -339,18 +337,18 @@ describe('AuthService', () => {
       );
     });
 
-    it('should throw error if verification code is expired or not found', async () => {
+    it("should throw error if verification code is expired or not found", async () => {
       redisService.get.mockResolvedValue(null);
 
       await expect(service.verifyEmail(email, code, meta)).rejects.toThrow(
-        'Verification code expired or invalid',
+        "Verification code expired or invalid",
       );
     });
 
-    it('should throw error if verification code is invalid', async () => {
+    it("should throw error if verification code is invalid", async () => {
       const mockVerificationData = {
-        code: '654321', // Different code
-        userId: 'user-123',
+        code: "654321", // Different code
+        userId: "user-123",
         email,
         expiresAt: new Date(Date.now() + 10000).toISOString(),
       };
@@ -358,14 +356,14 @@ describe('AuthService', () => {
       redisService.get.mockResolvedValue(mockVerificationData);
 
       await expect(service.verifyEmail(email, code, meta)).rejects.toThrow(
-        'Invalid verification code',
+        "Invalid verification code",
       );
     });
 
-    it('should throw error if user not found', async () => {
+    it("should throw error if user not found", async () => {
       const mockVerificationData = {
-        code: '123456',
-        userId: 'user-123',
+        code: "123456",
+        userId: "user-123",
         email,
         expiresAt: new Date(Date.now() + 10000).toISOString(),
       };
@@ -374,22 +372,22 @@ describe('AuthService', () => {
       prismaService.authUser.findUnique.mockResolvedValue(null);
 
       await expect(service.verifyEmail(email, code, meta)).rejects.toThrow(
-        'User not found',
+        "User not found",
       );
     });
 
-    it('should throw error if email is already verified', async () => {
+    it("should throw error if email is already verified", async () => {
       const mockVerificationData = {
-        code: '123456',
-        userId: 'user-123',
+        code: "123456",
+        userId: "user-123",
         email,
         expiresAt: new Date(Date.now() + 10000).toISOString(),
       };
 
       const mockUser = {
-        id: 'user-123',
+        id: "user-123",
         email,
-        username: 'testuser',
+        username: "testuser",
         verified: true, // Already verified
       };
 
@@ -397,29 +395,29 @@ describe('AuthService', () => {
       prismaService.authUser.findUnique.mockResolvedValue(mockUser as any);
 
       await expect(service.verifyEmail(email, code, meta)).rejects.toThrow(
-        'Email already verified',
+        "Email already verified",
       );
     });
   });
 
-  describe('resendVerificationEmail', () => {
-    const email = 'test@example.com';
+  describe("resendVerificationEmail", () => {
+    const email = "test@example.com";
     const meta = {
-      ip: '127.0.0.1',
-      userAgent: 'Jest Test Agent',
+      ip: "127.0.0.1",
+      userAgent: "Jest Test Agent",
     };
 
-    it('should resend verification email successfully', async () => {
+    it("should resend verification email successfully", async () => {
       const mockUser = {
-        id: 'user-123',
+        id: "user-123",
         email,
-        username: 'testuser',
+        username: "testuser",
         verified: false,
       };
 
       authUtilsService.checkRateLimit.mockResolvedValue(true);
       prismaService.authUser.findUnique.mockResolvedValue(mockUser as any);
-      authUtilsService.generateVerificationCode.mockReturnValue('654321');
+      authUtilsService.generateVerificationCode.mockReturnValue("654321");
       redisService.set.mockResolvedValue(undefined);
       prismaService.emailHistory.create.mockResolvedValue({} as any);
       emailQueueService.sendVerificationEmail.mockResolvedValue(undefined);
@@ -427,7 +425,7 @@ describe('AuthService', () => {
       const result = await service.resendVerificationEmail(email, meta);
 
       expect(result).toEqual({
-        message: 'Verification email sent successfully',
+        message: "Verification email sent successfully",
       });
       expect(authUtilsService.checkRateLimit).toHaveBeenCalled();
       expect(prismaService.authUser.findUnique).toHaveBeenCalledWith({
@@ -437,19 +435,19 @@ describe('AuthService', () => {
       expect(emailQueueService.sendVerificationEmail).toHaveBeenCalled();
     });
 
-    it('should return generic message if user not found', async () => {
+    it("should return generic message if user not found", async () => {
       authUtilsService.checkRateLimit.mockResolvedValue(true);
       prismaService.authUser.findUnique.mockResolvedValue(null);
 
       const result = await service.resendVerificationEmail(email, meta);
-      expect(result.message).toContain('If this email exists');
+      expect(result.message).toContain("If this email exists");
     });
 
-    it('should return generic message if email is already verified', async () => {
+    it("should return generic message if email is already verified", async () => {
       const mockUser = {
-        id: 'user-123',
+        id: "user-123",
         email,
-        username: 'testuser',
+        username: "testuser",
         verified: true, // Already verified
       };
 
@@ -457,12 +455,12 @@ describe('AuthService', () => {
       prismaService.authUser.findUnique.mockResolvedValue(mockUser as any);
 
       const result = await service.resendVerificationEmail(email, meta);
-      expect(result.message).toContain('If this email exists');
+      expect(result.message).toContain("If this email exists");
     });
 
-    it('should handle rate limiting', async () => {
+    it("should handle rate limiting", async () => {
       authUtilsService.checkRateLimit.mockRejectedValue(
-        AppError.tooManyRequests('Too many attempts'),
+        AppError.tooManyRequests("Too many attempts"),
       );
 
       await expect(
@@ -470,29 +468,29 @@ describe('AuthService', () => {
       ).rejects.toThrow();
     });
 
-    it('should throw error if email queue fails', async () => {
+    it("should throw error if email queue fails", async () => {
       const mockUser = {
-        id: 'user-123',
+        id: "user-123",
         email,
-        username: 'testuser',
+        username: "testuser",
         verified: false,
       };
 
       authUtilsService.checkRateLimit.mockResolvedValue(true);
       prismaService.authUser.findUnique.mockResolvedValue(mockUser as any);
-      authUtilsService.generateVerificationCode.mockReturnValue('654321');
+      authUtilsService.generateVerificationCode.mockReturnValue("654321");
       redisService.set.mockResolvedValue(undefined);
       prismaService.emailHistory.create.mockResolvedValue({} as any);
       prismaService.emailHistory.updateMany.mockResolvedValue({
         count: 1,
       } as any);
       emailQueueService.sendVerificationEmail.mockRejectedValue(
-        new Error('Queue error'),
+        new Error("Queue error"),
       );
 
       await expect(
         service.resendVerificationEmail(email, meta),
-      ).rejects.toThrow('Failed to send verification email');
+      ).rejects.toThrow("Failed to send verification email");
       expect(prismaService.emailHistory.updateMany).toHaveBeenCalled();
     });
   });

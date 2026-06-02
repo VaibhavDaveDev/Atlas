@@ -1,19 +1,19 @@
-import { applyDecorators, Type } from '@nestjs/common';
+import { applyDecorators, Type } from "@nestjs/common";
 import {
   ApiExtraModels,
   ApiResponse,
   getSchemaPath,
   ApiProperty,
-} from '@nestjs/swagger';
+} from "@nestjs/swagger";
 
 /**
  * Base API response wrapper matching the TransformInterceptor output
  */
 export class ApiSuccessResponse<T> {
-  @ApiProperty({ example: 200, description: 'HTTP status code' })
+  @ApiProperty({ example: 200, description: "HTTP status code" })
   statusCode: number;
 
-  @ApiProperty({ example: 'Success', description: 'Response message' })
+  @ApiProperty({ example: "Success", description: "Response message" })
   message: string;
 
   data: T;
@@ -23,33 +23,33 @@ export class ApiSuccessResponse<T> {
  * API error response matching the AllExceptionsFilter output
  */
 export class ApiErrorResponse {
-  @ApiProperty({ example: false, description: 'Success flag' })
+  @ApiProperty({ example: false, description: "Success flag" })
   success: boolean;
 
-  @ApiProperty({ example: 400, description: 'HTTP status code' })
+  @ApiProperty({ example: 400, description: "HTTP status code" })
   statusCode: number;
 
   @ApiProperty({
-    example: 'Validation failed',
-    description: 'Error message',
+    example: "Validation failed",
+    description: "Error message",
   })
   message: string;
 
-  @ApiProperty({ example: 'BadRequestException', description: 'Error type' })
+  @ApiProperty({ example: "BadRequestException", description: "Error type" })
   error: string;
 
   @ApiProperty({
-    example: '2026-02-03T10:30:00.000Z',
-    description: 'Timestamp of the error',
+    example: "2026-02-03T10:30:00.000Z",
+    description: "Timestamp of the error",
   })
   timestamp: string;
 
-  @ApiProperty({ example: '/api/users', description: 'Request path' })
+  @ApiProperty({ example: "/api/users", description: "Request path" })
   path: string;
 
   @ApiProperty({
     required: false,
-    description: 'Stack trace (only in development)',
+    description: "Stack trace (only in development)",
     nullable: true,
   })
   stack?: string | null;
@@ -72,7 +72,7 @@ export class ApiErrorResponse {
  */
 export const ApiSuccessResponseDecorator = <TModel extends Type<any>>(
   status: number = 200,
-  description: string = 'Successful response',
+  description: string = "Successful response",
   dataType?: TModel,
 ) => {
   return applyDecorators(
@@ -99,7 +99,7 @@ export const ApiSuccessResponseDecorator = <TModel extends Type<any>>(
               {
                 properties: {
                   data: {
-                    type: 'object',
+                    type: "object",
                   },
                 },
               },
@@ -120,7 +120,7 @@ export const ApiSuccessResponseDecorator = <TModel extends Type<any>>(
  */
 export const ApiSuccessArrayResponseDecorator = <TModel extends Type<any>>(
   status: number = 200,
-  description: string = 'Successful response',
+  description: string = "Successful response",
   dataType: TModel,
 ) => {
   return applyDecorators(
@@ -134,7 +134,7 @@ export const ApiSuccessArrayResponseDecorator = <TModel extends Type<any>>(
           {
             properties: {
               data: {
-                type: 'array',
+                type: "array",
                 items: { $ref: getSchemaPath(dataType) },
               },
             },
@@ -154,27 +154,27 @@ export const ApiCommonErrorResponses = () => {
     ApiExtraModels(ApiErrorResponse),
     ApiResponse({
       status: 400,
-      description: 'Bad Request - Invalid input data',
+      description: "Bad Request - Invalid input data",
       schema: { $ref: getSchemaPath(ApiErrorResponse) },
     }),
     ApiResponse({
       status: 401,
-      description: 'Unauthorized - Authentication required',
+      description: "Unauthorized - Authentication required",
       schema: { $ref: getSchemaPath(ApiErrorResponse) },
     }),
     ApiResponse({
       status: 403,
-      description: 'Forbidden - Insufficient permissions',
+      description: "Forbidden - Insufficient permissions",
       schema: { $ref: getSchemaPath(ApiErrorResponse) },
     }),
     ApiResponse({
       status: 404,
-      description: 'Not Found - Resource not found',
+      description: "Not Found - Resource not found",
       schema: { $ref: getSchemaPath(ApiErrorResponse) },
     }),
     ApiResponse({
       status: 500,
-      description: 'Internal Server Error - Something went wrong',
+      description: "Internal Server Error - Something went wrong",
       schema: { $ref: getSchemaPath(ApiErrorResponse) },
     }),
   );
@@ -193,7 +193,7 @@ export const ApiCommonErrorResponses = () => {
  */
 export const ApiResponseDecorator = <TModel extends Type<any>>(
   status: number = 200,
-  description: string = 'Successful response',
+  description: string = "Successful response",
   dataType?: TModel,
 ) => {
   return applyDecorators(
@@ -207,7 +207,7 @@ export const ApiResponseDecorator = <TModel extends Type<any>>(
  */
 export const ApiArrayResponseDecorator = <TModel extends Type<any>>(
   status: number = 200,
-  description: string = 'Successful response',
+  description: string = "Successful response",
   dataType: TModel,
 ) => {
   return applyDecorators(

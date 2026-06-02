@@ -122,6 +122,43 @@ LOKI_URL=http://localhost:3100
 - Default Credentials: `admin` / `admin`
 - **Data Source:** Loki should be automatically configured (or add it manually pointing to `http://loki:3100`).
 
+**Useful Docker Commands for Logging:**
+```bash
+# List running containers
+docker ps
+
+# Stop the logging stack
+docker-compose -f docker-compose.logging.yml stop
+
+# Start the logging stack
+docker-compose -f docker-compose.logging.yml start
+
+# Remove logging containers and volumes
+docker-compose -f docker-compose.logging.yml down -v
+
+# Check logs for Loki/Grafana
+docker-compose -f docker-compose.logging.yml logs -f
+```
+
+### Gravatar Integration
+
+Atlas ERP uses Gravatar for user profile pictures.
+
+**Setup Instructions:**
+1. Visit the [Gravatar Developer Docs](https://docs.gravatar.com/rest-api/).
+2. Create an account and get your API Key and Client credentials.
+3. Update your `.env` files with the following:
+
+```env
+# Gravatar Integration
+GRAVATAR_API_KEY=your-api-key
+GRAVATAR_CLIENT_ID=your-client-id
+GRAVATAR_CLIENT_SECRET=your-client-secret
+NEXT_PUBLIC_GRAVATAR_CLIENT_ID=your-client-id
+```
+
+For detailed API usage, refer to the [Gravatar REST API Documentation](https://docs.gravatar.com/rest-api/).
+
 ---
 
 ## Project Setup
@@ -269,31 +306,33 @@ GOOGLE_REDIRECT_URI=http://localhost:3001/api/v1/auth/google/callback
 
 ### **Observability (Logging with Grafana Loki - Optional):**
 
-Atlas ERP is configured to send logs to Grafana Loki. You can use a local Loki instance or Grafana Cloud.
+Atlas ERP is configured to send logs to Grafana Loki. You can use a local Loki instance (via Docker) or Grafana Cloud for production environments.
 
 **Using Grafana Cloud (Recommended for Production):**
 
-1. Sign up for Grafana Cloud at: https://grafana.com/products/cloud/ read this: https://grafana.com/docs/grafana/latest/datasources/loki/configure-loki-data-source/ to create a loki instance.
-2. From your Grafana Cloud dashboard, navigate to **Connections > Add new connection**.
-3. Search for **Loki** and click on it.
-4. Click **Create a Loki data source**.
-5. You will need your **URL**, **User ID**, and **API Key (Access Token)**. These can be found in your Grafana Cloud Portal under the **Loki** card by clicking **Details**.
-6. The **API Key** should have the `MetricsPublisher` role.
-7. Add these to `apps/api/.env`:
+1. **Sign up:** Create a free account at [Grafana Cloud](https://grafana.com/products/cloud/).
+2. **Provision Loki:** In your Grafana Cloud Portal, find the **Loki** card and ensure it is provisioned.
+3. **Get Credentials:** Click on **Details** on the Loki card. You will need:
+   - **URL:** The endpoint for sending logs (e.g., `https://logs-prod-xxx.grafana.net`).
+   - **User ID:** Your Loki User ID.
+   - **Access Policy/Token:** Create an Access Policy with `logs:write` scope and generate a token.
+4. **Configure API:** Add these to `apps/api/.env`:
 
 ```env
-# Logging (Grafana Loki)
+# Logging (Grafana Loki Cloud - Production)
 LOKI_ENABLED=true
 LOKI_URL="https://logs-prod-xxx.grafana.net"
 LOKI_USER="your-loki-user-id"
-LOKI_PASSWORD="your-grafana-cloud-api-token"
+LOKI_PASSWORD="your-grafana-cloud-access-token"
 ```
 
-**Viewing Logs in Grafana:**
-1. Go to your Grafana instance.
-2. Navigate to **Explore** (compass icon).
-3. Select the **Loki** data source from the dropdown.
+**Viewing Logs in Grafana Cloud:**
+1. Navigate to your Grafana Cloud instance.
+2. Go to **Explore** (compass icon).
+3. Select the **grafanacloud-yourname-logs** (Loki) data source.
 4. Use a query like `{app="atlas-api"}` to see your logs.
+
+For more details, refer to the [Grafana Loki Configuration Guide](https://grafana.com/docs/grafana/latest/datasources/loki/configure-loki-data-source/).
 
 ---
 

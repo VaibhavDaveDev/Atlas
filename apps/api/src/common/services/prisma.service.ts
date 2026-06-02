@@ -23,10 +23,10 @@
 
 // // export const prismaService = new PrismaService().client;
 
-import 'dotenv/config';
-import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
-import { PrismaClient } from '@atlas/database';
-import { CustomLoggerService } from './custom-logger.service';
+import "dotenv/config";
+import { Injectable, OnModuleInit, OnModuleDestroy } from "@nestjs/common";
+import { PrismaClient } from "@atlas/database";
+import { CustomLoggerService } from "./custom-logger.service";
 
 @Injectable()
 export class PrismaService
@@ -37,7 +37,7 @@ export class PrismaService
     const dbUrl = process.env.DATABASE_URL;
     if (!dbUrl) {
       throw new Error(
-        'DATABASE_URL environment variable is not set. Please check your .env file.',
+        "DATABASE_URL environment variable is not set. Please check your .env file.",
       );
     }
     super({
@@ -50,14 +50,14 @@ export class PrismaService
   }
 
   async onModuleInit() {
-    this.customLogger.log('Connecting to database...', 'PrismaService');
+    this.customLogger.log("Connecting to database...", "PrismaService");
     await this.$connect();
-    this.customLogger.log('Database connected successfully', 'PrismaService');
+    this.customLogger.log("Database connected successfully", "PrismaService");
   }
 
   async onModuleDestroy() {
-    this.customLogger.log('Disconnecting from database...', 'PrismaService');
+    this.customLogger.log("Disconnecting from database...", "PrismaService");
     await this.$disconnect();
-    this.customLogger.log('Database disconnected', 'PrismaService');
+    this.customLogger.log("Database disconnected", "PrismaService");
   }
 }

@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { getEmployees } from '@/lib/hr';
-import { Loader2, Plus, Search, MoreHorizontal, User } from 'lucide-react';
+import { Loader2, Plus, Search, MoreHorizontal, User, Eye, Edit, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import Link from 'next/link';
 
 export default function EmployeesDirectoryPage() {
@@ -137,9 +138,28 @@ export default function EmployeesDirectoryPage() {
                         </Badge>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link href={`/dashboard/hr/employees/${employee.id}`} className="cursor-pointer">
+                                <Eye className="h-4 w-4 mr-2" /> View Profile
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link href={`/dashboard/hr/employees/${employee.id}/edit`} className="cursor-pointer">
+                                <Edit className="h-4 w-4 mr-2" /> Edit Employee
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive focus:bg-destructive/10 cursor-pointer">
+                              <Trash2 className="h-4 w-4 mr-2" /> Deactivate
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </td>
                     </tr>
                   ))}

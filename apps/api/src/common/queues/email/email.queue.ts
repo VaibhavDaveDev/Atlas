@@ -1,9 +1,9 @@
-import { InjectQueue } from '@nestjs/bullmq';
-import { Injectable } from '@nestjs/common';
-import { Queue } from 'bullmq';
+import { InjectQueue } from "@nestjs/bullmq";
+import { Injectable } from "@nestjs/common";
+import { Queue } from "bullmq";
 
 export interface VerificationEmailJob {
-  type: 'verification';
+  type: "verification";
   email: string;
   username: string;
   verificationCode: string;
@@ -11,14 +11,14 @@ export interface VerificationEmailJob {
 }
 
 export interface WelcomeEmailJob {
-  type: 'welcome';
+  type: "welcome";
   email: string;
   username: string;
   authId?: string;
 }
 
 export interface PasswordResetEmailJob {
-  type: 'password-reset';
+  type: "password-reset";
   email: string;
   username: string;
   resetCode: string;
@@ -26,7 +26,7 @@ export interface PasswordResetEmailJob {
 }
 
 export interface SecurityNotificationJob {
-  type: 'security-notification';
+  type: "security-notification";
   email: string;
   username: string;
   subject: string;
@@ -35,7 +35,7 @@ export interface SecurityNotificationJob {
 }
 
 export interface WorkspaceInviteEmailJob {
-  type: 'workspace-invite';
+  type: "workspace-invite";
   email: string;
   inviterName: string;
   workspaceName: string;
@@ -52,7 +52,7 @@ export type EmailJob =
 
 @Injectable()
 export class EmailQueueService {
-  constructor(@InjectQueue('email') private emailQueue: Queue) {}
+  constructor(@InjectQueue("email") private emailQueue: Queue) {}
 
   async sendVerificationEmail(
     email: string,
@@ -61,17 +61,17 @@ export class EmailQueueService {
     authId: string,
   ): Promise<void> {
     await this.emailQueue.add(
-      'send-verification',
+      "send-verification",
       {
-        type: 'verification',
+        type: "verification",
         email,
         username,
         verificationCode,
         authId,
-      } as VerificationEmailJob,
+      },
       {
         attempts: 3,
-        backoff: { type: 'exponential', delay: 2000 },
+        backoff: { type: "exponential", delay: 2000 },
         removeOnComplete: 100,
         removeOnFail: 500,
       },
@@ -84,16 +84,16 @@ export class EmailQueueService {
     authId?: string,
   ): Promise<void> {
     await this.emailQueue.add(
-      'send-welcome',
+      "send-welcome",
       {
-        type: 'welcome',
+        type: "welcome",
         email,
         username,
         authId,
-      } as WelcomeEmailJob,
+      },
       {
         attempts: 3,
-        backoff: { type: 'exponential', delay: 2000 },
+        backoff: { type: "exponential", delay: 2000 },
         removeOnComplete: 100,
         removeOnFail: 500,
       },
@@ -107,17 +107,17 @@ export class EmailQueueService {
     authId: string,
   ): Promise<void> {
     await this.emailQueue.add(
-      'send-password-reset',
+      "send-password-reset",
       {
-        type: 'password-reset',
+        type: "password-reset",
         email,
         username,
         resetCode,
         authId,
-      } as PasswordResetEmailJob,
+      },
       {
         attempts: 3,
-        backoff: { type: 'exponential', delay: 2000 },
+        backoff: { type: "exponential", delay: 2000 },
         removeOnComplete: 100,
         removeOnFail: 500,
       },
@@ -132,18 +132,18 @@ export class EmailQueueService {
     authId?: string,
   ): Promise<void> {
     await this.emailQueue.add(
-      'send-security-notification',
+      "send-security-notification",
       {
-        type: 'security-notification',
+        type: "security-notification",
         email,
         username,
         subject,
         message,
         authId,
-      } as SecurityNotificationJob,
+      },
       {
         attempts: 3,
-        backoff: { type: 'exponential', delay: 2000 },
+        backoff: { type: "exponential", delay: 2000 },
         removeOnComplete: 100,
         removeOnFail: 500,
       },
@@ -158,18 +158,18 @@ export class EmailQueueService {
     webAppUrl: string,
   ): Promise<void> {
     await this.emailQueue.add(
-      'send-workspace-invite',
+      "send-workspace-invite",
       {
-        type: 'workspace-invite',
+        type: "workspace-invite",
         email,
         inviterName,
         workspaceName,
         inviteToken,
         webAppUrl,
-      } as WorkspaceInviteEmailJob,
+      },
       {
         attempts: 3,
-        backoff: { type: 'exponential', delay: 2000 },
+        backoff: { type: "exponential", delay: 2000 },
         removeOnComplete: 100,
         removeOnFail: 500,
       },

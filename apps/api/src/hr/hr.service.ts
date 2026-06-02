@@ -1,6 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../common/services/prisma.service';
-import { evaluateFormula } from '@atlas/utils';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
+import { PrismaService } from "../common/services/prisma.service";
+import { evaluateFormula } from "@atlas/utils";
 
 @Injectable()
 export class HrService {
@@ -13,7 +17,7 @@ export class HrService {
     return this.prisma.department.findMany({
       where: { workspaceId, isActive: true },
       include: {
-        _count: { select: { employees: true } }
+        _count: { select: { employees: true } },
       },
     });
   }
@@ -34,11 +38,15 @@ export class HrService {
       where: { id, workspaceId },
       include: { employees: true },
     });
-    if (!dept) throw new NotFoundException('Department not found');
+    if (!dept) throw new NotFoundException("Department not found");
     return dept;
   }
 
-  async updateDepartment(workspaceId: string, id: string, data: any): Promise<any> {
+  async updateDepartment(
+    workspaceId: string,
+    id: string,
+    data: any,
+  ): Promise<any> {
     return this.prisma.department.update({
       where: { id, workspaceId },
       data,
@@ -59,7 +67,7 @@ export class HrService {
     return this.prisma.designation.findMany({
       where: { workspaceId, isActive: true },
       include: {
-        _count: { select: { employees: true } }
+        _count: { select: { employees: true } },
       },
     });
   }
@@ -91,7 +99,9 @@ export class HrService {
 
   async createEmployee(workspaceId: string, data: any): Promise<any> {
     // Generate collision-safe employee number if not provided
-    const employeeNumber = data.employeeNumber || `EMP-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+    const employeeNumber =
+      data.employeeNumber ||
+      `EMP-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 
     // Check if email is already used by another employee in this workspace
     const existingEmployee = await this.prisma.employee.findFirst({
@@ -99,7 +109,9 @@ export class HrService {
     });
 
     if (existingEmployee) {
-      throw new BadRequestException('An employee with this email already exists');
+      throw new BadRequestException(
+        "An employee with this email already exists",
+      );
     }
 
     // Try to link with existing auth user if they accepted an invite
@@ -113,17 +125,19 @@ export class HrService {
         employeeNumber,
         firstName: data.firstName,
         lastName: data.lastName,
-        fullName: `${data.firstName} ${data.lastName || ''}`.trim(),
+        fullName: `${data.firstName} ${data.lastName || ""}`.trim(),
         email: data.email,
         mobileNo: data.mobileNo,
         dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
-        dateOfJoining: data.dateOfJoining ? new Date(data.dateOfJoining) : new Date(),
+        dateOfJoining: data.dateOfJoining
+          ? new Date(data.dateOfJoining)
+          : new Date(),
         gender: data.gender,
         departmentId: data.departmentId,
         designationId: data.designationId,
         baseSalary: data.baseSalary ? parseFloat(data.baseSalary) : 0,
         userId: existingUser?.id, // Link to AuthUser if found
-        status: 'ACTIVE',
+        status: "ACTIVE",
         // Statutory Fields
         panNumber: data.panNumber,
         pfAccount: data.pfAccount,
@@ -142,20 +156,29 @@ export class HrService {
         user: { select: { email: true, username: true } },
       },
     });
-    if (!emp) throw new NotFoundException('Employee not found');
+    if (!emp) throw new NotFoundException("Employee not found");
     return emp;
   }
 
-  async updateEmployee(workspaceId: string, id: string, data: any): Promise<any> {
+  async updateEmployee(
+    workspaceId: string,
+    id: string,
+    data: any,
+  ): Promise<any> {
     // Fetch existing employee to preserve name components in partial updates
     const existing = await this.prisma.employee.findUnique({
       where: { id, workspaceId },
     });
-    if (!existing) throw new NotFoundException('Employee not found');
+    if (!existing) throw new NotFoundException("Employee not found");
 
-    const newFirst = data.firstName !== undefined ? data.firstName : existing.firstName;
-    const newLast = data.lastName !== undefined ? data.lastName : existing.lastName;
-    const fullName = (newFirst || newLast) ? `${newFirst || ''} ${newLast || ''}`.trim() : existing.fullName;
+    const newFirst =
+      data.firstName !== undefined ? data.firstName : existing.firstName;
+    const newLast =
+      data.lastName !== undefined ? data.lastName : existing.lastName;
+    const fullName =
+      newFirst || newLast
+        ? `${newFirst || ""} ${newLast || ""}`.trim()
+        : existing.fullName;
 
     return this.prisma.employee.update({
       where: { id, workspaceId },
@@ -165,8 +188,12 @@ export class HrService {
         fullName,
         mobileNo: data.mobileNo,
         dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
-        dateOfJoining: data.dateOfJoining ? new Date(data.dateOfJoining) : undefined,
-        dateOfLeaving: data.dateOfLeaving ? new Date(data.dateOfLeaving) : undefined,
+        dateOfJoining: data.dateOfJoining
+          ? new Date(data.dateOfJoining)
+          : undefined,
+        dateOfLeaving: data.dateOfLeaving
+          ? new Date(data.dateOfLeaving)
+          : undefined,
         gender: data.gender,
         departmentId: data.departmentId,
         designationId: data.designationId,
@@ -184,7 +211,7 @@ export class HrService {
   async deleteEmployee(workspaceId: string, id: string): Promise<any> {
     return this.prisma.employee.update({
       where: { id, workspaceId },
-      data: { deletedAt: new Date(), status: 'TERMINATED' },
+      data: { deletedAt: new Date(), status: "TERMINATED" },
     });
   }
 
@@ -209,7 +236,11 @@ export class HrService {
     });
   }
 
-  async updateLeaveType(workspaceId: string, id: string, data: any): Promise<any> {
+  async updateLeaveType(
+    workspaceId: string,
+    id: string,
+    data: any,
+  ): Promise<any> {
     return this.prisma.leaveType.update({
       where: { id, workspaceId },
       data: {
@@ -231,7 +262,11 @@ export class HrService {
   // ====================
   // LEAVE LEDGER & BALANCES
   // ====================
-  async getLeaveBalance(workspaceId: string, employeeId: string, leaveTypeId: string): Promise<number> {
+  async getLeaveBalance(
+    workspaceId: string,
+    employeeId: string,
+    leaveTypeId: string,
+  ): Promise<number> {
     const result = await this.prisma.leaveLedgerEntry.aggregate({
       where: {
         workspaceId,
@@ -243,20 +278,27 @@ export class HrService {
     return Number(result._sum.leaves || 0);
   }
 
-  async getAllLeaveBalances(workspaceId: string, employeeId: string): Promise<any> {
+  async getAllLeaveBalances(
+    workspaceId: string,
+    employeeId: string,
+  ): Promise<any> {
     const leaveTypes = await this.prisma.leaveType.findMany({
       where: { workspaceId, isActive: true },
     });
 
     const balances = await Promise.all(
       leaveTypes.map(async (type) => {
-        const balance = await this.getLeaveBalance(workspaceId, employeeId, type.id);
+        const balance = await this.getLeaveBalance(
+          workspaceId,
+          employeeId,
+          type.id,
+        );
         return {
           leaveTypeId: type.id,
           leaveTypeName: type.name,
           balance,
         };
-      })
+      }),
     );
 
     return balances;
@@ -284,10 +326,12 @@ export class HrService {
     return this.prisma.leaveApplication.findMany({
       where: { workspaceId },
       include: {
-        employee: { select: { id: true, fullName: true, employeeNumber: true } },
+        employee: {
+          select: { id: true, fullName: true, employeeNumber: true },
+        },
         leaveType: { select: { id: true, name: true, isPaid: true } },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 
@@ -298,10 +342,14 @@ export class HrService {
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
     // Check balance before allowing application
-    const balance = await this.getLeaveBalance(workspaceId, data.employeeId, data.leaveTypeId);
+    const balance = await this.getLeaveBalance(
+      workspaceId,
+      data.employeeId,
+      data.leaveTypeId,
+    );
     if (balance < diffDays) {
       throw new BadRequestException(
-        `Insufficient leave balance. Available: ${balance} days, Requested: ${diffDays} days`
+        `Insufficient leave balance. Available: ${balance} days, Requested: ${diffDays} days`,
       );
     }
 
@@ -314,17 +362,24 @@ export class HrService {
         toDate,
         totalDays: diffDays,
         reason: data.reason,
-        status: 'PENDING',
+        status: "PENDING",
       },
     });
   }
 
-  async updateLeaveStatus(workspaceId: string, id: string, status: any, userId: string, remarks?: string): Promise<any> {
+  async updateLeaveStatus(
+    workspaceId: string,
+    id: string,
+    status: any,
+    userId: string,
+    remarks?: string,
+  ): Promise<any> {
     const application = await this.prisma.leaveApplication.findUnique({
       where: { id, workspaceId },
     });
 
-    if (!application) throw new NotFoundException('Leave application not found');
+    if (!application)
+      throw new NotFoundException("Leave application not found");
 
     const updated = await this.prisma.leaveApplication.update({
       where: { id, workspaceId },
@@ -337,11 +392,11 @@ export class HrService {
     });
 
     // If approved, create a negative ledger entry
-    if (status === 'APPROVED') {
+    if (status === "APPROVED") {
       await this.createLeaveLedgerEntry(workspaceId, {
         employeeId: application.employeeId,
         leaveTypeId: application.leaveTypeId,
-        transactionType: 'APPLICATION',
+        transactionType: "APPLICATION",
         transactionId: application.id,
         leaves: -Number(application.totalDays),
         remarks: `Approved leave from ${application.fromDate.toLocaleDateString()} to ${application.toDate.toLocaleDateString()}`,
@@ -358,7 +413,8 @@ export class HrService {
     const employee = await this.prisma.employee.findFirst({
       where: { workspaceId, userId, deletedAt: null },
     });
-    if (!employee) throw new NotFoundException('Employee record not found for this user');
+    if (!employee)
+      throw new NotFoundException("Employee record not found for this user");
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -369,10 +425,11 @@ export class HrService {
         employeeId: employee.id,
         attendanceDate: today,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
-    if (existing && !existing.checkOut) throw new BadRequestException('Already checked in today');
+    if (existing && !existing.checkOut)
+      throw new BadRequestException("Already checked in today");
 
     return this.prisma.attendance.create({
       data: {
@@ -380,7 +437,7 @@ export class HrService {
         employeeId: employee.id,
         attendanceDate: today,
         checkIn: new Date(),
-        status: 'PRESENT',
+        status: "PRESENT",
       },
     });
   }
@@ -389,7 +446,7 @@ export class HrService {
     const employee = await this.prisma.employee.findFirst({
       where: { workspaceId, userId, deletedAt: null },
     });
-    if (!employee) throw new NotFoundException('Employee record not found');
+    if (!employee) throw new NotFoundException("Employee record not found");
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -400,13 +457,16 @@ export class HrService {
         employeeId: employee.id,
         attendanceDate: today,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
-    if (!attendance || attendance.checkOut) throw new BadRequestException('Not checked in currently');
+    if (!attendance || attendance.checkOut)
+      throw new BadRequestException("Not checked in currently");
 
     const checkOutTime = new Date();
-    const diffHours = (checkOutTime.getTime() - attendance.checkIn!.getTime()) / (1000 * 60 * 60);
+    const diffHours =
+      (checkOutTime.getTime() - attendance.checkIn!.getTime()) /
+      (1000 * 60 * 60);
 
     return this.prisma.attendance.update({
       where: { id: attendance.id },
@@ -420,8 +480,10 @@ export class HrService {
   async getAttendanceLogs(workspaceId: string): Promise<any> {
     return this.prisma.attendance.findMany({
       where: { workspaceId },
-      include: { employee: { select: { fullName: true, employeeNumber: true } } },
-      orderBy: { checkIn: 'desc' },
+      include: {
+        employee: { select: { fullName: true, employeeNumber: true } },
+      },
+      orderBy: { checkIn: "desc" },
     });
   }
 
@@ -440,7 +502,7 @@ export class HrService {
         employeeId: employee.id,
         attendanceDate: today,
       },
-      orderBy: { checkIn: 'asc' },
+      orderBy: { checkIn: "asc" },
     });
 
     if (sessions.length === 0) {
@@ -454,7 +516,10 @@ export class HrService {
 
     const lastSession = sessions[sessions.length - 1];
     const isCheckedIn = !lastSession.checkOut;
-    const totalWorkingHours = sessions.reduce((sum, s) => sum + (s.workingHours ? Number(s.workingHours) : 0), 0);
+    const totalWorkingHours = sessions.reduce(
+      (sum, s) => sum + (s.workingHours ? Number(s.workingHours) : 0),
+      0,
+    );
 
     return {
       isCheckedIn,
@@ -470,7 +535,7 @@ export class HrService {
   async getPayrollRuns(workspaceId: string): Promise<any> {
     return this.prisma.payrollRun.findMany({
       where: { workspaceId },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       include: {
         _count: { select: { entries: true } },
       },
@@ -483,7 +548,14 @@ export class HrService {
       include: {
         entries: {
           include: {
-            employee: { select: { id: true, fullName: true, employeeNumber: true, baseSalary: true } },
+            employee: {
+              select: {
+                id: true,
+                fullName: true,
+                employeeNumber: true,
+                baseSalary: true,
+              },
+            },
             earnings: true,
             deductions: true,
           },
@@ -492,7 +564,11 @@ export class HrService {
     });
   }
 
-  async createPayrollRun(workspaceId: string, data: any, userId: string): Promise<any> {
+  async createPayrollRun(
+    workspaceId: string,
+    data: any,
+    userId: string,
+  ): Promise<any> {
     const runNumber = `PR-${Date.now()}`;
     const periodStart = new Date(data.periodStart);
     const periodEnd = new Date(data.periodEnd);
@@ -508,16 +584,19 @@ export class HrService {
           periodStart,
           periodEnd,
           paymentDate,
-          status: 'DRAFT',
+          status: "DRAFT",
         },
       });
 
       // 2. Fetch all active employees
       const employees = await tx.employee.findMany({
-        where: { workspaceId, status: 'ACTIVE' },
+        where: { workspaceId, status: "ACTIVE" },
       });
 
-      const totalDaysInPeriod = Math.ceil((periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      const totalDaysInPeriod =
+        Math.ceil(
+          (periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24),
+        ) + 1;
 
       for (const emp of employees) {
         // 3. Get Salary Assignment
@@ -529,14 +608,14 @@ export class HrService {
           where: {
             employeeId: emp.id,
             attendanceDate: { gte: periodStart, lte: periodEnd },
-            status: 'PRESENT',
+            status: "PRESENT",
           },
           select: { attendanceDate: true },
         });
 
         // Count distinct dates (employee may have multiple sessions per day)
         const presentDays = new Set(
-          attendance.map(a => a.attendanceDate.toISOString().slice(0, 10))
+          attendance.map((a) => a.attendanceDate.toISOString().slice(0, 10)),
         ).size;
         const paymentDays = presentDays;
 
@@ -558,7 +637,7 @@ export class HrService {
             grossSalary: baseSalary,
             totalDeductions: 0,
             netSalary: baseSalary,
-            status: 'PENDING',
+            status: "PENDING",
           },
         });
 
@@ -571,15 +650,20 @@ export class HrService {
           const component = sc.salaryComponent;
           let amount = 0;
 
-          if (component.calculationType === 'FLAT') {
+          if (component.calculationType === "FLAT") {
             amount = Number(component.amount || 0);
-          } else if (component.calculationType === 'PERCENTAGE') {
+          } else if (component.calculationType === "PERCENTAGE") {
             amount = baseSalary * (Number(component.amount || 0) / 100);
-          } else if (component.calculationType === 'FORMULA' && component.formula) {
+          } else if (
+            component.calculationType === "FORMULA" &&
+            component.formula
+          ) {
             try {
               amount = evaluateFormula(component.formula, context);
             } catch (e) {
-              throw new BadRequestException(`Formula evaluation failed for ${component.abbr}: ${e.message}`);
+              throw new BadRequestException(
+                `Formula evaluation failed for ${component.abbr}: ${e.message}`,
+              );
             }
           }
 
@@ -588,16 +672,26 @@ export class HrService {
             amount = (amount / totalDaysInPeriod) * paymentDays;
           }
 
-          if (component.type === 'EARNING') {
+          if (component.type === "EARNING") {
             await tx.payrollEarning.create({
-              data: { payrollEntryId: entry.id, earningType: 'REGULAR', name: component.name, amount },
+              data: {
+                payrollEntryId: entry.id,
+                earningType: "REGULAR",
+                name: component.name,
+                amount,
+              },
             });
             currentGross += amount;
             if (component.isTaxable) taxableIncome += amount;
             context[component.abbr] = amount;
           } else {
             await tx.payrollDeduction.create({
-              data: { payrollEntryId: entry.id, deductionType: 'REGULAR', name: component.name, amount },
+              data: {
+                payrollEntryId: entry.id,
+                deductionType: "REGULAR",
+                name: component.name,
+                amount,
+              },
             });
             currentDeductions += amount;
             context[component.abbr] = amount;
@@ -608,7 +702,12 @@ export class HrService {
         const tax = await this.calculateIncomeTax(workspaceId, taxableIncome);
         if (tax > 0) {
           await tx.payrollDeduction.create({
-            data: { payrollEntryId: entry.id, deductionType: 'TAX', name: 'Income Tax', amount: tax },
+            data: {
+              payrollEntryId: entry.id,
+              deductionType: "TAX",
+              name: "Income Tax",
+              amount: tax,
+            },
           });
           currentDeductions += tax;
         }
@@ -635,7 +734,7 @@ export class HrService {
       let totalDeductions = 0;
       let totalNet = 0;
 
-      entries.forEach(e => {
+      entries.forEach((e) => {
         totalGross += Number(e.grossSalary);
         totalDeductions += Number(e.totalDeductions);
         totalNet += Number(e.netSalary);
@@ -667,7 +766,7 @@ export class HrService {
     let totalDeductions = 0;
     let totalNet = 0;
 
-    run.entries.forEach(e => {
+    run.entries.forEach((e) => {
       totalGross += Number(e.grossSalary);
       totalDeductions += Number(e.totalDeductions);
       totalNet += Number(e.netSalary);
@@ -687,7 +786,11 @@ export class HrService {
   // ====================
   // PAYROLL ENTRIES (PAYSLIPS)
   // ====================
-  async addEarning(workspaceId: string, entryId: string, data: any): Promise<any> {
+  async addEarning(
+    workspaceId: string,
+    entryId: string,
+    data: any,
+  ): Promise<any> {
     const amount = parseFloat(data.amount);
     const res = await this.prisma.payrollEarning.create({
       data: {
@@ -702,7 +805,11 @@ export class HrService {
     return res;
   }
 
-  async addDeduction(workspaceId: string, entryId: string, data: any): Promise<any> {
+  async addDeduction(
+    workspaceId: string,
+    entryId: string,
+    data: any,
+  ): Promise<any> {
     const amount = parseFloat(data.amount);
     const res = await this.prisma.payrollDeduction.create({
       data: {
@@ -728,9 +835,9 @@ export class HrService {
     let gross = Number(entry.basicSalary);
     let totalDeductions = 0;
 
-    entry.earnings.forEach(e => gross += Number(e.amount));
-    entry.deductions.forEach(d => totalDeductions += Number(d.amount));
-    
+    entry.earnings.forEach((e) => (gross += Number(e.amount)));
+    entry.deductions.forEach((d) => (totalDeductions += Number(d.amount)));
+
     const net = gross - totalDeductions;
 
     await this.prisma.payrollEntry.update({
@@ -752,7 +859,7 @@ export class HrService {
       let runGross = 0;
       let runDeductions = 0;
       let runNet = 0;
-      run.entries.forEach(e => {
+      run.entries.forEach((e) => {
         runGross += Number(e.grossSalary);
         runDeductions += Number(e.totalDeductions);
         runNet += Number(e.netSalary);
@@ -785,7 +892,7 @@ export class HrService {
         abbr: data.abbr.toUpperCase(),
         type: data.type,
         componentType: data.componentType,
-        calculationType: data.calculationType || 'FLAT',
+        calculationType: data.calculationType || "FLAT",
         amount: data.amount ? parseFloat(data.amount) : null,
         formula: data.formula,
         isTaxable: data.isTaxable ?? false,
@@ -802,9 +909,9 @@ export class HrService {
       where: { workspaceId, isActive: true },
       include: {
         components: {
-          include: { salaryComponent: true }
-        }
-      }
+          include: { salaryComponent: true },
+        },
+      },
     });
   }
 
@@ -836,9 +943,9 @@ export class HrService {
       where: { id, workspaceId },
       include: {
         components: {
-          include: { salaryComponent: true }
-        }
-      }
+          include: { salaryComponent: true },
+        },
+      },
     });
   }
 
@@ -863,18 +970,21 @@ export class HrService {
     });
   }
 
-  async getSalaryAssignment(workspaceId: string, employeeId: string): Promise<any> {
+  async getSalaryAssignment(
+    workspaceId: string,
+    employeeId: string,
+  ): Promise<any> {
     return this.prisma.salaryStructureAssignment.findFirst({
       where: { workspaceId, employeeId, isActive: true },
       include: {
         salaryStructure: {
           include: {
             components: {
-              include: { salaryComponent: true }
-            }
-          }
-        }
-      }
+              include: { salaryComponent: true },
+            },
+          },
+        },
+      },
     });
   }
 
@@ -917,13 +1027,17 @@ export class HrService {
     });
   }
 
-  async initiateOnboarding(workspaceId: string, employeeId: string, templateId: string): Promise<any> {
+  async initiateOnboarding(
+    workspaceId: string,
+    employeeId: string,
+    templateId: string,
+  ): Promise<any> {
     const template = await this.prisma.onboardingTemplate.findUnique({
       where: { id: templateId, workspaceId },
       include: { activities: true },
     });
 
-    if (!template) throw new NotFoundException('Template not found');
+    if (!template) throw new NotFoundException("Template not found");
 
     const tasks = template.activities.map((act) => ({
       workspaceId,
@@ -931,7 +1045,7 @@ export class HrService {
       title: act.title,
       description: act.description,
       isMandatory: act.isMandatory,
-      status: 'PENDING',
+      status: "PENDING",
     }));
 
     await this.prisma.employeeOnboardingTask.createMany({
@@ -940,25 +1054,33 @@ export class HrService {
 
     await this.prisma.employee.update({
       where: { id: employeeId, workspaceId },
-      data: { status: 'ONBOARDING' },
+      data: { status: "ONBOARDING" },
     });
 
     return this.getOnboardingTasks(workspaceId, employeeId);
   }
 
-  async getOnboardingTasks(workspaceId: string, employeeId: string): Promise<any> {
+  async getOnboardingTasks(
+    workspaceId: string,
+    employeeId: string,
+  ): Promise<any> {
     return this.prisma.employeeOnboardingTask.findMany({
       where: { workspaceId, employeeId },
     });
   }
 
-  async updateOnboardingTask(workspaceId: string, taskId: string, status: string, userId: string): Promise<any> {
+  async updateOnboardingTask(
+    workspaceId: string,
+    taskId: string,
+    status: string,
+    userId: string,
+  ): Promise<any> {
     return this.prisma.employeeOnboardingTask.update({
       where: { id: taskId, workspaceId },
       data: {
         status,
-        completedAt: status === 'COMPLETED' ? new Date() : null,
-        completedBy: status === 'COMPLETED' ? userId : null,
+        completedAt: status === "COMPLETED" ? new Date() : null,
+        completedBy: status === "COMPLETED" ? userId : null,
       },
     });
   }
@@ -1000,7 +1122,11 @@ export class HrService {
     });
   }
 
-  async updateLeavePolicy(workspaceId: string, id: string, data: any): Promise<any> {
+  async updateLeavePolicy(
+    workspaceId: string,
+    id: string,
+    data: any,
+  ): Promise<any> {
     await this.prisma.leavePolicy.update({
       where: { id, workspaceId },
       data: {
@@ -1045,7 +1171,7 @@ export class HrService {
       include: { leaveTypes: true },
     });
 
-    if (!policy) throw new NotFoundException('Leave policy not found');
+    if (!policy) throw new NotFoundException("Leave policy not found");
 
     const allocation = await this.prisma.leaveAllocation.create({
       data: {
@@ -1063,7 +1189,7 @@ export class HrService {
       await this.createLeaveLedgerEntry(workspaceId, {
         employeeId: data.employeeId,
         leaveTypeId: type.leaveTypeId,
-        transactionType: 'ALLOCATION',
+        transactionType: "ALLOCATION",
         transactionId: allocation.id,
         leaves: type.annualAllocation,
         remarks: `Annual allocation via policy: ${policy.name}`,
@@ -1079,7 +1205,7 @@ export class HrService {
   async getTaxSlabs(workspaceId: string): Promise<any> {
     return this.prisma.incomeTaxSlab.findMany({
       where: { workspaceId },
-      include: { slabs: { orderBy: { fromAmount: 'asc' } } },
+      include: { slabs: { orderBy: { fromAmount: "asc" } } },
     });
   }
 
@@ -1116,18 +1242,23 @@ export class HrService {
     const settings = await this.prisma.workspaceSettings.findUnique({
       where: { workspaceId },
     });
-    
+
     const custom = (settings?.customSettings as any) || {};
-    return custom.indiaCompliance || {
-      pfRate: 0.12,
-      pfCap: 15000,
-      esiEmployeeRate: 0.0075,
-      esiEmployerRate: 0.0325,
-      esiCap: 21000,
-    };
+    return (
+      custom.indiaCompliance || {
+        pfRate: 0.12,
+        pfCap: 15000,
+        esiEmployeeRate: 0.0075,
+        esiEmployerRate: 0.0325,
+        esiCap: 21000,
+      }
+    );
   }
 
-  async updateIndiaComplianceSettings(workspaceId: string, data: any): Promise<any> {
+  async updateIndiaComplianceSettings(
+    workspaceId: string,
+    data: any,
+  ): Promise<any> {
     const existing = await this.prisma.workspaceSettings.findUnique({
       where: { workspaceId },
     });
@@ -1145,7 +1276,11 @@ export class HrService {
     });
   }
 
-  async getPfEsiReport(workspaceId: string, month: number, year: number): Promise<any> {
+  async getPfEsiReport(
+    workspaceId: string,
+    month: number,
+    year: number,
+  ): Promise<any> {
     const startDate = new Date(year, month, 1);
     const endDate = new Date(year, month + 1, 0);
 
@@ -1155,11 +1290,19 @@ export class HrService {
         payrollRun: {
           periodStart: { gte: startDate },
           periodEnd: { lte: endDate },
-          status: 'COMPLETED', // Only reported for completed payrolls
+          status: "COMPLETED", // Only reported for completed payrolls
         },
       },
       include: {
-        employee: { select: { fullName: true, employeeNumber: true, panNumber: true, pfAccount: true, esiNumber: true } },
+        employee: {
+          select: {
+            fullName: true,
+            employeeNumber: true,
+            panNumber: true,
+            pfAccount: true,
+            esiNumber: true,
+          },
+        },
         earnings: true,
         deductions: true,
       },
@@ -1167,17 +1310,19 @@ export class HrService {
 
     const settings = await this.getIndiaComplianceSettings(workspaceId);
 
-    return entries.map(entry => {
+    return entries.map((entry) => {
       const basic = Number(entry.basicSalary);
       const gross = Number(entry.grossSalary);
-      
-      const employeePf = entry.deductions.find(d => d.name.includes('PF'))?.amount || 0;
-      const employeeEsi = entry.deductions.find(d => d.name.includes('ESI'))?.amount || 0;
-      
+
+      const employeePf =
+        entry.deductions.find((d) => d.name.includes("PF"))?.amount || 0;
+      const employeeEsi =
+        entry.deductions.find((d) => d.name.includes("ESI"))?.amount || 0;
+
       // Calculate employer contributions based on settings
       const pfBasis = settings.pfCap ? Math.min(basic, settings.pfCap) : basic;
       const employerPf = pfBasis * settings.pfRate;
-      
+
       let employerEsi = 0;
       if (gross <= settings.esiCap) {
         employerEsi = Math.ceil(gross * settings.esiEmployerRate);
@@ -1196,9 +1341,65 @@ export class HrService {
         employerPf,
         employeeEsi,
         employerEsi,
-        totalContribution: Number(employeePf) + Number(employerPf) + Number(employeeEsi) + employerEsi,
+        totalContribution:
+          Number(employeePf) +
+          Number(employerPf) +
+          Number(employeeEsi) +
+          employerEsi,
       };
     });
+  }
+
+  async getStatutoryStatus(workspaceId: string): Promise<any> {
+    const employees = await this.prisma.employee.findMany({
+      where: { workspaceId, status: "ACTIVE", deletedAt: null },
+      select: {
+        panNumber: true,
+        pfAccount: true,
+        id: true,
+      },
+    });
+
+    const total = employees.length;
+    if (total === 0) {
+      return {
+        panRecords: { pct: 0, filled: 0, total: 0 },
+        pfNominations: { pct: 0, filled: 0, total: 0 },
+        tdsDeclarations: { pct: 0, filled: 0, total: 0 },
+      };
+    }
+
+    const filledPan = employees.filter(
+      (e) => e.panNumber && e.panNumber.trim().length > 0,
+    ).length;
+    const filledPf = employees.filter(
+      (e) => e.pfAccount && e.pfAccount.trim().length > 0,
+    ).length;
+
+    const tdsDeclarations = await this.prisma.taxExemptionDeclaration.count({
+      where: {
+        workspaceId,
+        status: { in: ["SUBMITTED", "APPROVED"] },
+      },
+    });
+
+    return {
+      panRecords: {
+        pct: Math.round((filledPan / total) * 100),
+        filled: filledPan,
+        total,
+      },
+      pfNominations: {
+        pct: Math.round((filledPf / total) * 100),
+        filled: filledPf,
+        total,
+      },
+      tdsDeclarations: {
+        pct: Math.round((Math.min(tdsDeclarations, total) / total) * 100),
+        filled: tdsDeclarations,
+        total,
+      },
+    };
   }
 
   // ====================
@@ -1209,7 +1410,7 @@ export class HrService {
     basicSalary: number,
     hraReceived: number,
     rentPaid: number,
-    isMetro: boolean
+    isMetro: boolean,
   ): Promise<number> {
     // 1. Actual HRA received
     const case1 = hraReceived;
@@ -1223,23 +1424,31 @@ export class HrService {
     return Math.min(case1, case2, case3);
   }
 
-  async calculatePf(basicSalary: number, limitTo15k: boolean = true): Promise<number> {
+  async calculatePf(
+    basicSalary: number,
+    limitTo15k: boolean = true,
+  ): Promise<number> {
     const pfBasis = limitTo15k ? Math.min(basicSalary, 15000) : basicSalary;
     return pfBasis * 0.12; // Standard 12%
   }
 
-  async calculateEsi(grossSalary: number): Promise<{ employee: number; employer: number }> {
+  async calculateEsi(
+    grossSalary: number,
+  ): Promise<{ employee: number; employer: number }> {
     if (grossSalary > 21000) return { employee: 0, employer: 0 };
-    
+
     return {
       employee: Math.ceil(grossSalary * 0.0075),
       employer: Math.ceil(grossSalary * 0.0325),
     };
   }
 
-  async calculateProfessionalTax(grossSalary: number, state: string = 'Maharashtra'): Promise<number> {
+  async calculateProfessionalTax(
+    grossSalary: number,
+    state: string = "Maharashtra",
+  ): Promise<number> {
     // Basic implementation for Maharashtra as example
-    if (state === 'Maharashtra') {
+    if (state === "Maharashtra") {
       if (grossSalary <= 7500) return 0;
       if (grossSalary <= 10000) return 175;
       return 200; // Simplified; Feb is usually 300
@@ -1247,34 +1456,48 @@ export class HrService {
     return 0;
   }
 
-  async getTaxExemptionDeclaration(workspaceId: string, employeeId: string): Promise<any> {
+  async getTaxExemptionDeclaration(
+    workspaceId: string,
+    employeeId: string,
+  ): Promise<any> {
     return this.prisma.taxExemptionDeclaration.findFirst({
       where: { workspaceId, employeeId },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 
-  async submitTaxExemptionDeclaration(workspaceId: string, employeeId: string, data: any): Promise<any> {
+  async submitTaxExemptionDeclaration(
+    workspaceId: string,
+    employeeId: string,
+    data: any,
+  ): Promise<any> {
     return this.prisma.taxExemptionDeclaration.create({
       data: {
         workspaceId,
         employeeId,
         taxSlabId: data.taxSlabId,
-        monthlyHouseRent: data.monthlyHouseRent ? parseFloat(data.monthlyHouseRent) : null,
+        monthlyHouseRent: data.monthlyHouseRent
+          ? parseFloat(data.monthlyHouseRent)
+          : null,
         rentedInMetroCity: data.rentedInMetroCity || false,
-        rentedFromDate: data.rentedFromDate ? new Date(data.rentedFromDate) : null,
+        rentedFromDate: data.rentedFromDate
+          ? new Date(data.rentedFromDate)
+          : null,
         rentedToDate: data.rentedToDate ? new Date(data.rentedToDate) : null,
         declarations: data.declarations || {},
-        status: 'SUBMITTED',
+        status: "SUBMITTED",
       },
     });
   }
 
-  async calculateIncomeTax(workspaceId: string, taxableIncome: number): Promise<number> {
+  async calculateIncomeTax(
+    workspaceId: string,
+    taxableIncome: number,
+  ): Promise<number> {
     const activeSlab = await this.prisma.incomeTaxSlab.findFirst({
       where: { workspaceId },
-      include: { slabs: { orderBy: { fromAmount: 'asc' } } },
-      orderBy: { effectiveFrom: 'desc' },
+      include: { slabs: { orderBy: { fromAmount: "asc" } } },
+      orderBy: { effectiveFrom: "desc" },
     });
 
     if (!activeSlab) return 0;
@@ -1292,8 +1515,12 @@ export class HrService {
     }
 
     // India Specific: Marginal Relief
-    if (activeSlab.marginalReliefLimit && taxableIncome > Number(activeSlab.marginalReliefLimit)) {
-      const excessIncome = taxableIncome - Number(activeSlab.marginalReliefLimit);
+    if (
+      activeSlab.marginalReliefLimit &&
+      taxableIncome > Number(activeSlab.marginalReliefLimit)
+    ) {
+      const excessIncome =
+        taxableIncome - Number(activeSlab.marginalReliefLimit);
       if (totalTax > excessIncome) {
         // totalTax = excessIncome; // Simplified marginal relief
       }
@@ -1305,7 +1532,10 @@ export class HrService {
   // ====================
   // EMPLOYEE MOVEMENT
   // ====================
-  async getEmployeeMovements(workspaceId: string, employeeId?: string): Promise<any> {
+  async getEmployeeMovements(
+    workspaceId: string,
+    employeeId?: string,
+  ): Promise<any> {
     return this.prisma.employeeMovement.findMany({
       where: {
         workspaceId,
@@ -1318,7 +1548,7 @@ export class HrService {
         fromDesignation: true,
         toDesignation: true,
       },
-      orderBy: { movementDate: 'desc' },
+      orderBy: { movementDate: "desc" },
     });
   }
 
@@ -1327,7 +1557,7 @@ export class HrService {
       where: { id: data.employeeId, workspaceId },
     });
 
-    if (!employee) throw new NotFoundException('Employee not found');
+    if (!employee) throw new NotFoundException("Employee not found");
 
     const movement = await this.prisma.employeeMovement.create({
       data: {
@@ -1342,19 +1572,22 @@ export class HrService {
         toDesignationId: data.toDesignationId,
         toSalary: data.toSalary ? parseFloat(data.toSalary) : null,
         reason: data.reason,
-        status: 'PROPOSED',
+        status: "PROPOSED",
       },
     });
 
     return movement;
   }
 
-  async approveEmployeeMovement(workspaceId: string, movementId: string): Promise<any> {
+  async approveEmployeeMovement(
+    workspaceId: string,
+    movementId: string,
+  ): Promise<any> {
     const movement = await this.prisma.employeeMovement.findUnique({
       where: { id: movementId, workspaceId },
     });
 
-    if (!movement) throw new NotFoundException('Movement not found');
+    if (!movement) throw new NotFoundException("Movement not found");
 
     // Update employee record
     await this.prisma.employee.update({
@@ -1368,7 +1601,7 @@ export class HrService {
 
     return this.prisma.employeeMovement.update({
       where: { id: movementId },
-      data: { status: 'APPROVED' },
+      data: { status: "APPROVED" },
     });
   }
 
@@ -1379,7 +1612,7 @@ export class HrService {
     return this.prisma.jobApplicant.findMany({
       where: { workspaceId },
       include: { interviews: true },
-      orderBy: { appliedDate: 'desc' },
+      orderBy: { appliedDate: "desc" },
     });
   }
 
@@ -1393,7 +1626,7 @@ export class HrService {
         phone: data.phone,
         resumeUrl: data.resumeUrl,
         coverLetter: data.coverLetter,
-        status: 'APPLIED',
+        status: "APPLIED",
       },
     });
   }
@@ -1406,18 +1639,22 @@ export class HrService {
         interviewDate: new Date(data.interviewDate),
         roundName: data.roundName,
         interviewerId: data.interviewerId,
-        status: 'SCHEDULED',
+        status: "SCHEDULED",
       },
     });
   }
 
-  async updateInterviewFeedback(workspaceId: string, interviewId: string, data: any): Promise<any> {
+  async updateInterviewFeedback(
+    workspaceId: string,
+    interviewId: string,
+    data: any,
+  ): Promise<any> {
     return this.prisma.interview.update({
       where: { id: interviewId, workspaceId },
       data: {
         feedback: data.feedback,
         score: data.score ? parseInt(data.score) : null,
-        status: 'COMPLETED',
+        status: "COMPLETED",
       },
     });
   }
@@ -1455,55 +1692,388 @@ export class HrService {
     });
   }
 
-  /**
-   * Computes statutory compliance fill-rates from real employee data:
-   * - PAN Records: % of active employees with panNumber filled
-   * - PF Nominations: % of active employees with pfAccount filled
-   * - TDS Declarations: % of active employees who have submitted a TaxExemptionDeclaration
-   */
-  async getStatutoryStatus(workspaceId: string) {
-    const totalEmployees = await this.prisma.employee.count({
-      where: { workspaceId, status: 'ACTIVE', deletedAt: null },
+  async getAppraisalCycles(workspaceId: string): Promise<any> {
+    return this.prisma.appraisalCycle.findMany({
+      where: { workspaceId },
+      orderBy: { startDate: "desc" },
+    });
+  }
+
+  async createAppraisalCycle(workspaceId: string, data: any): Promise<any> {
+    return this.prisma.appraisalCycle.create({
+      data: {
+        workspaceId,
+        name: data.name,
+        startDate: new Date(data.startDate),
+        endDate: new Date(data.endDate),
+        isActive: data.isActive ?? true,
+      },
+    });
+  }
+
+  // ====================
+  // PERFORMANCE: GOALS
+  // ====================
+  async getEmployeeGoals(
+    workspaceId: string,
+    employeeId?: string,
+    appraisalCycleId?: string,
+  ): Promise<any> {
+    return this.prisma.employeeGoal.findMany({
+      where: {
+        workspaceId,
+        ...(employeeId && { employeeId }),
+        ...(appraisalCycleId && { appraisalCycleId }),
+      },
+      include: { employee: true, appraisalCycle: true },
+    });
+  }
+
+  async createEmployeeGoal(workspaceId: string, data: any): Promise<any> {
+    return this.prisma.employeeGoal.create({
+      data: {
+        workspaceId,
+        employeeId: data.employeeId,
+        appraisalCycleId: data.appraisalCycleId,
+        title: data.title,
+        description: data.description,
+        targetValue: data.targetValue,
+        unit: data.targetValue ? "percentage" : null,
+        startDate: new Date(data.startDate),
+        endDate: new Date(data.endDate),
+        weight: data.weight ? parseFloat(data.weight) : 0,
+        status: "PENDING",
+      },
+    });
+  }
+
+  async updateGoalProgress(
+    workspaceId: string,
+    goalId: string,
+    completionPercentage: number,
+  ): Promise<any> {
+    return this.prisma.employeeGoal.update({
+      where: { id: goalId, workspaceId },
+      data: {
+        completionPercentage,
+        status: completionPercentage === 100 ? "COMPLETED" : "IN_PROGRESS",
+      },
+    });
+  }
+
+  // ====================
+  // PERFORMANCE: APPRAISALS
+  // ====================
+  async getAppraisals(
+    workspaceId: string,
+    employeeId?: string,
+    appraisalCycleId?: string,
+  ): Promise<any> {
+    return this.prisma.appraisal.findMany({
+      where: {
+        workspaceId,
+        ...(employeeId && { employeeId }),
+        ...(appraisalCycleId && { appraisalCycleId }),
+      },
+      include: { employee: true, appraisalCycle: true },
+    });
+  }
+
+  async createAppraisal(workspaceId: string, data: any): Promise<any> {
+    return this.prisma.appraisal.create({
+      data: {
+        workspaceId,
+        employeeId: data.employeeId,
+        appraisalCycleId: data.appraisalCycleId,
+        selfScore: data.selfScore,
+        managerScore: data.managerScore,
+        finalScore: data.finalScore,
+        employeeComments: data.employeeComments,
+        managerComments: data.managerComments,
+        status: data.status || "DRAFT",
+      },
+    });
+  }
+
+  async updateAppraisal(
+    workspaceId: string,
+    id: string,
+    data: any,
+  ): Promise<any> {
+    return this.prisma.appraisal.update({
+      where: { id, workspaceId },
+      data: {
+        managerScore: data.managerScore,
+        finalScore: data.finalScore,
+        managerComments: data.managerComments,
+        status: data.status,
+        finalizedAt: data.status === "COMPLETED" ? new Date() : undefined,
+        finalizedBy: data.status === "COMPLETED" ? data.userId : undefined,
+      },
+    });
+  }
+
+  // ====================
+  // SEPARATION
+  // ====================
+  async getSeparations(workspaceId: string): Promise<any> {
+    return this.prisma.employeeSeparation.findMany({
+      where: { workspaceId },
+      include: { employee: true },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  async createSeparation(workspaceId: string, data: any): Promise<any> {
+    return this.prisma.employeeSeparation.create({
+      data: {
+        workspaceId,
+        employeeId: data.employeeId,
+        separationType: data.separationType,
+        resignationDate: data.resignationDate
+          ? new Date(data.resignationDate)
+          : null,
+        lastWorkingDate: new Date(data.lastWorkingDate),
+        reason: data.reason,
+        status: "PENDING_APPROVAL",
+      },
+    });
+  }
+
+  async approveSeparation(workspaceId: string, id: string): Promise<any> {
+    const separation = await this.prisma.employeeSeparation.findUnique({
+      where: { id, workspaceId },
+    });
+    if (!separation) throw new NotFoundException("Separation record not found");
+
+    await this.prisma.employee.update({
+      where: { id: separation.employeeId },
+      data: {
+        status:
+          separation.separationType === "RESIGNATION"
+            ? "RESIGNED"
+            : "TERMINATED",
+        dateOfLeaving: separation.lastWorkingDate,
+      },
     });
 
-    if (totalEmployees === 0) {
-      return {
-        success: true,
-        data: {
-          totalEmployees: 0,
-          panRecords: { filled: 0, total: 0, pct: 0 },
-          pfNominations: { filled: 0, total: 0, pct: 0 },
-          tdsDeclarations: { filled: 0, total: 0, pct: 0 },
-        },
-      };
+    return this.prisma.employeeSeparation.update({
+      where: { id },
+      data: { status: "APPROVED" },
+    });
+  }
+
+  // ====================
+  // OFFBOARDING
+  // ====================
+  async getOffboardingTemplates(workspaceId: string): Promise<any> {
+    return this.prisma.offboardingTemplate.findMany({
+      where: { workspaceId, isActive: true },
+      include: { activities: true },
+    });
+  }
+
+  async createOffboardingTemplate(
+    workspaceId: string,
+    data: any,
+  ): Promise<any> {
+    const template = await this.prisma.offboardingTemplate.create({
+      data: {
+        workspaceId,
+        name: data.name,
+        description: data.description,
+      },
+    });
+
+    if (data.activities && data.activities.length > 0) {
+      await this.prisma.offboardingActivity.createMany({
+        data: data.activities.map((act: any) => ({
+          templateId: template.id,
+          title: act.title,
+          description: act.description,
+          isMandatory: act.isMandatory ?? true,
+          role: act.role,
+        })),
+      });
     }
 
-    const [panFilled, pfFilled, tdsCount] = await Promise.all([
-      this.prisma.employee.count({
-        where: { workspaceId, status: 'ACTIVE', deletedAt: null, panNumber: { not: null } },
-      }),
-      this.prisma.employee.count({
-        where: { workspaceId, status: 'ACTIVE', deletedAt: null, pfAccount: { not: null } },
-      }),
-      this.prisma.taxExemptionDeclaration.count({
-        where: {
-          employee: { workspaceId, status: 'ACTIVE', deletedAt: null },
-        },
-      }),
-    ]);
+    return template;
+  }
 
-    const pct = (n: number, d: number) => (d === 0 ? 0 : Math.round((n / d) * 100));
-    // TDS: cap at total employees (one per employee)
-    const tdsFilled = Math.min(tdsCount, totalEmployees);
+  async initiateOffboarding(
+    workspaceId: string,
+    employeeId: string,
+    templateId: string,
+  ): Promise<any> {
+    const template = await this.prisma.offboardingTemplate.findUnique({
+      where: { id: templateId },
+      include: { activities: true },
+    });
+    if (!template) throw new NotFoundException("Template not found");
 
-    return {
-      success: true,
+    await this.prisma.employeeOffboardingTask.createMany({
+      data: template.activities.map((act) => ({
+        workspaceId,
+        employeeId,
+        title: act.title,
+        description: act.description,
+        isMandatory: act.isMandatory,
+        status: "PENDING",
+      })),
+    });
+
+    return this.getOffboardingTasks(workspaceId, employeeId);
+  }
+
+  async getOffboardingTasks(
+    workspaceId: string,
+    employeeId: string,
+  ): Promise<any> {
+    return this.prisma.employeeOffboardingTask.findMany({
+      where: { workspaceId, employeeId },
+    });
+  }
+
+  async updateOffboardingTask(
+    workspaceId: string,
+    taskId: string,
+    status: string,
+    userId: string,
+  ): Promise<any> {
+    return this.prisma.employeeOffboardingTask.update({
+      where: { id: taskId, workspaceId },
       data: {
-        totalEmployees,
-        panRecords: { filled: panFilled, total: totalEmployees, pct: pct(panFilled, totalEmployees) },
-        pfNominations: { filled: pfFilled, total: totalEmployees, pct: pct(pfFilled, totalEmployees) },
-        tdsDeclarations: { filled: tdsFilled, total: totalEmployees, pct: pct(tdsFilled, totalEmployees) },
+        status,
+        completedAt: status === "COMPLETED" ? new Date() : null,
+        completedBy: status === "COMPLETED" ? userId : null,
       },
-    };
+    });
+  }
+
+  // ====================
+  // TAX DECLARATIONS
+  // ====================
+  async getAllTaxDeclarations(workspaceId: string): Promise<any> {
+    return this.prisma.taxExemptionDeclaration.findMany({
+      where: { workspaceId },
+      include: {
+        employee: { select: { fullName: true, employeeNumber: true } },
+        taxSlab: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  async updateTaxDeclarationStatus(
+    workspaceId: string,
+    id: string,
+    status: string,
+  ): Promise<any> {
+    return this.prisma.taxExemptionDeclaration.update({
+      where: { id, workspaceId },
+      data: { status },
+    });
+  }
+
+  // ====================
+  // ADMIN: HELPDESK
+  // ====================
+  async getHelpdeskTickets(
+    workspaceId: string,
+    type?: string,
+    categoryGroup?: "HR" | "IT",
+  ): Promise<any> {
+    const hrTypes = ["HR_GRIEVANCE", "PAYROLL"];
+    const itTypes = ["IT_SUPPORT", "FACILITIES", "OTHER"];
+
+    let typeFilter: any = undefined;
+    if (type) {
+      typeFilter = type;
+    } else if (categoryGroup === "HR") {
+      typeFilter = { in: hrTypes };
+    } else if (categoryGroup === "IT") {
+      typeFilter = { in: itTypes };
+    }
+
+    return this.prisma.helpdeskTicket.findMany({
+      where: {
+        workspaceId,
+        ...(typeFilter && { type: typeFilter }),
+      },
+      include: {
+        raisedBy: { select: { fullName: true, employeeNumber: true } },
+        assignedTo: { select: { fullName: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  async updateTicket(
+    workspaceId: string,
+    ticketId: string,
+    data: any,
+  ): Promise<any> {
+    const updateData: any = {};
+    if (data.status) updateData.status = data.status;
+    if (data.priority) updateData.priority = data.priority;
+    if (data.assignedToId) updateData.assignedToId = data.assignedToId;
+    if (data.resolutionDetails) {
+      updateData.resolutionDetails = data.resolutionDetails;
+      updateData.resolvedAt = new Date();
+    }
+
+    return this.prisma.helpdeskTicket.update({
+      where: { id: ticketId, workspaceId },
+      data: updateData,
+    });
+  }
+
+  async addAdminTicketComment(
+    workspaceId: string,
+    userId: string,
+    ticketId: string,
+    message: string,
+  ): Promise<any> {
+    return this.prisma.ticketComment.create({
+      data: {
+        ticketId,
+        authorId: userId,
+        message,
+      },
+    });
+  }
+
+  // ====================
+  // COMPANY EVENTS
+  // ====================
+  async getCompanyEvents(workspaceId: string): Promise<any> {
+    return this.prisma.companyEvent.findMany({
+      where: { workspaceId },
+      include: {
+        author: { select: { name: true } },
+      },
+      orderBy: { startDate: "asc" },
+    });
+  }
+
+  async createCompanyEvent(
+    workspaceId: string,
+    userId: string,
+    data: any,
+  ): Promise<any> {
+    const event = await this.prisma.companyEvent.create({
+      data: {
+        workspaceId,
+        title: data.title,
+        description: data.description,
+        startDate: new Date(data.startDate),
+        endDate: new Date(data.endDate),
+        location: data.location,
+        isPublic: data.isPublic ?? true,
+        createdBy: userId,
+      },
+    });
+
+    return event;
   }
 }

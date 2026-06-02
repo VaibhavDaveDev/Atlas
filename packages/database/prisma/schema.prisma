@@ -36,6 +36,14 @@ enum WorkspaceStatus {
   CANCELLED
 }
 
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MANAGER
+  USER
+  VIEWER
+}
+
 enum InviteStatus {
   PENDING
   ACCEPTED
@@ -199,6 +207,29 @@ enum ApplicantStatus {
   HIRED
 }
 
+enum TicketType {
+  IT_SUPPORT
+  HR_GRIEVANCE
+  FACILITIES
+  PAYROLL
+  OTHER
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+  CANCELLED
+}
+
 // ============================================
 // AUTHENTICATION
 // ============================================
@@ -208,6 +239,8 @@ model AuthUser {
   email         String      @unique
   password      String
   username      String?     @unique
+  name          String?
+  image         String?
   globalRole    GlobalRole  @default(USER)
   verified      Boolean     @default(false)
   status        UserStatus  @default(ACTIVE)
@@ -224,6 +257,9 @@ model AuthUser {
   workspaces    WorkspaceMember[]
   employees     Employee[]
   sentInvites   WorkspaceInvite[] @relation("InvitedBy")
+  accounts      Account[]
+  ticketComments TicketComment[]
+  createdEvents  CompanyEvent[]    @relation("EventAuthor")
   
   @@index([email])
   @@index([status])
@@ -317,6 +353,9 @@ model WorkspaceSettings {
   dateFormat       String    @default("YYYY-MM-DD")
   timeFormat       String    @default("HH:mm:ss")
   fiscalYearStart  String    @default("01-01")
+  
+  weekendHolidays  Json?     // e.g. [0, 6] for Sunday, Saturday
+  countryCode      String?   // For holiday sync (e.g. "IN")
   
   customSettings   Json?
   
@@ -743,6 +782,13 @@ model Employee {
   interviewsHeld    Interview[] @relation("Interviewer")
   shiftAssignments  ShiftAssignment[]
   
+  raisedTickets     HelpdeskTicket[] @relation("RaisedBy")
+  assignedTickets   HelpdeskTicket[] @relation("AssignedTo")
+  appraisals        Appraisal[]
+  employeeGoals     EmployeeGoal[]
+  separations       EmployeeSeparation[]
+  offboardingTasks  EmployeeOffboardingTask[]
+  
   @@unique([workspaceId, employeeNumber])
   @@unique([workspaceId, email])
   @@index([workspaceId, status, deletedAt])
@@ -782,10 +828,11 @@ model LeaveType {
   leaveApplications  LeaveApplication[]
   leaveLedgerEntries LeaveLedgerEntry[]
   leavePolicyTypes   LeavePolicyType[]
-  
+
+  @@unique([workspaceId, name])
   @@index([workspaceId, isActive])
   @@map("leave_types")
-}
+  }
 
 model LeaveApplication {
   id              String      @id @default(uuid(7))
@@ -1249,6 +1296,17 @@ model PayrollEarning {
 model Account {
   id            String      @id @default(uuid(7))
   workspaceId   String
+  
+  // Auth Integration (Merged with Finance Account for now based on code usage)
+  userId        String?
+  user          AuthUser?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerId    String?
+  accountId     String?
+  accessToken   String?
+  refreshToken  String?
+  accessTokenExpiresAt DateTime?
+  
+  // Finance Core
   accountNumber String
   accountName   String
   accountType   AccountType
@@ -1411,7 +1469,7 @@ model Vendor {
 
 model PurchaseOrder {
   id                    String              @id @default(uuid(7))
-  workspaceId           String
+  workspaceId           String              @default(uuid(7)) // Temporary for push
   poNumber              String
   vendorId              String
   vendor                Vendor              @relation(fields: [vendorId], references: [id])
@@ -1691,4 +1749,239 @@ model EmailHistory {
   @@index([authId, emailType])
   @@index([emailStatus, createdAt])
   @@map("email_history")
+}
+
+// ============================================
+// HELPDESK & SUPPORT
+// ============================================
+
+model HelpdeskTicket {
+  id                String         @id @default(uuid(7))
+  workspaceId       String
+  ticketNumber      String
+  subject           String
+  description       String
+  type              TicketType
+  priority          TicketPriority
+  status            TicketStatus   @default(OPEN)
+  
+  raisedById        String
+  raisedBy          Employee       @relation("RaisedBy", fields: [raisedById], references: [id])
+  
+  assignedToId      String?
+  assignedTo        Employee?      @relation("AssignedTo", fields: [assignedToId], references: [id])
+  
+  resolutionDetails String?
+  resolvedAt        DateTime?
+  
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  
+  comments          TicketComment[]
+
+  @@unique([workspaceId, ticketNumber])
+  @@index([workspaceId])
+  @@map("helpdesk_tickets")
+}
+
+model TicketComment {
+  id          String         @id @default(uuid(7))
+  ticketId    String
+  ticket      HelpdeskTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorId    String
+  author      AuthUser       @relation(fields: [authorId], references: [id])
+  message     String
+  
+  createdAt   DateTime       @default(now())
+
+  @@map("ticket_comments")
+}
+
+// ============================================
+// CALENDAR & EVENTS
+// ============================================
+
+model CompanyEvent {
+  id          String   @id @default(uuid(7))
+  workspaceId String
+  title       String
+  description String?
+  location    String?
+  startDate   DateTime
+  endDate     DateTime
+  isAllDay    Boolean  @default(false)
+  isPublic    Boolean  @default(true)
+  category    String?  // e.g., "Holiday", "Meeting", "Social"
+  
+  createdBy   String?
+  author      AuthUser? @relation("EventAuthor", fields: [createdBy], references: [id])
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("company_events")
+}
+
+model Holiday {
+  id          String   @id @default(uuid(7))
+  workspaceId String
+  name        String
+  date        DateTime @db.Date
+  description String?
+  isOptional  Boolean  @default(false)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([workspaceId, date])
+  @@map("holidays")
+}
+
+// ============================================
+// PERFORMANCE & APPRAISALS
+// ============================================
+
+model AppraisalCycle {
+  id          String    @id @default(uuid(7))
+  workspaceId String
+  name        String
+  startDate   DateTime  @db.Date
+  endDate     DateTime  @db.Date
+  status      String    @default("ACTIVE") // ACTIVE, COMPLETED, CANCELLED
+  isActive    Boolean   @default(true)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  appraisals  Appraisal[]
+  employeeGoals EmployeeGoal[]
+  
+  @@map("appraisal_cycles")
+}
+
+model Appraisal {
+  id               String         @id @default(uuid(7))
+  workspaceId      String
+  employeeId       String
+  employee         Employee       @relation(fields: [employeeId], references: [id])
+  appraisalCycleId String
+  appraisalCycle   AppraisalCycle @relation(fields: [appraisalCycleId], references: [id])
+  
+  status           String         @default("DRAFT") // DRAFT, SELF_SUBMITTED, REVIEWED, COMPLETED
+  selfScore        Decimal?
+  managerScore     Decimal?
+  finalScore       Decimal?
+  
+  employeeComments String?
+  managerComments  String?
+  
+  reviewedAt       DateTime?
+  reviewedBy       String?
+  finalizedAt      DateTime?
+  finalizedBy      String?
+  
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  
+  @@map("appraisals")
+}
+
+model EmployeeGoal {
+  id               String         @id @default(uuid(7))
+  workspaceId      String
+  employeeId       String
+  employee         Employee       @relation(fields: [employeeId], references: [id])
+  appraisalCycleId String
+  appraisalCycle   AppraisalCycle @relation(fields: [appraisalCycleId], references: [id])
+  
+  title            String
+  description      String?
+  targetValue      Decimal?
+  unit             String?        // e.g., percentage, currency, number
+  completionPercentage Int        @default(0)
+  weight           Decimal        @default(0)
+  
+  startDate        DateTime?      @db.Date
+  endDate          DateTime?      @db.Date
+  status           String         @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, CANCELLED
+  
+  selfRating       Int?
+  managerRating    Int?
+  employeeRemarks  String?
+  managerRemarks   String?
+  
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  
+  @@map("employee_goals")
+}
+
+// ============================================
+// SEPARATION & OFFBOARDING
+// ============================================
+
+model EmployeeSeparation {
+  id              String   @id @default(uuid(7))
+  workspaceId     String
+  employeeId      String
+  employee        Employee @relation(fields: [employeeId], references: [id])
+  
+  separationType  String   // RESIGNATION, TERMINATION, RETIREMENT, DEATH
+  resignationDate DateTime?
+  lastWorkingDate DateTime
+  reason          String?
+  status          String   @default("PENDING_APPROVAL") // PENDING_APPROVAL, APPROVED, REJECTED, CANCELLED
+  
+  approvedBy      String?
+  approvedAt      DateTime?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("employee_separations")
+}
+
+model OffboardingTemplate {
+  id          String   @id @default(uuid(7))
+  workspaceId String
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  activities  OffboardingActivity[]
+  
+  @@map("offboarding_templates")
+}
+
+model OffboardingActivity {
+  id          String   @id @default(uuid(7))
+  templateId  String
+  template    OffboardingTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  isMandatory Boolean  @default(true)
+  role        String?  // Who is responsible (e.g., IT, HR, Manager)
+  
+  @@map("offboarding_activities")
+}
+
+model EmployeeOffboardingTask {
+  id          String   @id @default(uuid(7))
+  workspaceId String
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  isMandatory Boolean  @default(true)
+  status      String   @default("PENDING") // PENDING, COMPLETED, CANCELLED
+  completedAt DateTime?
+  completedBy String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("employee_offboarding_tasks")
 }

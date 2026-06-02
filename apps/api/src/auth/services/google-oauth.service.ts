@@ -1,27 +1,27 @@
-import { Injectable } from '@nestjs/common';
-import crypto from 'crypto';
-import * as jwt from 'jsonwebtoken';
-import { JwksClient } from 'jwks-rsa';
-import { CustomLoggerService } from '../../common/services/custom-logger.service';
-import { RedisService } from '../../common/services/redis.service';
-import { PrismaService } from '../../common/services/prisma.service';
-import { ActivityLogService } from '../../common/services/activity-log.service';
-import { AuthUtilsService } from './auth-utils.service';
+import { Injectable } from "@nestjs/common";
+import crypto from "crypto";
+import * as jwt from "jsonwebtoken";
+import { JwksClient } from "jwks-rsa";
+import { CustomLoggerService } from "../../common/services/custom-logger.service";
+import { RedisService } from "../../common/services/redis.service";
+import { PrismaService } from "../../common/services/prisma.service";
+import { ActivityLogService } from "../../common/services/activity-log.service";
+import { AuthUtilsService } from "./auth-utils.service";
 import {
   GOOGLE_OAUTH_CONFIG,
   getGoogleOAuthCredentials,
-} from '../config/google-oauth.config';
-import { AUTH_CONFIG } from '../config/auth.config';
+} from "../config/google-oauth.config";
+import { AUTH_CONFIG } from "../config/auth.config";
 import {
   IGoogleTokenResponse,
   IGoogleUserInfo,
   IGoogleOAuthState,
   IGoogleOAuthLoginResponse,
   IGoogleIdTokenClaims,
-} from '../interfaces/google-oauth.interface';
-import { IStoredRefreshToken, UserRole } from '../interfaces/auth.interface';
-import AppError from '../../common/errors/app.error';
-import config from '../../common/config/app.config';
+} from "../interfaces/google-oauth.interface";
+import { IStoredRefreshToken, UserRole } from "../interfaces/auth.interface";
+import AppError from "../../common/errors/app.error";
+import config from "../../common/config/app.config";
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
@@ -31,7 +31,7 @@ import config from '../../common/config/app.config';
  */
 @Injectable()
 export class GoogleOAuthService {
-  private readonly context = 'GoogleOAuthService';
+  private readonly context = "GoogleOAuthService";
   private readonly jwksClient: JwksClient;
 
   constructor(
@@ -57,7 +57,7 @@ export class GoogleOAuthService {
    * Used to prevent CSRF attacks
    */
   private generateStateToken(): string {
-    return crypto.randomBytes(32).toString('hex');
+    return crypto.randomBytes(32).toString("hex");
   }
 
   /**
@@ -66,7 +66,7 @@ export class GoogleOAuthService {
    * RFC 7636 compliant (43-128 characters)
    */
   private generateCodeVerifier(): string {
-    return crypto.randomBytes(32).toString('base64url');
+    return crypto.randomBytes(32).toString("base64url");
   }
 
   /**
@@ -74,7 +74,7 @@ export class GoogleOAuthService {
    * SHA256 hash of the code verifier, base64url encoded
    */
   private generateCodeChallenge(verifier: string): string {
-    return crypto.createHash('sha256').update(verifier).digest('base64url');
+    return crypto.createHash("sha256").update(verifier).digest("base64url");
   }
 
   /**
@@ -82,9 +82,9 @@ export class GoogleOAuthService {
    */
   private generateUsername(googleUser: IGoogleUserInfo): string {
     const baseName =
-      googleUser.given_name || googleUser.name?.split(' ')[0] || 'user';
-    const sanitized = baseName.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const uniqueSuffix = crypto.randomBytes(4).toString('hex');
+      googleUser.given_name || googleUser.name?.split(" ")[0] || "user";
+    const sanitized = baseName.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const uniqueSuffix = crypto.randomBytes(4).toString("hex");
     return `${sanitized}_${uniqueSuffix}`;
   }
 
@@ -102,7 +102,7 @@ export class GoogleOAuthService {
         error instanceof Error ? error.stack : undefined,
         this.context,
       );
-      throw AppError.unauthorized('Failed to verify ID token signature');
+      throw AppError.unauthorized("Failed to verify ID token signature");
     }
   }
 
@@ -124,8 +124,8 @@ export class GoogleOAuthService {
       // Decode header to get 'kid' (Key ID) - which public key to use
       const decoded = jwt.decode(idToken, { complete: true });
 
-      if (!decoded || typeof decoded === 'string' || !decoded.header.kid) {
-        throw new Error('Invalid token format or missing kid');
+      if (!decoded || typeof decoded === "string" || !decoded.header.kid) {
+        throw new Error("Invalid token format or missing kid");
       }
 
       // Fetch Google's public key using the kid from token header
@@ -133,15 +133,15 @@ export class GoogleOAuthService {
 
       // Verify signature and validate claims in one step
       const payload = jwt.verify(idToken, publicKey, {
-        algorithms: ['RS256'], // Google uses RS256 (RSA with SHA-256)
-        issuer: ['accounts.google.com', 'https://accounts.google.com'],
+        algorithms: ["RS256"], // Google uses RS256 (RSA with SHA-256)
+        issuer: ["accounts.google.com", "https://accounts.google.com"],
         audience: clientId, // Ensures token is for our app
         clockTolerance: 60, // Allow 60 seconds clock skew
       }) as IGoogleIdTokenClaims;
 
       // Additional validation for email verification
       if (!payload.email_verified) {
-        throw new Error('Email not verified by Google');
+        throw new Error("Email not verified by Google");
       }
 
       this.customLogger.log(
@@ -152,8 +152,8 @@ export class GoogleOAuthService {
       return payload;
     } catch (error) {
       if (error instanceof jwt.TokenExpiredError) {
-        this.customLogger.warn('ID token expired', this.context);
-        throw AppError.unauthorized('ID token has expired');
+        this.customLogger.warn("ID token expired", this.context);
+        throw AppError.unauthorized("ID token has expired");
       }
 
       if (error instanceof jwt.JsonWebTokenError) {
@@ -161,15 +161,15 @@ export class GoogleOAuthService {
           `Invalid ID token: ${error.message}`,
           this.context,
         );
-        throw AppError.unauthorized('Invalid ID token signature');
+        throw AppError.unauthorized("Invalid ID token signature");
       }
 
       this.customLogger.error(
-        'Failed to verify ID token',
+        "Failed to verify ID token",
         error instanceof Error ? error.stack : undefined,
         this.context,
       );
-      throw AppError.unauthorized('Failed to verify ID token');
+      throw AppError.unauthorized("Failed to verify ID token");
     }
   }
 
@@ -210,12 +210,12 @@ export class GoogleOAuthService {
       client_id: clientId,
       redirect_uri: redirectUri,
       response_type: GOOGLE_OAUTH_CONFIG.RESPONSE_TYPE,
-      scope: GOOGLE_OAUTH_CONFIG.SCOPES.join(' '),
+      scope: GOOGLE_OAUTH_CONFIG.SCOPES.join(" "),
       access_type: GOOGLE_OAUTH_CONFIG.ACCESS_TYPE,
       prompt: GOOGLE_OAUTH_CONFIG.PROMPT,
       state,
       code_challenge: codeChallenge,
-      code_challenge_method: 'S256',
+      code_challenge_method: "S256",
     });
 
     const authUrl = `${GOOGLE_OAUTH_CONFIG.ENDPOINTS.AUTHORIZATION}?${params.toString()}`;
@@ -248,9 +248,9 @@ export class GoogleOAuthService {
     });
 
     const response = await fetch(GOOGLE_OAUTH_CONFIG.ENDPOINTS.TOKEN, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        "Content-Type": "application/x-www-form-urlencoded",
       },
       body: params.toString(),
     });
@@ -262,7 +262,7 @@ export class GoogleOAuthService {
         undefined,
         this.context,
       );
-      throw AppError.unauthorized('Failed to authenticate with Google');
+      throw AppError.unauthorized("Failed to authenticate with Google");
     }
 
     return response.json() as Promise<IGoogleTokenResponse>;
@@ -285,7 +285,7 @@ export class GoogleOAuthService {
         undefined,
         this.context,
       );
-      throw AppError.unauthorized('Failed to get user information from Google');
+      throw AppError.unauthorized("Failed to get user information from Google");
     }
 
     return response.json() as Promise<IGoogleUserInfo>;
@@ -312,7 +312,7 @@ export class GoogleOAuthService {
         this.context,
       );
       throw AppError.badRequest(
-        'Invalid or expired OAuth state. Please try again.',
+        "Invalid or expired OAuth state. Please try again.",
       );
     }
 
@@ -321,8 +321,8 @@ export class GoogleOAuthService {
 
     // Validate state matches
     if (stateData.state !== state) {
-      this.customLogger.warn('OAuth state mismatch', this.context);
-      throw AppError.badRequest('Invalid OAuth state');
+      this.customLogger.warn("OAuth state mismatch", this.context);
+      throw AppError.badRequest("Invalid OAuth state");
     }
 
     // Exchange code for tokens using PKCE
@@ -342,7 +342,7 @@ export class GoogleOAuthService {
           sub: idTokenClaims.sub,
           email: idTokenClaims.email,
           email_verified: idTokenClaims.email_verified,
-          name: idTokenClaims.name || '',
+          name: idTokenClaims.name || "",
           given_name: idTokenClaims.given_name,
           family_name: idTokenClaims.family_name,
           picture: idTokenClaims.picture,
@@ -351,12 +351,12 @@ export class GoogleOAuthService {
         // Signature verification failed - do NOT fallback to userinfo
         // This is a security violation
         this.customLogger.error(
-          'ID token verification failed - possible forgery attempt',
+          "ID token verification failed - possible forgery attempt",
           error instanceof Error ? error.stack : undefined,
           this.context,
         );
         throw AppError.unauthorized(
-          'Failed to verify ID token. Please try again.',
+          "Failed to verify ID token. Please try again.",
         );
       }
     } else {
@@ -371,7 +371,7 @@ export class GoogleOAuthService {
         this.context,
       );
       throw AppError.forbidden(
-        'Please verify your Google email address before signing in.',
+        "Please verify your Google email address before signing in.",
       );
     }
 
@@ -383,7 +383,7 @@ export class GoogleOAuthService {
     });
 
     this.customLogger.log(
-      `Google OAuth ${result.isNewUser ? 'sign-up' : 'sign-in'} successful for: ${googleUser.email}`,
+      `Google OAuth ${result.isNewUser ? "sign-up" : "sign-in"} successful for: ${googleUser.email}`,
       this.context,
     );
 
@@ -406,7 +406,7 @@ export class GoogleOAuthService {
     // Check if user exists by provider ID (Google's sub)
     let user = await this.prismaService.authUser.findFirst({
       where: {
-        provider: 'google',
+        provider: "google",
         providerId: googleUser.sub,
       },
       select: {
@@ -433,13 +433,13 @@ export class GoogleOAuthService {
 
       if (existingUserWithEmail) {
         // Link Google account to existing user
-        if (existingUserWithEmail.provider === 'local') {
+        if (existingUserWithEmail.provider === "local") {
           this.customLogger.warn(
             `Email ${googleUser.email} already registered with local provider`,
             this.context,
           );
           throw AppError.conflict(
-            'An account with this email already exists. Please sign in with your email and password, then link your Google account in settings.',
+            "An account with this email already exists. Please sign in with your email and password, then link your Google account in settings.",
           );
         } else {
           throw AppError.conflict(
@@ -457,11 +457,11 @@ export class GoogleOAuthService {
           data: {
             email: googleUser.email,
             username,
-            password: '', // OAuth users don't have a password
-            globalRole: 'USER',
+            password: "", // OAuth users don't have a password
+            globalRole: "USER",
             verified: true, // Google verified the email
-            status: 'ACTIVE',
-            provider: 'google',
+            status: "ACTIVE",
+            provider: "google",
             providerId: googleUser.sub,
           },
           select: {
@@ -491,23 +491,23 @@ export class GoogleOAuthService {
           data: {
             authId: newUser.id,
             firstName:
-              googleUser.given_name || googleUser.name?.split(' ')[0] || '',
-            lastName: googleUser.family_name || '',
+              googleUser.given_name || googleUser.name?.split(" ")[0] || "",
+            lastName: googleUser.family_name || "",
             avatarUrl: googleUser.picture || null,
           },
         });
 
         // Log user registration activity
         await this.activityLogService.logCreate(
-          'authUser',
+          "authUser",
           newUser.id,
           {
             email: googleUser.email,
             username,
-            globalRole: 'USER',
-            status: 'ACTIVE',
-            verified: 'true',
-            provider: 'google',
+            globalRole: "USER",
+            status: "ACTIVE",
+            verified: "true",
+            provider: "google",
           },
           { ip, userAgent, actionedBy: newUser.id, device },
           tx,
@@ -524,14 +524,14 @@ export class GoogleOAuthService {
       );
     } else {
       // Check account status
-      if (user.status === 'BLOCKED' || user.status === 'SUSPENDED') {
+      if (user.status === "BLOCKED" || user.status === "SUSPENDED") {
         throw AppError.forbidden(
           `Your account has been ${user.status.toLowerCase()}. Please contact support.`,
         );
       }
 
-      if (user.status === 'DELETED' || user.status === 'INACTIVE') {
-        throw AppError.unauthorized('Invalid credentials');
+      if (user.status === "DELETED" || user.status === "INACTIVE") {
+        throw AppError.unauthorized("Invalid credentials");
       }
     }
 
@@ -539,7 +539,7 @@ export class GoogleOAuthService {
     return this.generateTokensForUser(
       {
         ...user,
-        username: user.username || user.email.split('@')[0],
+        username: user.username || user.email.split("@")[0],
       },
       { ip, userAgent, device },
       isNewUser,
@@ -567,11 +567,11 @@ export class GoogleOAuthService {
 
     // Distributed lock to prevent concurrent login race conditions
     const lockKey = `${config.redis_cache_key_prefix}:lock:login:${user.id}`;
-    const lockAcquired = await this.redisService.setNX(lockKey, '1', 5);
+    const lockAcquired = await this.redisService.setNX(lockKey, "1", 5);
 
     if (!lockAcquired) {
       throw AppError.conflict(
-        'Another login is in progress. Please try again in a moment.',
+        "Another login is in progress. Please try again in a moment.",
       );
     }
 
@@ -640,7 +640,7 @@ export class GoogleOAuthService {
         userAgent,
         device,
         success: true,
-        provider: 'google',
+        provider: "google",
       });
 
       return {
@@ -649,11 +649,11 @@ export class GoogleOAuthService {
         user: {
           id: user.id,
           email: user.email,
-          username: user.username || user.email.split('@')[0],
+          username: user.username || user.email.split("@")[0],
           role: user.globalRole,
           verified: user.verified,
           provider: user.provider,
-          providerId: user.providerId || '',
+          providerId: user.providerId || "",
         },
         expiresIn: this.parseExpiryToSeconds(AUTH_CONFIG.TOKEN_EXPIRY.ACCESS),
         isNewUser,
@@ -674,13 +674,13 @@ export class GoogleOAuthService {
     const unit = match[2];
 
     switch (unit) {
-      case 's':
+      case "s":
         return value;
-      case 'm':
+      case "m":
         return value * 60;
-      case 'h':
+      case "h":
         return value * 3600;
-      case 'd':
+      case "d":
         return value * 86400;
       default:
         return 900;
@@ -749,7 +749,7 @@ export class GoogleOAuthService {
           ipAddress: data.ip,
           userAgent: data.userAgent,
           device_id: data.device,
-          action: 'login',
+          action: "login",
           success: data.success,
           failureReason: data.failureReason,
         },
@@ -771,15 +771,15 @@ export class GoogleOAuthService {
       const response = await fetch(
         `${GOOGLE_OAUTH_CONFIG.ENDPOINTS.REVOKE}?token=${token}`,
         {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
+            "Content-Type": "application/x-www-form-urlencoded",
           },
         },
       );
 
       if (!response.ok) {
-        this.customLogger.warn('Failed to revoke Google token', this.context);
+        this.customLogger.warn("Failed to revoke Google token", this.context);
       }
     } catch (error) {
       this.customLogger.error(

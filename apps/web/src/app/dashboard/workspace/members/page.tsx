@@ -152,12 +152,12 @@ export default function MembersDirectoryPage() {
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
                           <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                            {member.user.username.charAt(0).toUpperCase()}
+                            {member.user?.username?.charAt(0).toUpperCase() || member.user?.email?.charAt(0).toUpperCase() || '?'}
                           </AvatarFallback>
                         </Avatar>
                         <div>
                           <div className="font-medium text-sm">
-                            {member.user.username}
+                            {member.user?.username || member.user?.email || 'Unknown User'}
                             {member.userId === currentUser?.id && (
                               <Badge variant="outline" className="ml-2 text-[10px] h-4">You</Badge>
                             )}

@@ -3,8 +3,8 @@ import {
   CanActivate,
   ExecutionContext,
   UnauthorizedException,
-} from '@nestjs/common';
-import { PrismaService } from '../../common/services/prisma.service';
+} from "@nestjs/common";
+import { PrismaService } from "../../common/services/prisma.service";
 
 @Injectable()
 export class WorkspaceGuard implements CanActivate {
@@ -15,11 +15,11 @@ export class WorkspaceGuard implements CanActivate {
     const user = request.user;
 
     if (!user) {
-      throw new UnauthorizedException('User not authenticated');
+      throw new UnauthorizedException("User not authenticated");
     }
 
     // SUPERADMIN can access any workspace
-    if (user.globalRole === 'SUPERADMIN') {
+    if (user.globalRole === "SUPERADMIN") {
       return true;
     }
 
@@ -29,7 +29,7 @@ export class WorkspaceGuard implements CanActivate {
 
     if (!workspaceId) {
       throw new UnauthorizedException(
-        'No workspace selected. Please call /auth/select-workspace first.',
+        "No workspace selected. Please call /auth/select-workspace first.",
       );
     }
 
@@ -48,12 +48,12 @@ export class WorkspaceGuard implements CanActivate {
     });
 
     if (!membership) {
-      throw new UnauthorizedException('User is not a member of this workspace');
+      throw new UnauthorizedException("User is not a member of this workspace");
     }
 
     // Check if workspace is active
-    if (membership.workspace.status !== 'ACTIVE') {
-      throw new UnauthorizedException('Workspace is not active');
+    if (membership.workspace.status !== "ACTIVE") {
+      throw new UnauthorizedException("Workspace is not active");
     }
 
     // Attach workspace info to request

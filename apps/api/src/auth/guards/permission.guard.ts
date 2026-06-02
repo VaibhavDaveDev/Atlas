@@ -3,13 +3,13 @@ import {
   CanActivate,
   ExecutionContext,
   ForbiddenException,
-} from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
-import { PrismaService } from '../../common/services/prisma.service';
+} from "@nestjs/common";
+import { Reflector } from "@nestjs/core";
+import { PrismaService } from "../../common/services/prisma.service";
 import {
   PERMISSION_KEY,
   PermissionRequirement,
-} from '../decorators/require-permission.decorator';
+} from "../decorators/require-permission.decorator";
 
 @Injectable()
 export class PermissionGuard implements CanActivate {
@@ -33,16 +33,16 @@ export class PermissionGuard implements CanActivate {
     const user = request.user;
 
     if (!user) {
-      throw new ForbiddenException('User not authenticated');
+      throw new ForbiddenException("User not authenticated");
     }
 
     // SUPERADMIN bypasses all permission checks
-    if (user.globalRole === 'SUPERADMIN') {
+    if (user.globalRole === "SUPERADMIN") {
       return true;
     }
 
     // OWNER has full access to workspace
-    if (user.workspaceRole === 'OWNER') {
+    if (user.workspaceRole === "OWNER") {
       return true;
     }
 
@@ -59,7 +59,7 @@ export class PermissionGuard implements CanActivate {
         permission: {
           resource,
           action,
-          scope: scope || 'all',
+          scope: scope || "all",
         },
       },
     });
@@ -76,12 +76,9 @@ export class PermissionGuard implements CanActivate {
         permission: {
           resource,
           action,
-          scope: scope || 'all',
+          scope: scope || "all",
         },
-        OR: [
-          { expiresAt: null },
-          { expiresAt: { gt: new Date() } },
-        ],
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
       },
     });
 
