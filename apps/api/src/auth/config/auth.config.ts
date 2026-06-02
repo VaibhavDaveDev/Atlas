@@ -2,7 +2,7 @@
  * Authentication Configuration Constants
  */
 
-const isProd = process.env.NODE_ENV === 'production';
+const isProd = process.env.NODE_ENV === "production";
 
 export const AUTH_CONFIG = {
   // Password Configuration
@@ -16,10 +16,10 @@ export const AUTH_CONFIG = {
 
   // Token Configuration
   TOKEN_EXPIRY: {
-    ACCESS: '1h', // Short-lived for security (was 15m)
-    REFRESH: '7d',
-    VERIFICATION: '24h',
-    PASSWORD_RESET: '1h',
+    ACCESS: "1h", // Short-lived for security (was 15m)
+    REFRESH: "7d",
+    VERIFICATION: "24h",
+    PASSWORD_RESET: "1h",
   },
 
   // Rate Limiting
@@ -52,12 +52,12 @@ export const AUTH_CONFIG = {
 
   // Cache Prefixes (improved naming convention)
   CACHE_PREFIXES: {
-    ACCESS_TOKEN: 'access_token',
-    REFRESH_TOKEN: 'refresh:user', // refresh:user:{userId}:{jti}
-    USER_SESSIONS: 'sessions:user', // sessions:user:{userId}
-    RATE_LIMIT: 'rate_limit:',
-    VERIFICATION_TOKEN: 'verification_token',
-    PASSWORD_RESET_TOKEN: 'password_reset_token',
-    TOKEN_BLACKLIST: 'token_blacklist',
+    ACCESS_TOKEN: "access_token",
+    REFRESH_TOKEN: "refresh:user", // refresh:user:{userId}:{jti}
+    USER_SESSIONS: "sessions:user", // sessions:user:{userId}
+    RATE_LIMIT: "rate_limit:",
+    VERIFICATION_TOKEN: "verification_token",
+    PASSWORD_RESET_TOKEN: "password_reset_token",
+    TOKEN_BLACKLIST: "token_blacklist",
   },
 } as const;

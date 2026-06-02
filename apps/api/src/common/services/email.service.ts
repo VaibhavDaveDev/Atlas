@@ -1,11 +1,11 @@
-import { Injectable } from '@nestjs/common';
-import * as nodemailer from 'nodemailer';
-import { promises as fs } from 'fs';
-import * as path from 'path';
-import config from '../config/app.config';
-import AppError from '../errors/app.error';
-import httpStatus from 'http-status';
-import { CustomLoggerService } from './custom-logger.service';
+import { Injectable } from "@nestjs/common";
+import * as nodemailer from "nodemailer";
+import { promises as fs } from "fs";
+import * as path from "path";
+import config from "../config/app.config";
+import AppError from "../errors/app.error";
+import httpStatus from "http-status";
+import { CustomLoggerService } from "./custom-logger.service";
 
 export interface EmailOptions {
   to: string;
@@ -20,18 +20,20 @@ export class EmailService {
 
   constructor(private readonly customLogger: CustomLoggerService) {
     // Validate configuration
-    if (!config.email_host || typeof config.email_host !== 'string') {
-      throw new Error('Invalid email config: missing or invalid email_host');
+    if (!config.email_host || typeof config.email_host !== "string") {
+      throw new Error("Invalid email config: missing or invalid email_host");
     }
-    if (!config.email_user || typeof config.email_user !== 'string') {
-      throw new Error('Invalid email config: missing or invalid email_user');
+    if (!config.email_user || typeof config.email_user !== "string") {
+      throw new Error("Invalid email config: missing or invalid email_user");
     }
-    if (!config.email_pass || typeof config.email_pass !== 'string') {
-      throw new Error('Invalid email config: missing or invalid email_pass');
+    if (!config.email_pass || typeof config.email_pass !== "string") {
+      throw new Error("Invalid email config: missing or invalid email_pass");
     }
     const port = Number(config.email_port);
     if (isNaN(port) || port <= 0) {
-      throw new Error('Invalid email config: email_port must be a positive integer');
+      throw new Error(
+        "Invalid email config: email_port must be a positive integer",
+      );
     }
 
     this.transporter = nodemailer.createTransport({
@@ -51,7 +53,7 @@ export class EmailService {
   async sendEmail(options: EmailOptions): Promise<void> {
     this.customLogger.log(
       `Sending email to: ${options.to}, subject: ${options.subject}`,
-      'EmailService',
+      "EmailService",
     );
     const mailOptions = {
       from: String(config.email_from || config.email_user),
@@ -65,16 +67,16 @@ export class EmailService {
       await this.transporter.sendMail(mailOptions);
       this.customLogger.log(
         `Email sent successfully to: ${options.to}`,
-        'EmailService',
+        "EmailService",
       );
     } catch (error) {
       this.customLogger.error(
         `Error sending email to ${options.to}`,
         error instanceof Error ? error.stack : undefined,
-        'EmailService',
+        "EmailService",
       );
-      console.error('Error sending email:', error);
-      throw AppError.badRequest('Email sending failed, something went wrong!');
+      console.error("Error sending email:", error);
+      throw AppError.badRequest("Email sending failed, something went wrong!");
     }
   }
 
@@ -88,27 +90,27 @@ export class EmailService {
     try {
       const absolutePath = path.resolve(
         process.cwd(),
-        'templates',
-        'emails',
+        "templates",
+        "emails",
         filePath,
       );
-      let template = await fs.readFile(absolutePath, { encoding: 'utf-8' });
+      let template = await fs.readFile(absolutePath, { encoding: "utf-8" });
 
       for (const key in replacements) {
         // Escape regex special characters to prevent ReDoS/Injection
-        const escapedKey = key.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&');
+        const escapedKey = key.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&");
         template = template.replace(
-          new RegExp(`{{${escapedKey}}}`, 'g'),
+          new RegExp(`{{${escapedKey}}}`, "g"),
           replacements[key],
         );
       }
 
       return template;
     } catch (error) {
-      console.error('Error reading email template:', error);
+      console.error("Error reading email template:", error);
       throw new AppError(
         httpStatus.INTERNAL_SERVER_ERROR,
-        'Email template loading failed.',
+        "Email template loading failed.",
       );
     }
   }
@@ -121,7 +123,7 @@ export class EmailService {
     username: string,
     verificationCode: string,
   ): Promise<void> {
-    const html = await this.getEmailTemplate('verification.html', {
+    const html = await this.getEmailTemplate("verification.html", {
       username,
       verificationCode,
       year: new Date().getFullYear().toString(),
@@ -129,7 +131,7 @@ export class EmailService {
 
     await this.sendEmail({
       to: email,
-      subject: 'Verify your email address',
+      subject: "Verify your email address",
       html,
     });
   }
@@ -142,7 +144,7 @@ export class EmailService {
     username: string,
     resetCode: string,
   ): Promise<void> {
-    const html = await this.getEmailTemplate('password-reset.html', {
+    const html = await this.getEmailTemplate("password-reset.html", {
       username,
       resetCode,
       year: new Date().getFullYear().toString(),
@@ -150,7 +152,7 @@ export class EmailService {
 
     await this.sendEmail({
       to: email,
-      subject: 'Reset your password',
+      subject: "Reset your password",
       html,
     });
   }
@@ -159,14 +161,14 @@ export class EmailService {
    * Send welcome email after verification
    */
   async sendWelcomeEmail(email: string, username: string): Promise<void> {
-    const html = await this.getEmailTemplate('welcome.html', {
+    const html = await this.getEmailTemplate("welcome.html", {
       username,
       year: new Date().getFullYear().toString(),
     });
 
     await this.sendEmail({
       to: email,
-      subject: 'Welcome to our platform!',
+      subject: "Welcome to our platform!",
       html,
     });
   }
@@ -182,7 +184,7 @@ export class EmailService {
     webAppUrl: string,
   ): Promise<void> {
     const acceptUrl = `${webAppUrl}/accept-invite?token=${inviteToken}`;
-    const html = await this.getEmailTemplate('workspace-invite.html', {
+    const html = await this.getEmailTemplate("workspace-invite.html", {
       inviterName,
       workspaceName,
       acceptUrl,

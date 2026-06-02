@@ -37,7 +37,7 @@ export const THROTTLER_CONFIG = {
  * Error messages for rate limiting
  */
 export const THROTTLER_MESSAGES = {
-  DEFAULT: 'Too many requests. Please try again later.',
-  AUTH: 'Too many login attempts. Please try again in 15 minutes.',
-  SIGNUP: 'Too many registration attempts. Please try again later.',
+  DEFAULT: "Too many requests. Please try again later.",
+  AUTH: "Too many login attempts. Please try again in 15 minutes.",
+  SIGNUP: "Too many registration attempts. Please try again later.",
 } as const;

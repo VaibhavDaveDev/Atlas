@@ -1,13 +1,13 @@
-import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Inject } from '@nestjs/common';
-import { Job } from 'bullmq';
-import { EmailJob } from './email.queue';
-import { EmailService } from 'src/common/services/email.service';
-import { PrismaService } from 'src/common/services/prisma.service';
-import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { Logger } from 'winston';
+import { Processor, WorkerHost } from "@nestjs/bullmq";
+import { Inject } from "@nestjs/common";
+import { Job } from "bullmq";
+import { EmailJob } from "./email.queue";
+import { EmailService } from "src/common/services/email.service";
+import { PrismaService } from "src/common/services/prisma.service";
+import { WINSTON_MODULE_PROVIDER } from "nest-winston";
+import { Logger } from "winston";
 
-@Processor('email')
+@Processor("email")
 export class EmailProcessor extends WorkerHost {
   constructor(
     @Inject(WINSTON_MODULE_PROVIDER)
@@ -20,37 +20,37 @@ export class EmailProcessor extends WorkerHost {
 
   async process(job: Job<EmailJob>): Promise<void> {
     this.logger.info(`Processing email job: ${job.name} (ID: ${job.id})`, {
-      context: 'EmailProcessor',
+      context: "EmailProcessor",
       jobId: job.id,
       jobName: job.name,
     });
 
     try {
       switch (job.data.type) {
-        case 'verification':
+        case "verification":
           await this.handleVerificationEmail(job);
           break;
-        case 'welcome':
+        case "welcome":
           await this.handleWelcomeEmail(job);
           break;
-        case 'password-reset':
+        case "password-reset":
           await this.handlePasswordResetEmail(job);
           break;
-        case 'security-notification':
+        case "security-notification":
           await this.handleSecurityNotification(job);
           break;
-        case 'workspace-invite':
+        case "workspace-invite":
           await this.handleWorkspaceInviteEmail(job);
           break;
         default:
           this.logger.warn(
-            `Unknown email job type: ${String((job.data as { type?: string }).type || 'undefined')}`,
-            { context: 'EmailProcessor', jobId: job.id },
+            `Unknown email job type: ${String((job.data as { type?: string }).type || "undefined")}`,
+            { context: "EmailProcessor", jobId: job.id },
           );
       }
     } catch (error) {
       this.logger.error(`Failed to process email job ${job.id}`, {
-        context: 'EmailProcessor',
+        context: "EmailProcessor",
         jobId: job.id,
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
@@ -60,7 +60,7 @@ export class EmailProcessor extends WorkerHost {
   }
 
   private async handleVerificationEmail(job: Job<EmailJob>): Promise<void> {
-    const data = job.data as Extract<EmailJob, { type: 'verification' }>;
+    const data = job.data as Extract<EmailJob, { type: "verification" }>;
     const { email, username, verificationCode, authId } = data;
 
     try {
@@ -75,22 +75,22 @@ export class EmailProcessor extends WorkerHost {
       await this.prismaService.emailHistory.updateMany({
         where: {
           authId,
-          emailType: 'verification',
-          emailStatus: 'pending',
+          emailType: "verification",
+          emailStatus: "pending",
         },
         data: {
-          emailStatus: 'sent',
+          emailStatus: "sent",
         },
       });
 
       this.logger.info(`Verification email sent successfully to ${email}`, {
-        context: 'EmailProcessor',
+        context: "EmailProcessor",
         jobId: job.id,
         email,
       });
     } catch (error) {
       this.logger.error(`Failed to send verification email to ${email}`, {
-        context: 'EmailProcessor',
+        context: "EmailProcessor",
         email,
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
@@ -99,13 +99,13 @@ export class EmailProcessor extends WorkerHost {
       await this.prismaService.emailHistory.updateMany({
         where: {
           authId,
-          emailType: 'verification',
-          emailStatus: 'pending',
+          emailType: "verification",
+          emailStatus: "pending",
         },
         data: {
-          emailStatus: 'failed',
+          emailStatus: "failed",
           errorMessage:
-            error instanceof Error ? error.message : 'Failed to send email',
+            error instanceof Error ? error.message : "Failed to send email",
         },
       });
 
@@ -114,19 +114,19 @@ export class EmailProcessor extends WorkerHost {
   }
 
   private async handleWelcomeEmail(job: Job<EmailJob>): Promise<void> {
-    const data = job.data as Extract<EmailJob, { type: 'welcome' }>;
+    const data = job.data as Extract<EmailJob, { type: "welcome" }>;
     const { email, username } = data;
 
     try {
       await this.emailService.sendWelcomeEmail(email, username);
       this.logger.info(`Welcome email sent successfully to ${email}`, {
-        context: 'EmailProcessor',
+        context: "EmailProcessor",
         jobId: job.id,
         email,
       });
     } catch (error) {
       this.logger.error(`Failed to send welcome email to ${email}`, {
-        context: 'EmailProcessor',
+        context: "EmailProcessor",
         email,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -136,19 +136,23 @@ export class EmailProcessor extends WorkerHost {
   }
 
   private async handlePasswordResetEmail(job: Job<EmailJob>): Promise<void> {
-    const data = job.data as Extract<EmailJob, { type: 'password-reset' }>;
+    const data = job.data as Extract<EmailJob, { type: "password-reset" }>;
     const { email, username, resetCode } = data;
 
     try {
-      await this.emailService.sendPasswordResetEmail(email, username, resetCode);
+      await this.emailService.sendPasswordResetEmail(
+        email,
+        username,
+        resetCode,
+      );
       this.logger.info(`Password reset email sent successfully to ${email}`, {
-        context: 'EmailProcessor',
+        context: "EmailProcessor",
         jobId: job.id,
         email,
       });
     } catch (error) {
       this.logger.error(`Failed to send password reset email to ${email}`, {
-        context: 'EmailProcessor',
+        context: "EmailProcessor",
         email,
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
@@ -158,7 +162,10 @@ export class EmailProcessor extends WorkerHost {
   }
 
   private async handleSecurityNotification(job: Job<EmailJob>): Promise<void> {
-    const data = job.data as Extract<EmailJob, { type: 'security-notification' }>;
+    const data = job.data as Extract<
+      EmailJob,
+      { type: "security-notification" }
+    >;
     const { email, subject, message } = data;
 
     try {
@@ -168,27 +175,33 @@ export class EmailProcessor extends WorkerHost {
         text: message,
         html: `<div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
           <h2 style="color: #d32f2f;">Security Notification</h2>
-          <p>${message.replace(/\n/g, '<br>')}</p>
+          <p>${message.replace(/\n/g, "<br>")}</p>
           <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
           <p style="font-size: 12px; color: #666;">This is an automated security notification from Atlas ERP. If you did not perform this action, please contact support immediately.</p>
         </div>`,
       });
-      this.logger.info(`Security notification email sent successfully to ${email}`, {
-        context: 'EmailProcessor',
-        jobId: job.id,
-        email,
-      });
+      this.logger.info(
+        `Security notification email sent successfully to ${email}`,
+        {
+          context: "EmailProcessor",
+          jobId: job.id,
+          email,
+        },
+      );
     } catch (error) {
-      this.logger.error(`Failed to send security notification email to ${email}`, {
-        context: 'EmailProcessor',
-        email,
-        error: error instanceof Error ? error.message : String(error),
-      });
+      this.logger.error(
+        `Failed to send security notification email to ${email}`,
+        {
+          context: "EmailProcessor",
+          email,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      );
     }
   }
 
   private async handleWorkspaceInviteEmail(job: Job<EmailJob>): Promise<void> {
-    const data = job.data as Extract<EmailJob, { type: 'workspace-invite' }>;
+    const data = job.data as Extract<EmailJob, { type: "workspace-invite" }>;
     const { email, inviterName, workspaceName, inviteToken, webAppUrl } = data;
 
     try {
@@ -200,13 +213,13 @@ export class EmailProcessor extends WorkerHost {
         webAppUrl,
       );
       this.logger.info(`Workspace invite email sent successfully to ${email}`, {
-        context: 'EmailProcessor',
+        context: "EmailProcessor",
         jobId: job.id,
         email,
       });
     } catch (error) {
       this.logger.error(`Failed to send workspace invite email to ${email}`, {
-        context: 'EmailProcessor',
+        context: "EmailProcessor",
         email,
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,

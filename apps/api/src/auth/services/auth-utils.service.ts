@@ -1,22 +1,22 @@
-import { Injectable } from '@nestjs/common';
-import jwt, { JwtPayload, SignOptions } from 'jsonwebtoken';
-import { Response } from 'express';
-import httpStatus from 'http-status';
-import config from '../../common/config/app.config';
+import { Injectable } from "@nestjs/common";
+import jwt, { JwtPayload, SignOptions } from "jsonwebtoken";
+import { Response } from "express";
+import httpStatus from "http-status";
+import config from "../../common/config/app.config";
 import {
   IAccessTokenPayload,
   IRefreshTokenPayload,
   ITokenPayload,
   UserRole,
-} from '../interfaces/auth.interface';
-import { AUTH_CONFIG } from '../config/auth.config';
-import { RedisService } from '../../common/services/redis.service';
-import AppError from '../../common/errors/app.error';
-import crypto from 'crypto';
+} from "../interfaces/auth.interface";
+import { AUTH_CONFIG } from "../config/auth.config";
+import { RedisService } from "../../common/services/redis.service";
+import AppError from "../../common/errors/app.error";
+import crypto from "crypto";
 
 interface TokenOptions {
   isRefresh?: boolean;
-  expiresIn?: SignOptions['expiresIn'];
+  expiresIn?: SignOptions["expiresIn"];
 }
 
 /**
@@ -32,14 +32,14 @@ export class AuthUtilsService {
    * Used for JTI (JWT ID) to prevent collisions
    */
   generateSecureId(): string {
-    return crypto.randomBytes(32).toString('hex');
+    return crypto.randomBytes(32).toString("hex");
   }
 
   /**
    * Generates a random verification code
    */
   generateVerificationCode = (): string => {
-    return crypto.randomBytes(3).toString('hex').toUpperCase().slice(0, 6);
+    return crypto.randomBytes(3).toString("hex").toUpperCase().slice(0, 6);
   };
 
   /**
@@ -47,7 +47,7 @@ export class AuthUtilsService {
    * Never store raw tokens - only hashes
    */
   hashToken(token: string): string {
-    return crypto.createHash('sha256').update(token).digest('hex');
+    return crypto.createHash("sha256").update(token).digest("hex");
   }
 
   /**
@@ -55,19 +55,19 @@ export class AuthUtilsService {
    */
   createAccessToken(
     payload: IAccessTokenPayload,
-    expiresIn?: SignOptions['expiresIn'],
+    expiresIn?: SignOptions["expiresIn"],
   ): string {
     const secret = config.jwt_access_secret;
     if (!secret) {
       throw new AppError(
         httpStatus.INTERNAL_SERVER_ERROR,
-        'JWT access secret is not configured',
+        "JWT access secret is not configured",
       );
     }
 
     const signOptions: SignOptions = {
       expiresIn: expiresIn || AUTH_CONFIG.TOKEN_EXPIRY.ACCESS,
-      algorithm: 'HS256',
+      algorithm: "HS256",
     };
 
     return jwt.sign(payload, secret, signOptions);
@@ -79,19 +79,19 @@ export class AuthUtilsService {
   createRefreshToken(
     payload: IRefreshTokenPayload,
     jti: string,
-    expiresIn?: SignOptions['expiresIn'],
+    expiresIn?: SignOptions["expiresIn"],
   ): string {
     const secret = config.jwt_refresh_secret;
     if (!secret) {
       throw new AppError(
         httpStatus.INTERNAL_SERVER_ERROR,
-        'JWT refresh secret is not configured',
+        "JWT refresh secret is not configured",
       );
     }
 
     const signOptions: SignOptions = {
       expiresIn: expiresIn || AUTH_CONFIG.TOKEN_EXPIRY.REFRESH,
-      algorithm: 'HS256',
+      algorithm: "HS256",
       jwtid: jti, // Embed JTI in JWT standard claim
     };
 
@@ -107,17 +107,17 @@ export class AuthUtilsService {
     const secret = isRefresh
       ? config.jwt_refresh_secret
       : config.jwt_access_secret;
-    const defaultExpiry = isRefresh ? '7d' : '1h';
+    const defaultExpiry = isRefresh ? "7d" : "1h";
 
     const signOptions: SignOptions = {
       expiresIn: expiresIn || defaultExpiry,
-      algorithm: 'HS256',
+      algorithm: "HS256",
     };
 
     if (!secret) {
       throw new AppError(
         httpStatus.INTERNAL_SERVER_ERROR,
-        'JWT secret is not configured',
+        "JWT secret is not configured",
       );
     }
 
@@ -132,7 +132,7 @@ export class AuthUtilsService {
     if (!secret) {
       throw new AppError(
         httpStatus.INTERNAL_SERVER_ERROR,
-        'JWT access secret is not configured',
+        "JWT access secret is not configured",
       );
     }
     return jwt.verify(token, secret) as IAccessTokenPayload & JwtPayload;
@@ -146,7 +146,7 @@ export class AuthUtilsService {
     if (!secret) {
       throw new AppError(
         httpStatus.INTERNAL_SERVER_ERROR,
-        'JWT refresh secret is not configured',
+        "JWT refresh secret is not configured",
       );
     }
     return jwt.verify(token, secret) as IRefreshTokenPayload & JwtPayload;
@@ -161,7 +161,7 @@ export class AuthUtilsService {
     if (!secret) {
       throw new AppError(
         httpStatus.INTERNAL_SERVER_ERROR,
-        'JWT secret is not configured',
+        "JWT secret is not configured",
       );
     }
     return jwt.verify(token, secret) as JwtPayload;
@@ -183,8 +183,8 @@ export class AuthUtilsService {
       this.redisService.del(refreshTokenKey),
     ]);
 
-    res.clearCookie('accessToken');
-    res.clearCookie('refreshToken');
+    res.clearCookie("accessToken");
+    res.clearCookie("refreshToken");
   }
 
   /**
@@ -217,7 +217,7 @@ export class AuthUtilsService {
 
     if (currentAttempts && currentAttempts > maxAttempts) {
       // Set a lock with TTL instead of continuing to increment
-      await this.redisService.set(lockKey, '1', windowMs / 1000);
+      await this.redisService.set(lockKey, "1", windowMs / 1000);
       throw new AppError(
         httpStatus.TOO_MANY_REQUESTS,
         `Rate limit exceeded. Please try again after ${windowMs / 1000} seconds.`,

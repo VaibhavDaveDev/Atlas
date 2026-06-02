@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { HttpException, HttpStatus } from "@nestjs/common";
 
 /**
  * Custom Application Error class
@@ -25,15 +25,15 @@ class AppError extends HttpException {
     return new AppError(HttpStatus.BAD_REQUEST, message, errors);
   }
 
-  static unauthorized(message: string = 'Unauthorized'): AppError {
+  static unauthorized(message: string = "Unauthorized"): AppError {
     return new AppError(HttpStatus.UNAUTHORIZED, message);
   }
 
-  static forbidden(message: string = 'Forbidden'): AppError {
+  static forbidden(message: string = "Forbidden"): AppError {
     return new AppError(HttpStatus.FORBIDDEN, message);
   }
 
-  static notFound(message: string = 'Not Found'): AppError {
+  static notFound(message: string = "Not Found"): AppError {
     return new AppError(HttpStatus.NOT_FOUND, message);
   }
 
@@ -42,16 +42,16 @@ class AppError extends HttpException {
   }
 
   static internalServerError(
-    message: string = 'Internal Server Error',
+    message: string = "Internal Server Error",
   ): AppError {
     return new AppError(HttpStatus.INTERNAL_SERVER_ERROR, message);
   }
 
-  static tooManyRequests(message: string = 'Too Many Requests'): AppError {
+  static tooManyRequests(message: string = "Too Many Requests"): AppError {
     return new AppError(HttpStatus.TOO_MANY_REQUESTS, message);
   }
 
-  static serviceUnavailable(message: string = 'Service Unavailable'): AppError {
+  static serviceUnavailable(message: string = "Service Unavailable"): AppError {
     return new AppError(HttpStatus.SERVICE_UNAVAILABLE, message);
   }
 }

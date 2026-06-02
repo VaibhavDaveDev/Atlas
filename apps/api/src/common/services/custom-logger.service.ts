@@ -1,6 +1,6 @@
-import { Inject, Injectable, LoggerService } from '@nestjs/common';
-import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { Logger } from 'winston';
+import { Inject, Injectable, LoggerService } from "@nestjs/common";
+import { WINSTON_MODULE_PROVIDER } from "nest-winston";
+import { Logger } from "winston";
 
 @Injectable()
 export class CustomLoggerService implements LoggerService {
@@ -31,7 +31,7 @@ export class CustomLoggerService implements LoggerService {
 
   // Additional helper methods for structured logging
   logWithMetadata(
-    level: 'info' | 'error' | 'warn' | 'debug',
+    level: "info" | "error" | "warn" | "debug",
     message: string,
     metadata: Record<string, any>,
   ) {
@@ -39,8 +39,8 @@ export class CustomLoggerService implements LoggerService {
   }
 
   logUserAction(userId: string, action: string, details?: Record<string, any>) {
-    this.logger.info('User action', {
-      context: 'UserAction',
+    this.logger.info("User action", {
+      context: "UserAction",
       userId,
       action,
       ...details,
@@ -53,8 +53,8 @@ export class CustomLoggerService implements LoggerService {
     statusCode: number,
     duration: number,
   ) {
-    this.logger.info('API Request', {
-      context: 'ApiRequest',
+    this.logger.info("API Request", {
+      context: "ApiRequest",
       method,
       path,
       statusCode,
@@ -68,8 +68,8 @@ export class CustomLoggerService implements LoggerService {
     duration: number,
     success: boolean,
   ) {
-    this.logger.info('Database query', {
-      context: 'DatabaseQuery',
+    this.logger.info("Database query", {
+      context: "DatabaseQuery",
       operation,
       model,
       duration,

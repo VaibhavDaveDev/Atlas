@@ -3,11 +3,11 @@ import {
   NestInterceptor,
   ExecutionContext,
   CallHandler,
-} from '@nestjs/common';
-import { Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
-import { Request, Response } from 'express';
-import { MetricsService } from './metrics.service';
+} from "@nestjs/common";
+import { Observable } from "rxjs";
+import { tap } from "rxjs/operators";
+import { Request, Response } from "express";
+import { MetricsService } from "./metrics.service";
 
 @Injectable()
 export class MetricsInterceptor implements NestInterceptor {
@@ -53,7 +53,7 @@ export class MetricsInterceptor implements NestInterceptor {
             routePath,
             statusCode,
             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            (error.name as string) || 'UnknownError',
+            (error.name as string) || "UnknownError",
           );
         },
       }),

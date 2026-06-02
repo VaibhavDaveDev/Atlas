@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from './prisma.service';
-import { Prisma } from '@atlas/database';
-import { CustomLoggerService } from './custom-logger.service';
+import { Injectable } from "@nestjs/common";
+import { PrismaService } from "./prisma.service";
+import { Prisma } from "@atlas/database";
+import { CustomLoggerService } from "./custom-logger.service";
 
 /**
  * Activity Log Service
@@ -34,11 +34,11 @@ export class ActivityLogService {
     try {
       await prismaClient.activityLog.create({
         data: {
-          workspaceId: 'system', // For auth actions, use 'system'
+          workspaceId: "system", // For auth actions, use 'system'
           userId: metadata.actionedBy,
           entityType,
           entityId,
-          action: 'CREATE',
+          action: "CREATE",
           changes: data,
           ipAddress: metadata.ip,
           userAgent: metadata.userAgent,
@@ -48,7 +48,7 @@ export class ActivityLogService {
       this.customLogger.error(
         `Failed to log create action for ${entityType}:${entityId}`,
         error instanceof Error ? error.stack : undefined,
-        'ActivityLogService',
+        "ActivityLogService",
       );
     }
   }
@@ -73,11 +73,11 @@ export class ActivityLogService {
     try {
       await prismaClient.activityLog.create({
         data: {
-          workspaceId: 'system',
+          workspaceId: "system",
           userId: metadata.actionedBy,
           entityType,
           entityId,
-          action: 'UPDATE',
+          action: "UPDATE",
           changes: { fields: changes },
           ipAddress: metadata.ip,
           userAgent: metadata.userAgent,
@@ -87,7 +87,7 @@ export class ActivityLogService {
       this.customLogger.error(
         `Failed to log update action for ${entityType}:${entityId}`,
         error instanceof Error ? error.stack : undefined,
-        'ActivityLogService',
+        "ActivityLogService",
       );
     }
   }
@@ -111,11 +111,11 @@ export class ActivityLogService {
     try {
       await prismaClient.activityLog.create({
         data: {
-          workspaceId: 'system',
+          workspaceId: "system",
           userId: metadata.actionedBy,
           entityType,
           entityId,
-          action: 'DELETE',
+          action: "DELETE",
           ipAddress: metadata.ip,
           userAgent: metadata.userAgent,
         },
@@ -124,7 +124,7 @@ export class ActivityLogService {
       this.customLogger.error(
         `Failed to log delete action for ${entityType}:${entityId}`,
         error instanceof Error ? error.stack : undefined,
-        'ActivityLogService',
+        "ActivityLogService",
       );
     }
   }
@@ -150,11 +150,11 @@ export class ActivityLogService {
     try {
       await prismaClient.activityLog.create({
         data: {
-          workspaceId: 'system',
+          workspaceId: "system",
           userId: metadata.actionedBy,
           entityType,
           entityId,
-          action: 'UPDATE', // Custom events are treated as updates
+          action: "UPDATE", // Custom events are treated as updates
           changes: changes ? { fields: changes, eventType } : { eventType },
           ipAddress: metadata.ip,
           userAgent: metadata.userAgent,
@@ -164,7 +164,7 @@ export class ActivityLogService {
       this.customLogger.error(
         `Failed to log custom event ${eventType} for ${entityType}:${entityId}`,
         error instanceof Error ? error.stack : undefined,
-        'ActivityLogService',
+        "ActivityLogService",
       );
     }
   }

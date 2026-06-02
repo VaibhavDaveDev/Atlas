@@ -1,27 +1,27 @@
-import { Type, applyDecorators } from '@nestjs/common';
-import { ApiProperty, ApiExtraModels, getSchemaPath } from '@nestjs/swagger';
-import { ApiSuccessResponseDecorator } from './api-response.decorator';
+import { Type, applyDecorators } from "@nestjs/common";
+import { ApiProperty, ApiExtraModels, getSchemaPath } from "@nestjs/swagger";
+import { ApiSuccessResponseDecorator } from "./api-response.decorator";
 
 /**
  * Pagination metadata
  */
 export class PaginationMeta {
-  @ApiProperty({ example: 1, description: 'Current page number' })
+  @ApiProperty({ example: 1, description: "Current page number" })
   page: number;
 
-  @ApiProperty({ example: 10, description: 'Items per page' })
+  @ApiProperty({ example: 10, description: "Items per page" })
   limit: number;
 
-  @ApiProperty({ example: 100, description: 'Total number of items' })
+  @ApiProperty({ example: 100, description: "Total number of items" })
   total: number;
 
-  @ApiProperty({ example: 10, description: 'Total number of pages' })
+  @ApiProperty({ example: 10, description: "Total number of pages" })
   totalPages: number;
 
-  @ApiProperty({ example: true, description: 'Has previous page' })
+  @ApiProperty({ example: true, description: "Has previous page" })
   hasPreviousPage: boolean;
 
-  @ApiProperty({ example: true, description: 'Has next page' })
+  @ApiProperty({ example: true, description: "Has next page" })
   hasNextPage: boolean;
 }
 
@@ -29,10 +29,10 @@ export class PaginationMeta {
  * Generic paginated response wrapper
  */
 export class PaginatedResponse<T> {
-  @ApiProperty({ type: [Object], description: 'Array of items' })
+  @ApiProperty({ type: [Object], description: "Array of items" })
   items: T[];
 
-  @ApiProperty({ type: PaginationMeta, description: 'Pagination metadata' })
+  @ApiProperty({ type: PaginationMeta, description: "Pagination metadata" })
   meta: PaginationMeta;
 }
 
@@ -49,7 +49,7 @@ export class PaginatedResponse<T> {
 export const ApiPaginatedResponseDecorator = <TModel extends Type<any>>(
   dataType: TModel,
   status: number = 200,
-  description: string = 'Paginated list retrieved successfully',
+  description: string = "Paginated list retrieved successfully",
 ) => {
   return applyDecorators(
     ApiExtraModels(PaginatedResponse, PaginationMeta, dataType),
@@ -69,7 +69,7 @@ export const ApiPaginatedResponseDecorator = <TModel extends Type<any>>(
  */
 export class PaginationDto {
   @ApiProperty({
-    description: 'Page number (starts from 1)',
+    description: "Page number (starts from 1)",
     example: 1,
     required: false,
     default: 1,
@@ -78,7 +78,7 @@ export class PaginationDto {
   page?: number = 1;
 
   @ApiProperty({
-    description: 'Number of items per page',
+    description: "Number of items per page",
     example: 10,
     required: false,
     default: 10,
@@ -88,27 +88,27 @@ export class PaginationDto {
   limit?: number = 10;
 
   @ApiProperty({
-    description: 'Search query',
-    example: 'john',
+    description: "Search query",
+    example: "john",
     required: false,
   })
   search?: string;
 
   @ApiProperty({
-    description: 'Sort field',
-    example: 'createdAt',
+    description: "Sort field",
+    example: "createdAt",
     required: false,
   })
   sortBy?: string;
 
   @ApiProperty({
-    description: 'Sort order',
-    example: 'desc',
-    enum: ['asc', 'desc'],
+    description: "Sort order",
+    example: "desc",
+    enum: ["asc", "desc"],
     required: false,
-    default: 'desc',
+    default: "desc",
   })
-  sortOrder?: 'asc' | 'desc' = 'desc';
+  sortOrder?: "asc" | "desc" = "desc";
 }
 
 /**

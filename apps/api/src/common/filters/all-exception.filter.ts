@@ -5,10 +5,10 @@ import {
   HttpException,
   HttpStatus,
   Inject,
-} from '@nestjs/common';
-import { Response, Request } from 'express';
-import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { Logger } from 'winston';
+} from "@nestjs/common";
+import { Response, Request } from "express";
+import { WINSTON_MODULE_PROVIDER } from "nest-winston";
+import { Logger } from "winston";
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -23,19 +23,18 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const request = ctx.getRequest<Request>();
 
     // Ignore favicon requests - this is normal browser behavior
-    if (request.url === '/favicon.ico') {
+    if (request.url === "/favicon.ico") {
       response.status(204).end();
       return;
     }
 
-
     let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
-    let message = 'Internal Server Error';
-    let error = 'Error';
+    let message = "Internal Server Error";
+    let error = "Error";
 
     // Log the exception
-    this.logger.error('Unhandled exception caught', {
-      context: 'AllExceptionsFilter',
+    this.logger.error("Unhandled exception caught", {
+      context: "AllExceptionsFilter",
       statusCode,
       path: request.url,
       method: request.method,
@@ -48,10 +47,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     // Check if exception has a status property
     if (
-      typeof exception === 'object' &&
+      typeof exception === "object" &&
       exception !== null &&
-      'status' in exception &&
-      typeof exception.status === 'number'
+      "status" in exception &&
+      typeof exception.status === "number"
     ) {
       statusCode = exception.status;
     }
@@ -60,11 +59,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
     if (exception instanceof HttpException) {
       statusCode = exception.getStatus();
       const res = exception.getResponse();
-      if (typeof res === 'string') message = res;
-      else if (typeof res === 'object' && res['message']) {
-        const resMessage = res['message'] as string | string[];
+      if (typeof res === "string") message = res;
+      else if (typeof res === "object" && res["message"]) {
+        const resMessage = res["message"] as string | string[];
         message = Array.isArray(resMessage)
-          ? resMessage.join(', ')
+          ? resMessage.join(", ")
           : String(resMessage);
       }
       error = exception.name;
@@ -85,7 +84,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
       path: request.url,
       stack:
-        process.env.NODE_ENV === 'development' && exception instanceof Error
+        process.env.NODE_ENV === "development" && exception instanceof Error
           ? exception.stack
           : null,
     });

@@ -370,3 +370,153 @@ export async function submitTaxExemptionDeclaration(data: any) {
 export async function getStatutoryStatus() {
   return fetchWithAuth('/hr/compliance/india/statutory-status');
 }
+
+// ====================
+// HELPDESK
+// ====================
+export async function getHelpdeskTickets(type?: string, categoryGroup?: string) {
+  let url = '/hr/tickets';
+  const params = new URLSearchParams();
+  if (type) params.append('type', type);
+  if (categoryGroup) params.append('categoryGroup', categoryGroup);
+  if (params.toString()) url += `?${params.toString()}`;
+  return fetchWithAuth(url);
+}
+
+export async function updateTicketStatus(id: string, status: string, resolutionDetails?: string) {
+  return fetchWithAuth(`/hr/tickets/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status, resolutionDetails }),
+  });
+}
+
+// ====================
+// TAX DECLARATIONS (ADMIN)
+// ====================
+export async function getAllTaxDeclarations() {
+  return fetchWithAuth('/hr/compliance/india/declarations');
+}
+
+export async function updateTaxDeclarationStatus(id: string, status: string) {
+  return fetchWithAuth(`/hr/compliance/india/declarations/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+}
+
+// ====================
+// EVENTS & HOLIDAYS
+// ====================
+export async function getCompanyEvents() {
+  return fetchWithAuth('/hr/events');
+}
+
+export async function createCompanyEvent(data: any) {
+  return fetchWithAuth('/hr/events', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateCompanyEvent(id: string, data: any) {
+  return fetchWithAuth(`/hr/events/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteCompanyEvent(id: string) {
+  return fetchWithAuth(`/hr/events/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+// ====================
+// MOVEMENTS
+// ====================
+export async function getEmployeeMovements() {
+  return fetchWithAuth('/hr/movements');
+}
+
+export async function createEmployeeMovement(data: any) {
+  return fetchWithAuth('/hr/movements', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function approveEmployeeMovement(id: string) {
+  return fetchWithAuth(`/hr/movements/${id}/approve`, {
+    method: 'POST',
+  });
+}
+
+// ====================
+// SEPARATIONS & OFFBOARDING
+// ====================
+export async function getSeparations() {
+  return fetchWithAuth('/hr/separations');
+}
+
+export async function createSeparation(data: any) {
+  return fetchWithAuth('/hr/separations', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function approveSeparation(id: string) {
+  return fetchWithAuth(`/hr/separations/${id}/approve`, {
+    method: 'POST',
+  });
+}
+
+export async function initiateOffboarding(data: { employeeId: string; templateId: string }) {
+  return fetchWithAuth('/hr/offboarding/initiate', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getOffboardingTemplates() {
+  return fetchWithAuth('/hr/offboarding/templates');
+}
+
+export async function getOffboardingTasks(employeeId: string) {
+  return fetchWithAuth(`/hr/offboarding/tasks/${employeeId}`);
+}
+
+export async function updateOffboardingTask(taskId: string, status: string) {
+  return fetchWithAuth(`/hr/offboarding/tasks/${taskId}/status`, {
+    method: 'POST',
+    body: JSON.stringify({ status }),
+  });
+}
+
+export async function addTicketComment(id: string, message: string) {
+  return fetchWithAuth(`/hr/tickets/${id}/comments`, {
+    method: 'POST',
+    body: JSON.stringify({ message }),
+  });
+}
+
+// ====================
+// SHIFT MANAGEMENT
+// ====================
+export async function getShiftTypes() {
+  return fetchWithAuth('/hr/shifts');
+}
+
+export async function createShiftType(data: any) {
+  return fetchWithAuth('/hr/shifts', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function assignShift(data: any) {
+  return fetchWithAuth('/hr/shifts/assign', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}

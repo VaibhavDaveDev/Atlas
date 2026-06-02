@@ -3,9 +3,9 @@
  */
 
 export enum UserRole {
-  SUPERADMIN = 'SUPERADMIN',
-  ADMIN = 'ADMIN',
-  USER = 'USER',
+  SUPERADMIN = "SUPERADMIN",
+  ADMIN = "ADMIN",
+  USER = "USER",
 }
 
 /**
@@ -71,6 +71,7 @@ export interface ILoginResponse {
     username: string;
     role: string;
     verified: boolean;
+    image?: string | null;
   };
   workspaces?: Array<{
     workspaceId: string;

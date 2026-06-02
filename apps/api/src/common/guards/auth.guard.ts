@@ -3,13 +3,13 @@ import {
   ExecutionContext,
   Injectable,
   UnauthorizedException,
-} from '@nestjs/common';
-import type { Request } from 'express';
-import * as jwt from 'jsonwebtoken';
-import config from '../config/app.config';
-import { RedisService } from '../services/redis.service';
-import { PrismaService } from '../services/prisma.service';
-import { IAccessTokenPayload } from '../../auth/interfaces/auth.interface';
+} from "@nestjs/common";
+import type { Request } from "express";
+import * as jwt from "jsonwebtoken";
+import config from "../config/app.config";
+import { RedisService } from "../services/redis.service";
+import { PrismaService } from "../services/prisma.service";
+import { IAccessTokenPayload } from "../../auth/interfaces/auth.interface";
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -23,7 +23,7 @@ export class AuthGuard implements CanActivate {
     const token = this.extractTokenFromHeader(request);
 
     if (!token) {
-      throw new UnauthorizedException('No token found');
+      throw new UnauthorizedException("No token found");
     }
 
     try {
@@ -37,7 +37,7 @@ export class AuthGuard implements CanActivate {
 
       if (currentVersion !== payload.tokenVersion) {
         throw new UnauthorizedException(
-          'Token has been revoked. Please login again.',
+          "Token has been revoked. Please login again.",
         );
       }
 
@@ -47,15 +47,15 @@ export class AuthGuard implements CanActivate {
       return true;
     } catch (error) {
       if (error instanceof jwt.TokenExpiredError) {
-        throw new UnauthorizedException('Token has expired');
+        throw new UnauthorizedException("Token has expired");
       }
       if (error instanceof jwt.JsonWebTokenError) {
-        throw new UnauthorizedException('Invalid token');
+        throw new UnauthorizedException("Invalid token");
       }
       if (error instanceof UnauthorizedException) {
         throw error;
       }
-      throw new UnauthorizedException('Authentication failed');
+      throw new UnauthorizedException("Authentication failed");
     }
   }
 
@@ -80,17 +80,17 @@ export class AuthGuard implements CanActivate {
     });
 
     if (!user) {
-      throw new UnauthorizedException('User not found');
+      throw new UnauthorizedException("User not found");
     }
 
-    if (user.status !== 'ACTIVE') {
-      throw new UnauthorizedException('User account is not active');
+    if (user.status !== "ACTIVE") {
+      throw new UnauthorizedException("User account is not active");
     }
 
     // Cache for 1 hour (or until security event invalidates it)
     await this.redisService.set(cacheKey, user.tokenVersion, 3600);
 
-    return user.tokenVersion as number;
+    return user.tokenVersion;
   }
 
   /**
@@ -103,8 +103,8 @@ export class AuthGuard implements CanActivate {
       return undefined;
     }
 
-    const [type, token] = authHeader.split(' ');
-    return type === 'Bearer' ? token : undefined;
+    const [type, token] = authHeader.split(" ");
+    return type === "Bearer" ? token : undefined;
   }
 
   /**

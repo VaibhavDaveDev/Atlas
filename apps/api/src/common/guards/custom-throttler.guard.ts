@@ -1,8 +1,8 @@
-import { Injectable, ExecutionContext } from '@nestjs/common';
-import { ThrottlerGuard } from '@nestjs/throttler';
-import { Reflector } from '@nestjs/core';
-import { ConfigService } from '@nestjs/config';
-import * as jwt from 'jsonwebtoken';
+import { Injectable, ExecutionContext } from "@nestjs/common";
+import { ThrottlerGuard } from "@nestjs/throttler";
+import { Reflector } from "@nestjs/core";
+import { ConfigService } from "@nestjs/config";
+import * as jwt from "jsonwebtoken";
 
 /**
  * Custom Throttler Guard that:
@@ -28,33 +28,33 @@ export class CustomThrottlerGuard extends ThrottlerGuard {
 
     // Skip throttling for Swagger/OpenAPI documentation
     if (
-      path.startsWith('/docs') ||
-      path.startsWith('/api-json') ||
-      path.startsWith('/swagger') ||
-      path.includes('swagger') ||
-      path.includes('-json')
+      path.startsWith("/docs") ||
+      path.startsWith("/api-json") ||
+      path.startsWith("/swagger") ||
+      path.includes("swagger") ||
+      path.includes("-json")
     ) {
       return true;
     }
 
     // Skip throttling for metrics endpoints (Prometheus)
-    if (path.startsWith('/metrics')) {
+    if (path.startsWith("/metrics")) {
       return true;
     }
 
     // Skip throttling for favicon
-    if (path === '/favicon.ico') {
+    if (path === "/favicon.ico") {
       return true;
     }
 
     // Extract user if not already present (global guards run before AuthGuard)
     if (!request.user) {
       const authHeader = request.headers.authorization;
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.split(' ')[1];
+      if (authHeader && authHeader.startsWith("Bearer ")) {
+        const token = authHeader.split(" ")[1];
         try {
           // Verify token for throttle tracking
-          const secret = this.configService.get<string>('JWT_SECRET');
+          const secret = this.configService.get<string>("JWT_SECRET");
           if (secret) {
             const decoded = jwt.verify(token, secret) as any;
             if (decoded && (decoded.userId || decoded.sub)) {
@@ -73,7 +73,7 @@ export class CustomThrottlerGuard extends ThrottlerGuard {
 
     // Skip throttling for already-authenticated non-auth routes (hr, workspace, etc.)
     // These are protected by AuthGuard + WorkspaceGuard; no need for IP-based throttling
-    const isAuthRoute = path.includes('/auth/');
+    const isAuthRoute = path.includes("/auth/");
     const isAuthenticated = !!request.user;
     if (isAuthenticated && !isAuthRoute) {
       return true;
@@ -93,6 +93,6 @@ export class CustomThrottlerGuard extends ThrottlerGuard {
     if (userId) {
       return `user:${userId}`;
     }
-    return req.ip ?? req.connection?.remoteAddress ?? 'unknown';
+    return req.ip ?? req.connection?.remoteAddress ?? "unknown";
   }
 }

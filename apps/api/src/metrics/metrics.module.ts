@@ -1,8 +1,8 @@
-import { Module, Global } from '@nestjs/common';
-import { MetricsService } from './metrics.service';
-import { MetricsController } from './metrics.controller';
-import { APP_INTERCEPTOR } from '@nestjs/core';
-import { MetricsInterceptor } from './metrics.interceptor';
+import { Module, Global } from "@nestjs/common";
+import { MetricsService } from "./metrics.service";
+import { MetricsController } from "./metrics.controller";
+import { APP_INTERCEPTOR } from "@nestjs/core";
+import { MetricsInterceptor } from "./metrics.interceptor";
 
 @Global()
 @Module({

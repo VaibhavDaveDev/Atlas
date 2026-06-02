@@ -17,7 +17,13 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Calendar,
-  Terminal
+  Terminal,
+  User,
+  Award,
+  Landmark,
+  LifeBuoy,
+  FileText,
+  LogOut
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -33,10 +39,23 @@ interface NavItem {
 
 const mainModules: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { label: 'ESS', href: '/dashboard/ess', icon: User },
   { label: 'HR', href: '/dashboard/hr', icon: Users2 },
   { label: 'CRM', href: '/dashboard/crm', icon: Users, badge: 'Soon' },
   { label: 'Finance', href: '/dashboard/finance', icon: BarChart3, badge: 'Soon' },
   { label: 'Projects', href: '/dashboard/projects', icon: FolderKanban, badge: 'Soon' },
+];
+
+const essModules: NavItem[] = [
+  { label: 'My Dashboard', href: '/dashboard/ess', icon: LayoutDashboard },
+  { label: 'My Profile', href: '/dashboard/ess/profile', icon: User },
+  { label: 'My Attendance', href: '/dashboard/ess/attendance', icon: Clock },
+  { label: 'My Leaves', href: '/dashboard/ess/leaves', icon: Calendar },
+  { label: 'My Calendar', href: '/dashboard/ess/calendar', icon: Calendar },
+  { label: 'Appraisals', href: '/dashboard/ess/appraisals', icon: Award },
+  { label: 'Tax Declarations', href: '/dashboard/ess/tax', icon: Landmark },
+  { label: 'Helpdesk', href: '/dashboard/ess/tickets', icon: LifeBuoy },
+  { label: 'My Payslips', href: '/dashboard/ess/payslips', icon: FileText },
 ];
 
 const hrModules: NavItem[] = [
@@ -44,7 +63,12 @@ const hrModules: NavItem[] = [
   { label: 'Employees', href: '/dashboard/hr/employees', icon: Users2 },
   { label: 'Attendance', href: '/dashboard/hr/attendance', icon: Clock },
   { label: 'Leaves', href: '/dashboard/hr/leaves', icon: Calendar },
+  { label: 'Performance', href: '/dashboard/hr/performance', icon: BarChart3 },
   { label: 'Payroll', href: '/dashboard/hr/payroll', icon: Briefcase },
+  { label: 'HR Helpdesk', href: '/dashboard/hr/tickets', icon: LifeBuoy },
+  { label: 'Movements', href: '/dashboard/hr/movements', icon: ArrowRightLeft },
+  { label: 'Separations', href: '/dashboard/hr/separations', icon: LogOut },
+  { label: 'Tax Declarations', href: '/dashboard/hr/compliance/india/declarations', icon: Landmark },
   { label: 'Compliance', href: '/dashboard/hr/compliance/india', icon: ShieldCheck },
 ];
 
@@ -52,9 +76,9 @@ const adminModules: NavItem[] = [
   { label: 'Overview', href: '/dashboard/admin', icon: LayoutDashboard },
   { label: 'Roles & Permissions', href: '/dashboard/workspace/roles', icon: ShieldCheck },
   { label: 'Members', href: '/dashboard/workspace/members', icon: Users },
+  { label: 'IT Helpdesk', href: '/dashboard/admin/tickets', icon: LifeBuoy },
   { label: 'System Logs', href: '/dashboard/admin/logs', icon: Terminal },
 ];
-
 
 const bottomItems: NavItem[] = [
   { label: 'Workspace Settings', href: '/dashboard/workspace/settings', icon: Settings },
@@ -77,6 +101,7 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
 
   const isHrRoute = pathname.startsWith('/dashboard/hr');
   const isAdminRoute = pathname.startsWith('/dashboard/admin') || pathname.startsWith('/dashboard/workspace/roles');
+  const isEssRoute = pathname.startsWith('/dashboard/ess');
   
   let displayItems = mainModules;
   let sectionLabel = 'Modules';
@@ -87,9 +112,12 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
   } else if (isAdminRoute) {
     displayItems = adminModules;
     sectionLabel = 'IT Administration';
+  } else if (isEssRoute) {
+    displayItems = essModules;
+    sectionLabel = 'ESS';
   }
   
-  const collapsedOtherModules = (isHrRoute || isAdminRoute) 
+  const collapsedOtherModules = (isHrRoute || isAdminRoute || isEssRoute) 
     ? mainModules.filter(m => !pathname.startsWith(m.href)) 
     : [];
 
@@ -187,7 +215,7 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
           </ul>
 
           {/* Other Modules Collapsed list if in a specific module context */}
-          {(isHrRoute || isAdminRoute) && collapsedOtherModules.length > 0 && (
+          {(isHrRoute || isAdminRoute || isEssRoute) && collapsedOtherModules.length > 0 && (
             <div className="mt-8">
               {!collapsed && (
                 <div className="px-2 pb-2">
