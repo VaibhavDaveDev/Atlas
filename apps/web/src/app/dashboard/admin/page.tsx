@@ -11,11 +11,13 @@ import {
   Loader2,
   Lock,
   Key,
-  Server
+  Server,
+  LifeBuoy
 } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useAuth } from '@/contexts/AuthContext';
 import { roleApi } from '@/lib/roles';
+import { getHelpdeskTickets } from '@/lib/hr';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -71,6 +73,7 @@ export default function AdminOverviewPage() {
   const { workspace, user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [roleCount, setRoleCount] = useState('0');
+  const [ticketCount, setTicketCount] = useState('0');
 
   useEffect(() => {
     fetchData();
@@ -80,8 +83,14 @@ export default function AdminOverviewPage() {
     if (!workspace) return;
     setLoading(true);
     try {
-      const roles = await roleApi.getRoles(workspace.workspaceId);
+      const [roles, tickets] = await Promise.all([
+        roleApi.getRoles(workspace.workspaceId),
+        getHelpdeskTickets(undefined, 'IT')
+      ]);
       setRoleCount(roles.length.toString());
+      
+      const ticketData = tickets.data || tickets;
+      setTicketCount(Array.isArray(ticketData) ? ticketData.length.toString() : '0');
     } catch (e) {
       console.error('Failed to fetch admin dashboard data', e);
     } finally {
@@ -107,11 +116,12 @@ export default function AdminOverviewPage() {
       href: '/dashboard/workspace/settings',
     },
     {
-      title: 'Security Overrides',
-      value: '0',
-      subtitle: 'Direct user permissions',
-      icon: Key,
-      iconColor: 'text-orange-600 dark:text-orange-400',
+      title: 'IT Helpdesk',
+      value: ticketCount,
+      subtitle: 'Open IT tickets',
+      icon: LifeBuoy,
+      iconColor: 'text-indigo-600 dark:text-indigo-400',
+      href: '/dashboard/admin/tickets',
     },
     {
       title: 'System Health',
@@ -129,6 +139,13 @@ export default function AdminOverviewPage() {
       icon: ShieldCheck,
       color: 'bg-violet-600 text-white',
       href: '/dashboard/workspace/roles',
+    },
+    {
+      title: 'IT Helpdesk',
+      desc: 'Technical support requests',
+      icon: LifeBuoy,
+      color: 'bg-indigo-600 text-white',
+      href: '/dashboard/admin/tickets',
     },
     {
       title: 'Invite Members',

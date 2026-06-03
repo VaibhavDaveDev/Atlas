@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { LifeBuoy, MessageSquare, Plus, Search, User, Calendar, XCircle, ArrowLeft } from 'lucide-react';
+import { LifeBuoy, MessageSquare, Plus, Search, User, Calendar, XCircle, ArrowLeft, CheckCircle } from 'lucide-react';
 import { getMyTickets, createTicket, getTicketDetails, addTicketComment, cancelTicket } from '@/lib/ess';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -55,8 +55,9 @@ export default function EssTicketsPage() {
   async function fetchData() {
     setLoading(true);
     try {
-      const data = await getMyTickets();
-      setTickets(data || []);
+      const res = await getMyTickets();
+      const data = res.data || res;
+      setTickets(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to fetch tickets', error);
     } finally {

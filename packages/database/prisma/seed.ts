@@ -4,6 +4,7 @@ import {
   SalaryComponentType,
   EmployeeStatus,
   GlobalRole,
+  AccountType,
 } from "../index";
 import * as bcrypt from "bcryptjs";
 
@@ -67,6 +68,21 @@ async function main() {
     { resource: "CompanyEvent", action: "create", scope: "all" },
     { resource: "CompanyEvent", action: "update", scope: "all" },
     { resource: "CompanyEvent", action: "delete", scope: "all" },
+    // --- Finance permissions (scope: all) ---
+    { resource: "finance_accounts", action: "read", scope: "all" },
+    { resource: "finance_accounts", action: "create", scope: "all" },
+    { resource: "finance_accounts", action: "update", scope: "all" },
+    { resource: "finance_accounts", action: "delete", scope: "all" },
+    { resource: "finance_journals", action: "read", scope: "all" },
+    { resource: "finance_journals", action: "create", scope: "all" },
+    { resource: "finance_journals", action: "delete", scope: "all" },
+    { resource: "finance_invoices", action: "read", scope: "all" },
+    { resource: "finance_invoices", action: "create", scope: "all" },
+    { resource: "finance_invoices", action: "update", scope: "all" },
+    { resource: "finance_invoices", action: "delete", scope: "all" },
+    { resource: "finance_payments", action: "read", scope: "all" },
+    { resource: "finance_payments", action: "create", scope: "all" },
+    { resource: "finance_payments", action: "delete", scope: "all" },
     // --- ESS permissions (scope: own) ---
     { resource: "employees", action: "read", scope: "own" },
     { resource: "employees", action: "update", scope: "own" },
@@ -159,6 +175,10 @@ async function main() {
     "payroll",
     "helpdesk",
     "CompanyEvent",
+    "finance_accounts",
+    "finance_journals",
+    "finance_invoices",
+    "finance_payments",
   ];
   const essResources = [
     "employees",
@@ -381,6 +401,55 @@ async function main() {
         workspaceId: workspace.id,
         name: lt.name,
         maxDaysAllowed: lt.maxDaysAllowed,
+      },
+    });
+  }
+
+  // 9. Finance Accounts
+  console.log("Seeding Chart of Accounts...");
+  const chartOfAccounts = [
+    { accountNumber: "1000", accountName: "Current Assets", accountType: AccountType.ASSET, isGroup: true },
+    { accountNumber: "1100", accountName: "Cash", accountType: AccountType.ASSET, parentNumber: "1000" },
+    { accountNumber: "1200", accountName: "Bank", accountType: AccountType.ASSET, parentNumber: "1000" },
+    { accountNumber: "1300", accountName: "Accounts Receivable", accountType: AccountType.ASSET, parentNumber: "1000" },
+    { accountNumber: "2000", accountName: "Current Liabilities", accountType: AccountType.LIABILITY, isGroup: true },
+    { accountNumber: "2100", accountName: "Accounts Payable", accountType: AccountType.LIABILITY, parentNumber: "2000" },
+    { accountNumber: "3000", accountName: "Equity", accountType: AccountType.EQUITY, isGroup: true },
+    { accountNumber: "3100", accountName: "Share Capital", accountType: AccountType.EQUITY, parentNumber: "3000" },
+    { accountNumber: "3200", accountName: "Retained Earnings", accountType: AccountType.EQUITY, parentNumber: "3000" },
+    { accountNumber: "4000", accountName: "Income", accountType: AccountType.INCOME, isGroup: true },
+    { accountNumber: "4100", accountName: "Sales Revenue", accountType: AccountType.INCOME, parentNumber: "4000" },
+    { accountNumber: "4200", accountName: "Interest Income", accountType: AccountType.INCOME, parentNumber: "4000" },
+    { accountNumber: "5000", accountName: "Expenses", accountType: AccountType.EXPENSE, isGroup: true },
+    { accountNumber: "5100", accountName: "Cost of Goods Sold", accountType: AccountType.EXPENSE, parentNumber: "5000" },
+    { accountNumber: "5200", accountName: "Salaries and Wages", accountType: AccountType.EXPENSE, parentNumber: "5000" },
+    { accountNumber: "5300", accountName: "Rent Expense", accountType: AccountType.EXPENSE, parentNumber: "5000" },
+    { accountNumber: "5400", accountName: "Utilities Expense", accountType: AccountType.EXPENSE, parentNumber: "5000" },
+  ];
+
+  // We need to create them in order or handle parents carefully. 
+  // For simplicity, we create groups first, then children.
+  for (const acc of chartOfAccounts) {
+    let parentId: string | undefined;
+    if (acc.parentNumber) {
+      const parent = await prisma.account.findUnique({
+        where: { workspaceId_accountNumber: { workspaceId: workspace.id, accountNumber: acc.parentNumber } }
+      });
+      parentId = parent?.id;
+    }
+
+    await prisma.account.upsert({
+      where: {
+        workspaceId_accountNumber: { workspaceId: workspace.id, accountNumber: acc.accountNumber },
+      },
+      update: {},
+      create: {
+        workspaceId: workspace.id,
+        accountNumber: acc.accountNumber,
+        accountName: acc.accountName,
+        accountType: acc.accountType,
+        isGroup: acc.isGroup || false,
+        parentAccountId: parentId,
       },
     });
   }

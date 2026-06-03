@@ -27,7 +27,8 @@ export default function HrTicketsPage() {
   async function fetchData() {
     setLoading(true);
     try {
-      const data = await getHelpdeskTickets(filterType === 'ALL' ? undefined : filterType, 'HR');
+      const res = await getHelpdeskTickets(filterType === 'ALL' ? undefined : filterType, 'HR');
+      const data = res.data || res;
       setTickets(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to fetch tickets', error);
