@@ -1,5 +1,13 @@
-import { IsString, IsEnum, IsDateString, IsOptional, IsNumber, Min, IsUUID } from 'class-validator';
-import { PaymentType } from '@atlas/database';
+import {
+  IsString,
+  IsEnum,
+  IsDateString,
+  IsOptional,
+  IsNumber,
+  Min,
+  IsUUID,
+} from "class-validator";
+import { PaymentType } from "@atlas/database";
 
 export class CreatePaymentDto {
   @IsString()
@@ -27,6 +35,10 @@ export class CreatePaymentDto {
   @IsString()
   currencyCode?: string;
 
+  @IsOptional()
+  @IsNumber()
+  exchangeRate?: number;
+
   @IsString()
   paymentMethod: string;
 
@@ -40,4 +52,8 @@ export class CreatePaymentDto {
 
   @IsString()
   accountId: string; // The Bank/Cash account for the payment
+
+  @IsOptional()
+  @IsString()
+  offsetAccountId?: string; // Optional custom offsetting account
 }

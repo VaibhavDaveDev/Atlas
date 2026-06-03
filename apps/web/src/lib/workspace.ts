@@ -79,5 +79,38 @@ export const workspaceApi = {
     if (!res.ok) throw new Error(json.message || 'Failed to cancel invite');
     return json;
   },
+
+  getWorkspace: async (workspaceId: string): Promise<any> => {
+    const res = await fetch(`${API_URL}/api/v1/workspaces/${workspaceId}`, {
+      headers: {
+        'Authorization': `Bearer ${tokenStorage.getAccessToken()}`,
+      },
+    });
+    if (!res.ok) throw new Error('Failed to fetch workspace');
+    return await res.json();
+  },
+
+  getMyWorkspaces: async (): Promise<any> => {
+    const res = await fetch(`${API_URL}/api/v1/workspaces/my`, {
+      headers: {
+        'Authorization': `Bearer ${tokenStorage.getAccessToken()}`,
+      },
+    });
+    if (!res.ok) throw new Error('Failed to fetch workspaces');
+    return await res.json();
+  },
+
+  updateWorkspace: async (workspaceId: string, data: { name?: string, settings?: any }): Promise<any> => {
+    const res = await fetch(`${API_URL}/api/v1/workspaces/${workspaceId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${tokenStorage.getAccessToken()}`,
+      },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Failed to update workspace');
+    return await res.json();
+  },
 };
 

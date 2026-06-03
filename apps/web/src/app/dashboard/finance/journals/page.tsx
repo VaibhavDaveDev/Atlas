@@ -9,7 +9,8 @@ import {
   Search, 
   FileText, 
   Calendar,
-  ExternalLink
+  ExternalLink,
+  Download
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,7 +23,7 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { format } from 'date-fns';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { NewJournalEntrySheet } from '@/components/finance/NewJournalEntrySheet';
 import { JournalEntryDetailSheet } from '@/components/finance/JournalEntryDetailSheet';
 import { useSearchParams } from 'next/navigation';
@@ -33,6 +34,8 @@ export default function JournalsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
+  const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
   const [isNewEntryOpen, setIsNewEntryOpen] = useState(searchParams.get('new') === 'true');
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
 
@@ -56,10 +59,31 @@ export default function JournalsPage() {
     fetchEntries();
   }, []);
 
-  const filteredEntries = entries.filter(e => 
-    (e.entryNumber ?? '').toLowerCase().includes(searchQuery.toLowerCase()) || 
-    (e.description ?? '').toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredEntries = entries.filter(e => {
+    const matchesSearch = (e.entryNumber ?? '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          (e.description ?? '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesDate = new Date(e.postingDate) >= new Date(startDate) && new Date(e.postingDate) <= new Date(endDate);
+    return matchesSearch && matchesDate;
+  });
+
+  const handleExportCSV = () => {
+    const lines = ['Number,Date,Description,Reference,Amount,Status'];
+    filteredEntries.forEach(e => {
+      lines.push(`${e.entryNumber},${format(new Date(e.postingDate), 'yyyy-MM-dd')},"${e.description || ''}","${e.referenceType ? `${e.referenceType}:${e.referenceId}` : ''}",${e.totalDebit},${e.status}`);
+    });
+    const csvContent = "data:text/csv;charset=utf-8," + lines.join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `journal_entries_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportPDF = () => {
+    window.print();
+  };
 
   return (
     <AppShell>
@@ -71,13 +95,23 @@ export default function JournalsPage() {
               Record and view all financial transactions in the general ledger.
             </p>
           </div>
-          <Button 
-            className="bg-[#111111] dark:bg-[#f4f4f5] text-white dark:text-[#111111] hover:bg-[#222222] dark:hover:bg-[#e4e4e7]"
-            onClick={() => setIsNewEntryOpen(true)}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            New Entry
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleExportCSV}>
+              <Download className="mr-2 h-4 w-4" />
+              CSV
+            </Button>
+            <Button variant="outline" onClick={handleExportPDF}>
+              <Download className="mr-2 h-4 w-4" />
+              PDF
+            </Button>
+            <Button 
+              className="bg-[#111111] dark:bg-[#f4f4f5] text-white dark:text-[#111111] hover:bg-[#222222] dark:hover:bg-[#e4e4e7]"
+              onClick={() => setIsNewEntryOpen(true)}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              New Journal Entry
+            </Button>
+          </div>
         </div>
 
         <NewJournalEntrySheet 
@@ -92,7 +126,7 @@ export default function JournalsPage() {
           onOpenChange={(open) => !open && setSelectedEntryId(null)}
         />
 
-        <div className="flex items-center justify-between rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] p-2">
+        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] p-2">
           <div className="relative w-full max-w-sm">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7b7b78] dark:text-[#a1a1aa]" />
             <Input
@@ -101,6 +135,21 @@ export default function JournalsPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 border-none bg-transparent shadow-none focus-visible:ring-0"
             />
+          </div>
+          <div className="flex items-center gap-2">
+             <Input 
+                type="date" 
+                value={startDate} 
+                onChange={(e) => setStartDate(e.target.value)}
+                className="h-9 text-xs w-32 border-[#d3cec6] dark:border-[#27272a]"
+              />
+              <span className="text-muted-foreground text-xs">to</span>
+              <Input 
+                type="date" 
+                value={endDate} 
+                onChange={(e) => setEndDate(e.target.value)}
+                className="h-9 text-xs w-32 border-[#d3cec6] dark:border-[#27272a]"
+              />
           </div>
         </div>
 

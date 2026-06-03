@@ -7,8 +7,8 @@ import {
   SheetHeader, 
   SheetTitle 
 } from '@/components/ui/sheet';
-import { getInvoice } from '@/lib/finance';
-import { Loader2, Calendar, Clock } from 'lucide-react';
+import { getInvoice, postInvoice } from '@/lib/finance';
+import { Loader2, Calendar, Clock, Send, CreditCard } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { 
@@ -19,19 +19,25 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+import { NewPaymentSheet } from './NewPaymentSheet';
 
 interface InvoiceDetailSheetProps {
   id: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onRefresh?: () => void;
 }
 
-export function InvoiceDetailSheet({ id, open, onOpenChange }: InvoiceDetailSheetProps) {
+export function InvoiceDetailSheet({ id, open, onOpenChange, onRefresh }: InvoiceDetailSheetProps) {
   const [invoice, setInvoice] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
 
-  useEffect(() => {
-    if (id && open) {
+  const fetchInvoice = () => {
+    if (id) {
       setLoading(true);
       getInvoice(id)
         .then(res => {
@@ -39,7 +45,32 @@ export function InvoiceDetailSheet({ id, open, onOpenChange }: InvoiceDetailShee
         })
         .finally(() => setLoading(false));
     }
+  };
+
+  useEffect(() => {
+    if (id && open) {
+      fetchInvoice();
+    }
   }, [id, open]);
+
+  const handlePost = async () => {
+    if (!invoice) return;
+    setActionLoading(true);
+    try {
+      const res = await postInvoice(invoice.id);
+      if (res.success) {
+        toast.success('Invoice posted to GL successfully');
+        fetchInvoice();
+        if (onRefresh) onRefresh();
+      } else {
+        toast.error(res.error || 'Failed to post invoice');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'An error occurred');
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -139,6 +170,45 @@ export function InvoiceDetailSheet({ id, open, onOpenChange }: InvoiceDetailShee
                 </div>
               </div>
             )}
+
+            <div className="flex flex-col gap-3 pt-6 border-t">
+              {invoice.status === 'DRAFT' && (
+                <Button 
+                  className="w-full bg-[#111111] dark:bg-[#f4f4f5] text-white dark:text-[#111111]"
+                  onClick={handlePost}
+                  disabled={actionLoading}
+                >
+                  {actionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                  Post to General Ledger
+                </Button>
+              )}
+
+              {invoice.status === 'SENT' && (
+                <Button 
+                  className="w-full bg-green-600 hover:bg-green-700 text-white"
+                  onClick={() => setIsPaymentOpen(true)}
+                >
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  Record Payment
+                </Button>
+              )}
+              
+              <Button variant="outline" className="w-full" onClick={() => toast.info('PDF export coming soon')}>
+                Download PDF
+              </Button>
+            </div>
+
+            <NewPaymentSheet 
+              open={isPaymentOpen}
+              onOpenChange={setIsPaymentOpen}
+              onSuccess={() => {
+                fetchInvoice();
+                if (onRefresh) onRefresh();
+              }}
+              type={invoice.invoiceType === 'SALES' ? 'RECEIVED' : 'MADE'}
+              invoiceId={invoice.id}
+              defaultAmount={Number(invoice.total)}
+            />
           </div>
         )}
       </SheetContent>

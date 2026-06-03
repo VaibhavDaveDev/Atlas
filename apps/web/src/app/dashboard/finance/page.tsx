@@ -1,9 +1,9 @@
 'use client';
 
 import { AppShell } from '@/components/layout/AppShell';
-import { 
-  Landmark, 
-  FileText, 
+import {
+  Landmark,
+  FileText,
   ArrowDownLeft,
   DollarSign,
   TrendingUp,
@@ -11,20 +11,19 @@ import {
   Wallet,
   ArrowRight
 } from 'lucide-react';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
-import { 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   AreaChart,
   Area
@@ -34,23 +33,64 @@ import { getDashboardStats } from '@/lib/finance';
 import { useState, useEffect } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Loader2 } from 'lucide-react';
+import { MonthEndCloseSheet } from '@/components/finance/MonthEndCloseSheet';
+import { FinanceSetupWizard } from '@/components/finance/FinanceSetupWizard';
+import { useAuth } from '@/contexts/AuthContext';
+import { workspaceApi } from '@/lib/workspace';
 
 export default function FinanceDashboardPage() {
+  const { workspace } = useAuth();
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isClosingOpen, setIsClosingOpen] = useState(false);
+  const [isSetupCompleted, setIsSetupCompleted] = useState<boolean | null>(null);
+
+  const fetchStats = async () => {
+    setLoading(true);
+    try {
+      if (!workspace) return;
+      
+      const res = await workspaceApi.getWorkspace(workspace.workspaceId);
+      const wsData = res.data || res; // Handle both wrapped and unwrapped responses
+      const setupDone = wsData.settings?.financeSetupCompleted;
+      setIsSetupCompleted(!!setupDone);
+
+      if (setupDone) {
+        const statsRes = await getDashboardStats();
+        if (statsRes.success) setStats(statsRes.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch finance dashboard stats', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    getDashboardStats()
-      .then(res => {
-        if (res.success) setStats(res.data);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+    fetchStats();
+  }, [workspace]);
 
   const kpis = stats?.kpis || { totalRevenue: 0, netProfit: 0, overdueInvoices: 0, treasury: 0 };
   const chartData = stats?.chartData || [];
   const recentActivity = stats?.recentActivity || [];
+
+  if (loading && isSetupCompleted === null) {
+    return (
+      <AppShell>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (isSetupCompleted === false) {
+    return (
+      <AppShell>
+        <FinanceSetupWizard onSuccess={fetchStats} />
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell>
@@ -61,16 +101,11 @@ export default function FinanceDashboardPage() {
             <h1 className="text-3xl font-extrabold tracking-tight text-[#111111] dark:text-[#f4f4f5]">Financial Command Center</h1>
             <p className="text-muted-foreground flex items-center gap-2">
               Real-time health monitoring and treasury management.
-              {!loading && (
-                <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
-                  System Balanced
-                </span>
-              )}
             </p>
           </div>
           <div className="flex items-center gap-3">
             <Link href="/dashboard/finance/journals?new=true">
-              <Button variant="outline" className="h-10">Record JE</Button>
+              <Button variant="outline" className="h-10">Record Journal Entry</Button>
             </Link>
             <Link href="/dashboard/finance/invoices?new=true">
               <Button className="h-10 bg-[#111111] dark:bg-[#f4f4f5] text-white dark:text-[#111111]">Create Invoice</Button>
@@ -94,7 +129,7 @@ export default function FinanceDashboardPage() {
               <div className="absolute bottom-0 left-0 right-0 h-1 bg-green-600/20" />
             </CardContent>
           </Card>
-          
+
           <Card className="relative overflow-hidden border-[#d3cec6] dark:border-[#27272a] shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Net Profit</CardTitle>
@@ -168,32 +203,32 @@ export default function FinanceDashboardPage() {
                     <AreaChart data={chartData}>
                       <defs>
                         <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#22c55e" stopOpacity={0.2}/>
-                          <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
+                          <stop offset="5%" stopColor="#22c55e" stopOpacity={0.2} />
+                          <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
                         </linearGradient>
                         <linearGradient id="colorExp" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#a855f7" stopOpacity={0.1}/>
-                          <stop offset="95%" stopColor="#a855f7" stopOpacity={0}/>
+                          <stop offset="5%" stopColor="#a855f7" stopOpacity={0.1} />
+                          <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" className="dark:stroke-[#27272a]" opacity={0.5} />
-                      <XAxis 
-                        dataKey="name" 
-                        axisLine={false} 
-                        tickLine={false} 
-                        tick={{ fontSize: 12, fill: '#71717a' }} 
+                      <XAxis
+                        dataKey="name"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 12, fill: '#71717a' }}
                         dy={10}
                       />
-                      <YAxis 
-                        axisLine={false} 
-                        tickLine={false} 
-                        tick={{ fontSize: 12, fill: '#71717a' }} 
-                        tickFormatter={(value: number) => `$${value/1000}k`}
+                      <YAxis
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 12, fill: '#71717a' }}
+                        tickFormatter={(value: number) => `$${value / 1000}k`}
                       />
-                      <Tooltip 
-                        contentStyle={{ 
-                          borderRadius: '12px', 
-                          border: '1px solid #d3cec6', 
+                      <Tooltip
+                        contentStyle={{
+                          borderRadius: '12px',
+                          border: '1px solid #d3cec6',
                           backgroundColor: '#ffffff',
                           boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                           color: '#111111'
@@ -202,22 +237,22 @@ export default function FinanceDashboardPage() {
                         itemStyle={{ fontWeight: 'bold' }}
                         formatter={(value: any) => [`$${value.toLocaleString()}`, '']}
                       />
-                      <Area 
-                        type="monotone" 
-                        dataKey="revenue" 
-                        stroke="#22c55e" 
-                        strokeWidth={3} 
-                        fillOpacity={1} 
-                        fill="url(#colorRev)" 
+                      <Area
+                        type="monotone"
+                        dataKey="revenue"
+                        stroke="#22c55e"
+                        strokeWidth={3}
+                        fillOpacity={1}
+                        fill="url(#colorRev)"
                         name="Income"
                       />
-                      <Area 
-                        type="monotone" 
-                        dataKey="expenses" 
-                        stroke="#a855f7" 
-                        strokeWidth={3} 
-                        fillOpacity={1} 
-                        fill="url(#colorExp)" 
+                      <Area
+                        type="monotone"
+                        dataKey="expenses"
+                        stroke="#a855f7"
+                        strokeWidth={3}
+                        fillOpacity={1}
+                        fill="url(#colorExp)"
                         name="Expenditure"
                       />
                     </AreaChart>
@@ -268,9 +303,9 @@ export default function FinanceDashboardPage() {
               <div className="mt-8 rounded-2xl bg-[#f5f1ec] dark:bg-[#09090b] p-6 border border-[#d3cec6] dark:border-[#27272a]">
                 <h4 className="text-sm font-bold mb-2">Month-end Close</h4>
                 <p className="text-xs text-muted-foreground mb-4">Maintain strict period control and reconciliation.</p>
-                <Button 
+                <Button
                   className="w-full bg-[#111111] dark:bg-[#f4f4f5] text-white dark:text-[#111111] text-xs h-9"
-                  onClick={() => toast.info("Feature coming soon")}
+                  onClick={() => setIsClosingOpen(true)}
                 >
                   Start Closing Flow
                   <ArrowRight className="ml-2 h-3 w-3" />
@@ -282,40 +317,57 @@ export default function FinanceDashboardPage() {
 
         {/* Quick Access Grid */}
         <div className="grid gap-4 md:grid-cols-3">
-           <Link href="/dashboard/finance/accounts" className="block">
-             <Card className="hover:border-[#111111] dark:hover:border-[#f4f4f5] transition-colors cursor-pointer border-[#d3cec6] dark:border-[#27272a]">
-               <CardHeader className="pb-2">
-                 <Landmark className="h-5 w-5 mb-2 text-[#7b7b78]" />
-                 <CardTitle className="text-sm font-bold">Chart of Accounts</CardTitle>
-               </CardHeader>
-               <CardContent>
-                 <p className="text-xs text-muted-foreground">Manage organizational ledger hierarchy and real-time balances.</p>
-               </CardContent>
-             </Card>
-           </Link>
-           <Link href="/dashboard/finance/reports/profit-loss" className="block">
-             <Card className="hover:border-[#111111] dark:hover:border-[#f4f4f5] transition-colors cursor-pointer border-[#d3cec6] dark:border-[#27272a]">
-               <CardHeader className="pb-2">
-                 <FileText className="h-5 w-5 mb-2 text-[#7b7b78]" />
-                 <CardTitle className="text-sm font-bold">Financial Statements</CardTitle>
-               </CardHeader>
-               <CardContent>
-                 <p className="text-xs text-muted-foreground">Generate P&L, Balance Sheets, and Cash Flow statements instantly.</p>
-               </CardContent>
-             </Card>
-           </Link>
-           <Link href="/dashboard/finance/payments" className="block">
-             <Card className="hover:border-[#111111] dark:hover:border-[#f4f4f5] transition-colors cursor-pointer border-[#d3cec6] dark:border-[#27272a]">
-               <CardHeader className="pb-2">
-                 <Wallet className="h-5 w-5 mb-2 text-[#7b7b78]" />
-                 <CardTitle className="text-sm font-bold">Treasury & Bank</CardTitle>
-               </CardHeader>
-               <CardContent>
-                 <p className="text-xs text-muted-foreground">Monitor cash flows and perform bank reconciliation tasks.</p>
-               </CardContent>
-             </Card>
-           </Link>
+          <Link href="/dashboard/finance/accounts" className="block">
+            <Card className="hover:border-[#111111] dark:hover:border-[#f4f4f5] transition-colors cursor-pointer border-[#d3cec6] dark:border-[#27272a]">
+              <CardHeader className="pb-2">
+                <Landmark className="h-5 w-5 mb-2 text-[#7b7b78]" />
+                <CardTitle className="text-sm font-bold">Chart of Accounts</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-muted-foreground">Manage organizational ledger hierarchy and real-time balances.</p>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/dashboard/finance/reports/profit-loss" className="block">
+            <Card className="hover:border-[#111111] dark:hover:border-[#f4f4f5] transition-colors cursor-pointer border-[#d3cec6] dark:border-[#27272a]">
+              <CardHeader className="pb-2">
+                <FileText className="h-5 w-5 mb-2 text-[#7b7b78]" />
+                <CardTitle className="text-sm font-bold">P&L and Balance Sheet</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-muted-foreground">Generate P&L and Balance Sheets instantly.</p>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/dashboard/finance/reports/cash-flow" className="block">
+            <Card className="hover:border-[#111111] dark:hover:border-[#f4f4f5] transition-colors cursor-pointer border-[#d3cec6] dark:border-[#27272a]">
+              <CardHeader className="pb-2">
+                <TrendingUp className="h-5 w-5 mb-2 text-[#7b7b78]" />
+                <CardTitle className="text-sm font-bold">Cash Flow Statement</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-muted-foreground">Monitor cash inflows and outflows by activity type.</p>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/dashboard/finance/payments" className="block">
+            <Card className="hover:border-[#111111] dark:hover:border-[#f4f4f5] transition-colors cursor-pointer border-[#d3cec6] dark:border-[#27272a]">
+              <CardHeader className="pb-2">
+                <Wallet className="h-5 w-5 mb-2 text-[#7b7b78]" />
+                <CardTitle className="text-sm font-bold">Treasury & Bank</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-muted-foreground">Monitor cash flows and perform bank reconciliation tasks.</p>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
+
+        <MonthEndCloseSheet
+          open={isClosingOpen}
+          onOpenChange={setIsClosingOpen}
+          onSuccess={fetchStats}
+        />
       </div>
     </AppShell>
   );

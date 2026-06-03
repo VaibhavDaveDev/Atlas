@@ -13,7 +13,7 @@ describe("WorkspaceGuard", () => {
         findUnique: vi.fn(),
       },
     };
-    guard = new WorkspaceGuard(mockPrismaService as unknown as PrismaService);
+    guard = new WorkspaceGuard(mockPrismaService);
   });
 
   it("should be defined", () => {
@@ -55,7 +55,7 @@ describe("WorkspaceGuard", () => {
 
     await expect(guard.canActivate(context)).rejects.toThrow(
       new UnauthorizedException(
-        "No workspace selected. Please call /auth/select-workspace first."
+        "No workspace selected. Please call /auth/select-workspace first.",
       ),
     );
   });

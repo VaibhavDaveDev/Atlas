@@ -1,5 +1,13 @@
-import { IsString, IsDateString, IsOptional, IsArray, ValidateNested, IsNumber, Min } from 'class-validator';
-import { Type } from 'class-transformer';
+import {
+  IsString,
+  IsDateString,
+  IsOptional,
+  IsArray,
+  ValidateNested,
+  IsNumber,
+  Min,
+} from "class-validator";
+import { Type } from "class-transformer";
 
 class JournalEntryLineDto {
   @IsString()
@@ -36,6 +44,14 @@ export class CreateJournalEntryDto {
   @IsOptional()
   @IsString()
   referenceId?: string;
+
+  @IsOptional()
+  @IsString()
+  currencyCode?: string;
+
+  @IsOptional()
+  @IsNumber()
+  exchangeRate?: number;
 
   @IsArray()
   @ValidateNested({ each: true })

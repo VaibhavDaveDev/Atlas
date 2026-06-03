@@ -70,8 +70,11 @@ describe("GoogleCalendarService", () => {
     oauth2Instance = new google.auth.OAuth2();
     setCredentialsMock = oauth2Instance.setCredentials;
     refreshAccessTokenMock = oauth2Instance.refreshAccessToken;
-    
-    const calendarInstance = google.calendar({ version: "v3", auth: oauth2Instance });
+
+    const calendarInstance = google.calendar({
+      version: "v3",
+      auth: oauth2Instance,
+    });
     insertMock = calendarInstance.events.insert;
   });
 
@@ -86,16 +89,16 @@ describe("GoogleCalendarService", () => {
   describe("pushEventToUser", () => {
     it("should return false if user has no linked Google account", async () => {
       mockPrismaService.account.findFirst.mockResolvedValue(null);
-      
+
       const result = await service.pushEventToUser("user-1", {
         title: "Test Event",
         startDate: new Date(),
         endDate: new Date(),
       });
-      
+
       expect(result).toBe(false);
       expect(mockPrismaService.account.findFirst).toHaveBeenCalledWith({
-        where: { userId: "user-1", providerId: "google" }
+        where: { userId: "user-1", providerId: "google" },
       });
     });
 
@@ -113,7 +116,7 @@ describe("GoogleCalendarService", () => {
         credentials: {
           access_token: "new-access-token",
           expiry_date: Date.now() + 3600000, // 1 hour from now
-        }
+        },
       });
 
       insertMock.mockResolvedValue({ data: { id: "event-1" } });
@@ -125,7 +128,7 @@ describe("GoogleCalendarService", () => {
       };
 
       const result = await service.pushEventToUser("user-1", event);
-      
+
       expect(result).toBe(true);
       expect(refreshAccessTokenMock).toHaveBeenCalled();
       expect(mockPrismaService.account.update).toHaveBeenCalledWith({
@@ -152,7 +155,7 @@ describe("GoogleCalendarService", () => {
         startDate: new Date(),
         endDate: new Date(),
       });
-      
+
       expect(result).toBe(false);
     });
   });

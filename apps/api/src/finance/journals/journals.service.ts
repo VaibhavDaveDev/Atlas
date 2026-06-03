@@ -1,20 +1,45 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../common/services/prisma.service';
-import { CustomLoggerService } from '../../common/services/custom-logger.service';
-import { CreateJournalEntryDto } from './dto/create-journal-entry.dto';
-import { Account, JournalEntry } from '@atlas/database';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from "@nestjs/common";
+import { PrismaService } from "../../common/services/prisma.service";
+import { CustomLoggerService } from "../../common/services/custom-logger.service";
+import { CreateJournalEntryDto } from "./dto/create-journal-entry.dto";
+import { Account, JournalEntry } from "@atlas/database";
+import { PeriodsService } from "../periods/periods.service";
 
 @Injectable()
 export class JournalsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly logger: CustomLoggerService,
+    private readonly periodsService: PeriodsService,
   ) {}
 
-  async create(workspaceId: string, userId: string, createDto: CreateJournalEntryDto): Promise<JournalEntry> {
-    this.logger.log(`Creating journal entry: ${createDto.entryNumber}`, 'JournalsService');
+  async create(
+    workspaceId: string,
+    userId: string,
+    createDto: CreateJournalEntryDto,
+  ): Promise<JournalEntry> {
+    this.logger.log(
+      `Creating journal entry: ${createDto.entryNumber}`,
+      "JournalsService",
+    );
 
-    // 1. Validate Double Entry (Total Debit == Total Credit)
+    // 1. Check Period Lock
+    if (
+      await this.periodsService.isPeriodLocked(
+        workspaceId,
+        new Date(createDto.postingDate),
+      )
+    ) {
+      throw new BadRequestException(
+        "Cannot create journal entry in a locked fiscal period.",
+      );
+    }
+
+    // 2. Validate Double Entry (Total Debit == Total Credit)
     let totalDebit = 0;
     let totalCredit = 0;
 
@@ -25,7 +50,9 @@ export class JournalsService {
 
     // Use a small epsilon for floating point comparison if not using Decimals throughout
     if (Math.abs(totalDebit - totalCredit) > 0.000001) {
-      throw new BadRequestException(`Journal entry is not balanced. Total Debit: ${totalDebit}, Total Credit: ${totalCredit}`);
+      throw new BadRequestException(
+        `Journal entry is not balanced. Total Debit: ${totalDebit}, Total Credit: ${totalCredit}`,
+      );
     }
 
     // 2. Check for duplicate entry number
@@ -39,7 +66,7 @@ export class JournalsService {
     });
 
     if (existing) {
-      throw new BadRequestException('Journal entry number already exists');
+      throw new BadRequestException("Journal entry number already exists");
     }
 
     // 3. Create entry and lines in a transaction
@@ -52,10 +79,12 @@ export class JournalsService {
           description: createDto.description,
           referenceType: createDto.referenceType,
           referenceId: createDto.referenceId,
+          currencyCode: createDto.currencyCode,
+          exchangeRate: createDto.exchangeRate,
           totalDebit,
           totalCredit,
           createdBy: userId,
-          status: 'POSTED', // Default to POSTED for now, can add DRAFT support later
+          status: "POSTED", // Default to POSTED for now, can add DRAFT support later
           lines: {
             create: createDto.lines.map((line) => ({
               accountId: line.accountId,
@@ -96,7 +125,7 @@ export class JournalsService {
           },
         },
       },
-      orderBy: { postingDate: 'desc' },
+      orderBy: { postingDate: "desc" },
     });
   }
 
@@ -119,12 +148,24 @@ export class JournalsService {
     return entry;
   }
 
-  // NOTE: Journals are usually immutable once posted. 
+  // NOTE: Journals are usually immutable once posted.
   // For now, we only allow deletion if we reverse the balances.
   async remove(workspaceId: string, id: string): Promise<any> {
-    this.logger.warn(`Removing journal entry: ${id}`, 'JournalsService');
+    this.logger.warn(`Removing journal entry: ${id}`, "JournalsService");
 
     const entry = await this.findOne(workspaceId, id);
+
+    // 1. Check Period Lock
+    if (
+      await this.periodsService.isPeriodLocked(
+        workspaceId,
+        new Date(entry.postingDate),
+      )
+    ) {
+      throw new BadRequestException(
+        "Cannot delete journal entry from a locked fiscal period.",
+      );
+    }
 
     return this.prisma.$transaction(async (tx) => {
       // 1. Reverse account balances
