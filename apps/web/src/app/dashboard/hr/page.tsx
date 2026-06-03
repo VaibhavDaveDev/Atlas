@@ -155,7 +155,7 @@ export default function HrOverviewPage() {
       desc: 'HR & IT Tickets',
       icon: AlertCircle,
       color: 'bg-red-600 text-white',
-      href: '/dashboard/admin/tickets',
+      href: '/dashboard/hr/tickets',
     },
     {
       title: 'Onboarding',

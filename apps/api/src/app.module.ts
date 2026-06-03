@@ -7,6 +7,7 @@ import { AuthModule } from "./auth/auth.module";
 import { UserModule } from "./user/user.module";
 import { WorkspaceModule } from "./workspace/workspace.module";
 import { HrModule } from "./hr/hr.module";
+import { FinanceModule } from "./finance/finance.module";
 import { RoleModule } from "./role/role.module";
 import { SelfServiceModule } from "./self-service/self-service.module";
 // import { JobModule } from './job/job.module'; // Removed - not needed for ERP
@@ -42,6 +43,7 @@ import { LogsModule } from "./logs/logs.module";
     UserModule,
     WorkspaceModule,
     HrModule,
+    FinanceModule,
     RoleModule,
     SelfServiceModule,
     // JobModule, // Removed - not needed for ERP

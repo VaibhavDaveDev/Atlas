@@ -10,7 +10,7 @@ export class BetterAuthController {
   constructor(private readonly betterAuthService: BetterAuthService) {}
 
   @Public()
-  @All('*')
+  @All('*path')
   async handleAuth(@Req() req: Request, @Res() res: Response) {
     this.logger.debug(`Better Auth handling request: ${req.method} ${req.url}`);
     return this.betterAuthService.instance.handler(req, res);

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { User, Building2, Briefcase, Calendar, Save, Landmark, Heart, ShieldAlert, Eye, EyeOff, Link2, Loader2 } from 'lucide-react';
-import { getMyProfile, updateMyProfile } from '@/lib/ess';
+import { getMyProfile, updateMyProfile, syncCalendar } from '@/lib/ess';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

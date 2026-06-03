@@ -23,7 +23,8 @@ import {
   Landmark,
   LifeBuoy,
   FileText,
-  LogOut
+  LogOut,
+  TrendingUp
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -72,6 +73,16 @@ const hrModules: NavItem[] = [
   { label: 'Compliance', href: '/dashboard/hr/compliance/india', icon: ShieldCheck },
 ];
 
+const financeModules: NavItem[] = [
+  { label: 'Overview', href: '/dashboard/finance', icon: LayoutDashboard },
+  { label: 'Accounts', href: '/dashboard/finance/accounts', icon: Landmark },
+  { label: 'Journal Entries', href: '/dashboard/finance/journals', icon: FileText },
+  { label: 'Invoices', href: '/dashboard/finance/invoices', icon: BarChart3 },
+  { label: 'Payments', href: '/dashboard/finance/payments', icon: Landmark },
+  { label: 'P&L Report', href: '/dashboard/finance/reports/profit-loss', icon: TrendingUp },
+  { label: 'Balance Sheet', href: '/dashboard/finance/reports/balance-sheet', icon: FileText },
+];
+
 const adminModules: NavItem[] = [
   { label: 'Overview', href: '/dashboard/admin', icon: LayoutDashboard },
   { label: 'Roles & Permissions', href: '/dashboard/workspace/roles', icon: ShieldCheck },
@@ -100,6 +111,7 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
   }, [pathname, setMobileOpen]);
 
   const isHrRoute = pathname.startsWith('/dashboard/hr');
+  const isFinanceRoute = pathname.startsWith('/dashboard/finance');
   const isAdminRoute = pathname.startsWith('/dashboard/admin') || pathname.startsWith('/dashboard/workspace/roles');
   const isEssRoute = pathname.startsWith('/dashboard/ess');
   
@@ -109,6 +121,9 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
   if (isHrRoute) {
     displayItems = hrModules;
     sectionLabel = 'HR Management';
+  } else if (isFinanceRoute) {
+    displayItems = financeModules;
+    sectionLabel = 'Financial Management';
   } else if (isAdminRoute) {
     displayItems = adminModules;
     sectionLabel = 'IT Administration';
@@ -117,7 +132,7 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
     sectionLabel = 'ESS';
   }
   
-  const collapsedOtherModules = (isHrRoute || isAdminRoute || isEssRoute) 
+  const collapsedOtherModules = (isHrRoute || isFinanceRoute || isAdminRoute || isEssRoute) 
     ? mainModules.filter(m => !pathname.startsWith(m.href)) 
     : [];
 
@@ -175,13 +190,17 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
           )}
           <ul className="space-y-1">
             {displayItems.map((item) => {
-              // Special case: "Overview" points to /dashboard/hr but we only want to highlight it if exactly /dashboard/hr
-              const isExactModuleOverview = (item.href === '/dashboard/hr' && pathname === '/dashboard/hr') || 
-                                          (item.href === '/dashboard/admin' && pathname === '/dashboard/admin');
+              // Exact match for root module pages to avoid double highlighting
+              const isModuleRoot = item.href === '/dashboard' || 
+                                 item.href === '/dashboard/hr' || 
+                                 item.href === '/dashboard/finance' || 
+                                 item.href === '/dashboard/admin' ||
+                                 item.href === '/dashboard/ess';
               
-              const isActive = isExactModuleOverview || 
-                              (item.href !== '/dashboard' && item.href !== '/dashboard/hr' && item.href !== '/dashboard/admin' && pathname.startsWith(item.href)) || 
-                              (item.href === '/dashboard' && pathname === '/dashboard');
+              const isActive = isModuleRoot 
+                ? pathname === item.href 
+                : pathname.startsWith(item.href);
+                
               const Icon = item.icon;
               
               return (
