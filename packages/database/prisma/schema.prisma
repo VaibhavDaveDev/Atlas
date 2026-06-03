@@ -353,6 +353,8 @@ model WorkspaceSettings {
   dateFormat       String    @default("YYYY-MM-DD")
   timeFormat       String    @default("HH:mm:ss")
   fiscalYearStart  String    @default("01-01")
+  financeSetupCompleted Boolean @default(false)
+  exchangeGainLossAccountId String?
   
   weekendHolidays  Json?     // e.g. [0, 6] for Sunday, Saturday
   countryCode      String?   // For holiday sync (e.g. "IN")
@@ -1293,6 +1295,24 @@ model PayrollEarning {
 // FINANCE MODULE
 // ============================================
 
+model FiscalPeriod {
+  id          String   @id @default(uuid(7))
+  workspaceId String
+  name        String   // e.g. "June 2026"
+  startDate   DateTime @db.Date
+  endDate     DateTime @db.Date
+  isLocked    Boolean  @default(false)
+  lockedAt    DateTime?
+  lockedBy    String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([workspaceId, name])
+  @@unique([workspaceId, startDate, endDate])
+  @@map("fiscal_periods")
+}
+
 model Account {
   id            String      @id @default(uuid(7))
   workspaceId   String
@@ -1322,6 +1342,7 @@ model Account {
   updatedAt     DateTime    @updatedAt
   
   journalEntryLines JournalEntryLine[]
+  invoiceItems      InvoiceItem[]
   
   @@unique([workspaceId, accountNumber])
   @@index([workspaceId, accountType, isActive])
@@ -1337,6 +1358,8 @@ model JournalEntry {
   referenceId   String?
   description   String?
   status        String    @default("DRAFT")
+  currencyCode  String?   // For manual foreign currency journals
+  exchangeRate  Decimal?  // Rate used at posting time
   totalDebit    Decimal   @default(0)
   totalCredit   Decimal   @default(0)
   
@@ -1405,17 +1428,19 @@ model InvoiceItem {
   invoiceId       String
   invoice         Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   productId       String?
+  accountId       String?  // The specific income/expense account for this line
+  account         Account? @relation(fields: [accountId], references: [id])
   description     String
   quantity        Int
   unitPrice       Decimal
   taxRate         Decimal  @default(0)
   discountPercent Decimal  @default(0)
   amount          Decimal
-  
+
   @@index([invoiceId])
+  @@index([accountId])
   @@map("invoice_items")
 }
-
 model Payment {
   id              String        @id @default(uuid(7))
   workspaceId     String
@@ -1427,6 +1452,7 @@ model Payment {
   paymentDate     DateTime      @db.Date
   amount          Decimal
   currencyCode    String        @default("USD")
+  exchangeRate    Decimal       @default(1.0)
   paymentMethod   String
   referenceNumber String?
   status          PaymentStatus @default(DRAFT)

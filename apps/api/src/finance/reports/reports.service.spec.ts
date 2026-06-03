@@ -1,9 +1,9 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { ReportsService } from './reports.service';
-import { PrismaService } from '../../common/services/prisma.service';
-import { AccountType } from '@atlas/database';
+import { Test, TestingModule } from "@nestjs/testing";
+import { ReportsService } from "./reports.service";
+import { PrismaService } from "../../common/services/prisma.service";
+import { AccountType } from "@atlas/database";
 
-describe('ReportsService', () => {
+describe("ReportsService", () => {
   let service: ReportsService;
   let prisma: PrismaService;
 
@@ -28,20 +28,38 @@ describe('ReportsService', () => {
     prisma = module.get<PrismaService>(PrismaService);
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(service).toBeDefined();
   });
 
-  it('should generate balance sheet', async () => {
+  it("should generate balance sheet", async () => {
     const mockAccounts = [
-      { accountNumber: '1100', accountName: 'Cash', accountType: AccountType.ASSET, balance: 5000, isActive: true },
-      { accountNumber: '2100', accountName: 'Payables', accountType: AccountType.LIABILITY, balance: 2000, isActive: true },
-      { accountNumber: '3100', accountName: 'Capital', accountType: AccountType.EQUITY, balance: 3000, isActive: true },
+      {
+        accountNumber: "1100",
+        accountName: "Cash",
+        accountType: AccountType.ASSET,
+        balance: 5000,
+        isActive: true,
+      },
+      {
+        accountNumber: "2100",
+        accountName: "Payables",
+        accountType: AccountType.LIABILITY,
+        balance: 2000,
+        isActive: true,
+      },
+      {
+        accountNumber: "3100",
+        accountName: "Capital",
+        accountType: AccountType.EQUITY,
+        balance: 3000,
+        isActive: true,
+      },
     ];
 
     mockPrisma.account.findMany.mockResolvedValue(mockAccounts);
 
-    const result = await service.getBalanceSheet('ws-1');
+    const result = await service.getBalanceSheet("ws-1");
 
     expect(result.totals.assets).toBe(5000);
     expect(result.totals.liabilities).toBe(2000);

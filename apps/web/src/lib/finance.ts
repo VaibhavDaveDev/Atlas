@@ -91,12 +91,31 @@ export async function createInvoice(data: any) {
   });
 }
 
+export async function postInvoice(id: string) {
+  return await fetchWithAuth(`/finance/invoices/${id}/post`, {
+    method: 'PATCH',
+  });
+}
+
 export async function getPayments() {
   return await fetchWithAuth('/finance/payments');
 }
 
 export async function getPayment(id: string) {
   return await fetchWithAuth(`/finance/payments/${id}`);
+}
+
+export async function createPayment(data: any) {
+  return await fetchWithAuth('/finance/payments', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function reconcilePayment(id: string) {
+  return await fetchWithAuth(`/finance/payments/${id}/reconcile`, {
+    method: 'POST',
+  });
 }
 
 export async function getBalanceSheet() {
@@ -110,3 +129,36 @@ export async function getDashboardStats() {
 export async function getProfitLoss(startDate: string, endDate: string) {
   return await fetchWithAuth(`/finance/reports/profit-loss?startDate=${startDate}&endDate=${endDate}`);
 }
+
+export async function getCashFlow(startDate: string, endDate: string) {
+  return await fetchWithAuth(`/finance/reports/cash-flow?startDate=${startDate}&endDate=${endDate}`);
+}
+
+export async function getPeriods() {
+  return await fetchWithAuth('/finance/periods');
+}
+
+export async function closePeriod(data: { name: string, startDate: string, endDate: string }) {
+  return await fetchWithAuth('/finance/periods/close', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function setupFinance(data: { baseCurrency: string, fiscalYearStart: string }) {
+  return await fetchWithAuth('/finance/setup', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getExchangeRate(base: string, quote: string, date?: string) {
+  let url = `/finance/exchange-rates?base=${base}&quote=${quote}`;
+  if (date) url += `&date=${date}`;
+  return await fetchWithAuth(url);
+}
+
+export async function getSupportedCurrencies() {
+  return await fetchWithAuth('/finance/exchange-rates/currencies');
+}
+

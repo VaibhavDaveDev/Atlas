@@ -14,9 +14,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { createJournalEntry, getAccounts } from '@/lib/finance';
-import { Plus, Trash2, Loader2, AlertCircle } from 'lucide-react';
+import { createJournalEntry, getAccounts, getExchangeRate, getSupportedCurrencies } from '@/lib/finance';
+import { Plus, Trash2, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 interface NewJournalEntrySheetProps {
   open: boolean;
@@ -25,12 +27,17 @@ interface NewJournalEntrySheetProps {
 }
 
 export function NewJournalEntrySheet({ open, onOpenChange, onSuccess }: NewJournalEntrySheetProps) {
+  const { workspace } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [fetchingRate, setFetchingRate] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [accounts, setAccounts] = useState<any[]>([]);
+  const [currencies, setCurrencies] = useState<Record<string, string>>({});
   
   const [description, setDescription] = useState('');
   const [postingDate, setPostingDate] = useState(new Date().toISOString().split('T')[0]);
+  const [currencyCode, setCurrencyCode] = useState('USD');
+  const [exchangeRate, setExchangeRate] = useState(1);
   const [lines, setLines] = useState([
     { accountId: '', debit: 0, credit: 0, description: '' },
     { accountId: '', debit: 0, credit: 0, description: '' }
@@ -41,8 +48,38 @@ export function NewJournalEntrySheet({ open, onOpenChange, onSuccess }: NewJourn
       getAccounts().then(res => {
         if (res.success) setAccounts(res.data);
       });
+      getSupportedCurrencies().then(res => {
+        setCurrencies(res.data || res);
+      });
+      if (workspace?.settings?.baseCurrency) {
+        setCurrencyCode(workspace.settings.baseCurrency);
+      }
     }
-  }, [open]);
+  }, [open, workspace]);
+
+  const fetchRate = async (quote: string) => {
+    const base = workspace?.settings?.baseCurrency || 'USD';
+    if (quote === base) {
+      setExchangeRate(1);
+      return;
+    }
+    setFetchingRate(true);
+    try {
+      const res = await getExchangeRate(quote, base, postingDate);
+      const rate = res.data?.rate || res.rate;
+      if (rate) setExchangeRate(rate);
+    } catch (e) {
+      toast.error('Failed to fetch exchange rate');
+    } finally {
+      setFetchingRate(false);
+    }
+  };
+
+  useEffect(() => {
+    if (currencyCode && open) {
+      fetchRate(currencyCode);
+    }
+  }, [currencyCode, postingDate]);
 
   const addLine = () => {
     setLines([...lines, { accountId: '', debit: 0, credit: 0, description: '' }]);
@@ -81,10 +118,12 @@ export function NewJournalEntrySheet({ open, onOpenChange, onSuccess }: NewJourn
       const payload = {
         description,
         postingDate,
+        currencyCode,
+        exchangeRate,
         lines: lines.map(l => ({
           accountId: l.accountId,
-          debit: Number(l.debit),
-          credit: Number(l.credit),
+          debit: Number(l.debit) * exchangeRate, // Store in Base Currency
+          credit: Number(l.credit) * exchangeRate, // Store in Base Currency
           description: l.description || description
         }))
       };
@@ -95,6 +134,7 @@ export function NewJournalEntrySheet({ open, onOpenChange, onSuccess }: NewJourn
         onOpenChange(false);
         // Reset form
         setDescription('');
+        setExchangeRate(1);
         setLines([
           { accountId: '', debit: 0, credit: 0, description: '' },
           { accountId: '', debit: 0, credit: 0, description: '' }
@@ -115,7 +155,7 @@ export function NewJournalEntrySheet({ open, onOpenChange, onSuccess }: NewJourn
         <SheetHeader>
           <SheetTitle>New Journal Entry</SheetTitle>
           <SheetDescription>
-            Record a manual transaction in the general ledger. Ensure debits and credits are balanced.
+            Record a manual transaction. Amounts will be converted to {workspace?.settings?.baseCurrency || 'Base Currency'} for the ledger.
           </SheetDescription>
         </SheetHeader>
 
@@ -129,6 +169,55 @@ export function NewJournalEntrySheet({ open, onOpenChange, onSuccess }: NewJourn
                 value={postingDate} 
                 onChange={(e) => setPostingDate(e.target.value)} 
               />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-muted/30 border border-dashed border-[#d3cec6] dark:border-[#27272a]">
+            <div className="space-y-2">
+              <Label>Entry Currency</Label>
+              <Select value={currencyCode} onValueChange={setCurrencyCode}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.isArray(currencies) ? (
+                    currencies.map((c: any) => (
+                      <SelectItem key={c.iso_code || c.code} value={c.iso_code || c.code}>
+                        {c.iso_code || c.code} - {c.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    Object.entries(currencies).map(([code, details]: [string, any]) => (
+                      <SelectItem key={code} value={code}>
+                        {code} - {typeof details === 'object' ? details.name || code : details}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="flex items-center justify-between">
+                Exchange Rate
+                {fetchingRate && <Loader2 className="h-3 w-3 animate-spin" />}
+              </Label>
+              <div className="relative">
+                <Input 
+                  type="number" 
+                  step="0.000001" 
+                  value={exchangeRate} 
+                  onChange={(e) => setExchangeRate(Number(e.target.value))} 
+                />
+                <Button 
+                  size="icon" 
+                  variant="ghost" 
+                  className="absolute right-1 top-1 h-8 w-8"
+                  onClick={() => fetchRate(currencyCode)}
+                  disabled={fetchingRate}
+                >
+                  <RefreshCw className={cn("h-3 w-3", fetchingRate && "animate-spin")} />
+                </Button>
+              </div>
             </div>
           </div>
 

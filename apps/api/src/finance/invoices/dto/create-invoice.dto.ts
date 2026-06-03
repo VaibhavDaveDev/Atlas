@@ -1,11 +1,25 @@
-import { IsString, IsEnum, IsDateString, IsOptional, IsArray, ValidateNested, IsNumber, Min, IsUUID } from 'class-validator';
-import { Type } from 'class-transformer';
-import { InvoiceType } from '@atlas/database';
+import {
+  IsString,
+  IsEnum,
+  IsDateString,
+  IsOptional,
+  IsArray,
+  ValidateNested,
+  IsNumber,
+  Min,
+  IsUUID,
+} from "class-validator";
+import { Type } from "class-transformer";
+import { InvoiceType } from "@atlas/database";
 
 class InvoiceItemDto {
   @IsOptional()
   @IsString()
   productId?: string;
+
+  @IsOptional()
+  @IsString()
+  accountId?: string;
 
   @IsString()
   description: string;

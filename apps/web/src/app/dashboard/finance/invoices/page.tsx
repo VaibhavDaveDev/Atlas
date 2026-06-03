@@ -105,6 +105,7 @@ export default function InvoicesPage() {
           id={selectedInvoiceId}
           open={!!selectedInvoiceId}
           onOpenChange={(open) => !open && setSelectedInvoiceId(null)}
+          onRefresh={fetchInvoices}
         />
 
         <div className="flex items-center justify-between rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] p-2">

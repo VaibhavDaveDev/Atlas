@@ -1,5 +1,11 @@
-import { IsString, IsEnum, IsOptional, IsBoolean, IsUUID } from 'class-validator';
-import { AccountType } from '@atlas/database';
+import {
+  IsString,
+  IsEnum,
+  IsOptional,
+  IsBoolean,
+  IsUUID,
+} from "class-validator";
+import { AccountType } from "@atlas/database";
 
 export class CreateAccountDto {
   @IsString()

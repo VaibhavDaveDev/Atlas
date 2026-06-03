@@ -91,17 +91,19 @@ describe("UserService", () => {
       const updateUserDto: UpdateUserDto = {};
       mockPrismaService.authUser.findUnique.mockResolvedValueOnce(null);
 
-      await expect(service.update(userId, updateUserDto)).rejects.toThrow("User not found");
+      await expect(service.update(userId, updateUserDto)).rejects.toThrow(
+        "User not found",
+      );
     });
 
     it("should update and return the user", async () => {
       const userId = "uuid-1234";
       const updateUserDto: UpdateUserDto = { username: "new_name" };
       const existingUser = { id: userId, username: "old_name" };
-      
+
       mockPrismaService.authUser.findUnique.mockResolvedValueOnce(existingUser); // For initial check
       mockPrismaService.authUser.findUnique.mockResolvedValueOnce(null); // For username uniqueness check
-      
+
       mockPrismaService.authUser.update = vi.fn().mockResolvedValue({
         id: userId,
         email: "test@test.com",

@@ -102,7 +102,9 @@ describe("HrService - Payroll Calculations", () => {
     it("should create leave application if balance is sufficient", async () => {
       // Mock getLeaveBalance to return 10
       vi.spyOn(service, "getLeaveBalance").mockResolvedValue(10);
-      prisma.leaveApplication.create = vi.fn().mockResolvedValue({ id: "app1" });
+      prisma.leaveApplication.create = vi
+        .fn()
+        .mockResolvedValue({ id: "app1" });
 
       const result = await service.createLeaveApplication("workspace1", {
         employeeId: "emp1",
@@ -120,13 +122,15 @@ describe("HrService - Payroll Calculations", () => {
       // Mock getLeaveBalance to return 1
       vi.spyOn(service, "getLeaveBalance").mockResolvedValue(1);
 
-      await expect(service.createLeaveApplication("workspace1", {
-        employeeId: "emp1",
-        leaveTypeId: "lt1",
-        fromDate: new Date("2025-01-01"),
-        toDate: new Date("2025-01-05"), // 5 days > 1 balance
-        reason: "Vacation",
-      })).rejects.toThrow("Insufficient leave balance");
+      await expect(
+        service.createLeaveApplication("workspace1", {
+          employeeId: "emp1",
+          leaveTypeId: "lt1",
+          fromDate: new Date("2025-01-01"),
+          toDate: new Date("2025-01-05"), // 5 days > 1 balance
+          reason: "Vacation",
+        }),
+      ).rejects.toThrow("Insufficient leave balance");
     });
   });
 
@@ -144,22 +148,30 @@ describe("HrService - Payroll Calculations", () => {
     it("should prevent double check-in", async () => {
       prisma.employee.findFirst = vi.fn().mockResolvedValue({ id: "emp1" });
       // Return an existing attendance record without checkOut
-      prisma.attendance.findFirst = vi.fn().mockResolvedValue({ id: "att1", checkIn: new Date(), checkOut: null });
+      prisma.attendance.findFirst = vi
+        .fn()
+        .mockResolvedValue({ id: "att1", checkIn: new Date(), checkOut: null });
 
-      await expect(service.checkIn("workspace1", "user1")).rejects.toThrow("Already checked in today");
+      await expect(service.checkIn("workspace1", "user1")).rejects.toThrow(
+        "Already checked in today",
+      );
     });
 
     it("should allow check-out and calculate working hours", async () => {
       prisma.employee.findFirst = vi.fn().mockResolvedValue({ id: "emp1" });
-      
+
       const checkInTime = new Date(Date.now() - 4 * 60 * 60 * 1000); // 4 hours ago
-      prisma.attendance.findFirst = vi.fn().mockResolvedValue({ id: "att1", checkIn: checkInTime, checkOut: null });
-      
+      prisma.attendance.findFirst = vi.fn().mockResolvedValue({
+        id: "att1",
+        checkIn: checkInTime,
+        checkOut: null,
+      });
+
       prisma.attendance.update = vi.fn().mockImplementation(({ data }) => data);
 
       const result = await service.checkOut("workspace1", "user1");
       expect(prisma.attendance.update).toHaveBeenCalled();
-      
+
       // Should be roughly 4 hours
       expect(Number(result.workingHours)).toBeGreaterThan(3.9);
       expect(Number(result.workingHours)).toBeLessThan(4.1);

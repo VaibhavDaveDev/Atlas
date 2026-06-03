@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getAccounts } from '@/lib/finance';
+import { getAccounts, createPayment } from '@/lib/finance';
 import { Loader2, AlertCircle, DollarSign } from 'lucide-react';
 
 interface NewPaymentSheetProps {
@@ -22,15 +22,17 @@ interface NewPaymentSheetProps {
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
   type: 'RECEIVED' | 'MADE';
+  invoiceId?: string;
+  defaultAmount?: number;
 }
 
-export function NewPaymentSheet({ open, onOpenChange, onSuccess, type }: NewPaymentSheetProps) {
+export function NewPaymentSheet({ open, onOpenChange, onSuccess, type, invoiceId, defaultAmount }: NewPaymentSheetProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [accounts, setAccounts] = useState<any[]>([]);
   
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
-  const [amount, setAmount] = useState(0);
+  const [amount, setAmount] = useState(defaultAmount || 0);
   const [paymentMethod, setPaymentMethod] = useState('BANK_TRANSFER');
   const [bankAccountId, setBankAccountId] = useState('');
   const [offsetAccountId, setOffsetAccountId] = useState('');
@@ -39,14 +41,23 @@ export function NewPaymentSheet({ open, onOpenChange, onSuccess, type }: NewPaym
   useEffect(() => {
     if (open) {
       getAccounts().then(res => {
-        if (res.success) setAccounts(res.data);
+        if (res.success) {
+          setAccounts(res.data);
+          // Try to find default A/R or A/P account if not provided
+          if (!offsetAccountId) {
+            const targetCode = type === 'RECEIVED' ? '1300' : '2100';
+            const defaultAcc = res.data.find((a: any) => a.accountNumber === targetCode);
+            if (defaultAcc) setOffsetAccountId(defaultAcc.id);
+          }
+        }
       });
+      if (defaultAmount) setAmount(defaultAmount);
     }
-  }, [open]);
+  }, [open, defaultAmount, type]);
 
   const handleSubmit = async () => {
-    if (!bankAccountId || !offsetAccountId || amount <= 0) {
-      setError('Please select both accounts and enter a valid amount');
+    if (!bankAccountId || amount <= 0) {
+      setError('Please select a bank/cash account and enter a valid amount');
       return;
     }
 
@@ -54,30 +65,19 @@ export function NewPaymentSheet({ open, onOpenChange, onSuccess, type }: NewPaym
     setError(null);
 
     try {
-      // In a real implementation, we would call createPayment
-      // For now, we'll simulate it since I haven't added createPayment to lib yet
-      // but I can add it easily.
-      
       const payload = {
+        paymentNumber: `PAY-${Date.now()}`, 
         paymentType: type,
         paymentDate,
         amount: Number(amount),
         paymentMethod,
-        bankAccountId,
-        offsetAccountId,
+        accountId: bankAccountId,
+        offsetAccountId: offsetAccountId || undefined,
+        invoiceId: invoiceId,
         remarks
       };
 
-      // Simulating success as backend implementation might vary
-      // but let's assume it works like other finance endpoints
-      const res = await fetch('/api/v1/finance/payments', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}` // Placeholder
-        },
-        body: JSON.stringify(payload)
-      }).then(r => r.json());
+      const res = await createPayment(payload);
 
       if (res.success) {
         onSuccess();
