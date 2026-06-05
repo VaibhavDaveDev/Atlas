@@ -2,6 +2,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { JournalsService } from "./journals.service";
 import { PrismaService } from "../../common/services/prisma.service";
 import { CustomLoggerService } from "../../common/services/custom-logger.service";
+import { PeriodsService } from "../periods/periods.service";
 import { BadRequestException } from "@nestjs/common";
 
 describe("JournalsService", () => {
@@ -25,12 +26,17 @@ describe("JournalsService", () => {
     error: vi.fn(),
   };
 
+  const mockPeriodsService = {
+    isPeriodLocked: vi.fn().mockResolvedValue(false),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         JournalsService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: CustomLoggerService, useValue: mockLogger },
+        { provide: PeriodsService, useValue: mockPeriodsService },
       ],
     }).compile();
 

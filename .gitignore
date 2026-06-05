@@ -45,6 +45,29 @@ next-env.d.ts
 # OS
 Thumbs.db
 
+# Environment / Secrets
+.env
+.env.local
+.env.production
+.env.development
+.env*.local
+.env*.production
+.env*.development
+*.pem
+*.key
+
+# Infrastructure / Monitoring
+grafana-data
+loki-data
+prometheus-data
+tempo-data
+*.db
+*.db-journal
+
+# Database
+.prisma
+/packages/database/node_modules
+
 # Notes or Docs
 CHECKLIST.md
 SETUP.md

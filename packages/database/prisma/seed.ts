@@ -5,6 +5,7 @@ import {
   EmployeeStatus,
   GlobalRole,
   AccountType,
+  ProjectRole,
 } from "../index";
 import * as bcrypt from "bcryptjs";
 
@@ -27,6 +28,24 @@ async function main() {
       password: passwordHash,
       globalRole: GlobalRole.SUPERADMIN,
       verified: true,
+    },
+  });
+
+  await prisma.authAccount.upsert({
+    where: {
+      providerId_accountId: {
+        providerId: "credential",
+        accountId: superAdmin.email,
+      },
+    },
+    update: {
+      password: passwordHash,
+    },
+    create: {
+      userId: superAdmin.id,
+      providerId: "credential",
+      accountId: superAdmin.email,
+      password: passwordHash,
     },
   });
 
@@ -68,6 +87,7 @@ async function main() {
     { resource: "CompanyEvent", action: "create", scope: "all" },
     { resource: "CompanyEvent", action: "update", scope: "all" },
     { resource: "CompanyEvent", action: "delete", scope: "all" },
+    
     // --- Finance permissions (scope: all) ---
     { resource: "finance_accounts", action: "read", scope: "all" },
     { resource: "finance_accounts", action: "create", scope: "all" },
@@ -83,7 +103,14 @@ async function main() {
     { resource: "finance_payments", action: "read", scope: "all" },
     { resource: "finance_payments", action: "create", scope: "all" },
     { resource: "finance_payments", action: "delete", scope: "all" },
-    // --- ESS permissions (scope: own) ---
+    
+    // --- Project permissions (scope: all) ---
+    { resource: "projects", action: "read", scope: "all" },
+    { resource: "projects", action: "create", scope: "all" },
+    { resource: "projects", action: "update", scope: "all" },
+    { resource: "projects", action: "delete", scope: "all" },
+    
+    // --- ESS / Employee permissions (scope: own) ---
     { resource: "employees", action: "read", scope: "own" },
     { resource: "employees", action: "update", scope: "own" },
     { resource: "attendance", action: "read", scope: "own" },
@@ -93,373 +120,340 @@ async function main() {
     { resource: "leave", action: "create", scope: "own" },
     { resource: "leave", action: "update", scope: "own" },
     { resource: "leaves", action: "read", scope: "own" },
-    { resource: "leaves", action: "create", scope: "own" },
-    { resource: "leaves", action: "update", scope: "own" },
+    
+    // --- Employee Project Access ---
+    { resource: "projects", action: "read", scope: "own" },
+    { resource: "projects", action: "update", scope: "own" },
+
+    // --- Employee ESS Additional Access ---
     { resource: "payroll", action: "read", scope: "own" },
     { resource: "payroll", action: "create", scope: "own" },
     { resource: "payroll", action: "update", scope: "own" },
+    { resource: "appraisals", action: "read", scope: "own" },
+    { resource: "appraisals", action: "update", scope: "own" },
     { resource: "helpdesk", action: "read", scope: "own" },
     { resource: "helpdesk", action: "create", scope: "own" },
     { resource: "helpdesk", action: "update", scope: "own" },
-    { resource: "appraisals", action: "read", scope: "own" },
-    { resource: "appraisals", action: "update", scope: "own" },
-    { resource: "CompanyEvent", action: "read", scope: "all" },
   ];
 
-  for (const p of permissionsData) {
-    await prisma.permission.upsert({
+  for (const perm of permissionsData) {
+    const existing = await prisma.permission.findFirst({
       where: {
-        workspaceId_resource_action_scope: {
-          workspaceId: workspace.id,
-          resource: p.resource,
-          action: p.action,
-          scope: p.scope,
-        },
-      },
-      update: {},
-      create: {
-        workspaceId: workspace.id,
-        resource: p.resource,
-        action: p.action,
-        scope: p.scope,
-      },
-    });
-  }
-
-  // 4. Create Workspace Roles
-  console.log("Creating Workspace Roles...");
-  const ownerRole = await prisma.role.upsert({
-    where: { workspaceId_name: { workspaceId: workspace.id, name: "OWNER" } },
-    update: {},
-    create: {
-      workspaceId: workspace.id,
-      name: "OWNER",
-      description: "Workspace Owner with full control",
-    },
-  });
-
-  const adminRole = await prisma.role.upsert({
-    where: { workspaceId_name: { workspaceId: workspace.id, name: "ADMIN" } },
-    update: {},
-    create: {
-      workspaceId: workspace.id,
-      name: "ADMIN",
-      description: "Workspace Administrator",
-    },
-  });
-
-  const employeeRole = await prisma.role.upsert({
-    where: {
-      workspaceId_name: { workspaceId: workspace.id, name: "EMPLOYEE" },
-    },
-    update: {},
-    create: {
-      workspaceId: workspace.id,
-      name: "EMPLOYEE",
-      description: "Standard Employee",
-    },
-  });
-
-  // 5. Link Permissions to Roles
-  console.log("Linking Permissions to Roles...");
-  const allPerms = await prisma.permission.findMany({
-    where: { workspaceId: workspace.id },
-  });
-
-  const adminAllResources = [
-    "employees",
-    "departments",
-    "designations",
-    "leaves",
-    "attendance",
-    "payroll",
-    "helpdesk",
-    "CompanyEvent",
-    "finance_accounts",
-    "finance_journals",
-    "finance_invoices",
-    "finance_payments",
-  ];
-  const essResources = [
-    "employees",
-    "attendance",
-    "leave",
-    "leaves",
-    "payroll",
-    "helpdesk",
-    "appraisals",
-    "CompanyEvent",
-  ];
-
-  for (const perm of allPerms) {
-    // OWNER gets everything
-    await prisma.rolePermission.upsert({
-      where: {
-        workspaceId_roleId_permissionId: {
-          workspaceId: workspace.id,
-          roleId: ownerRole.id,
-          permissionId: perm.id,
-        },
-      },
-      update: {},
-      create: {
-        workspaceId: workspace.id,
-        roleId: ownerRole.id,
-        permissionId: perm.id,
-      },
+        workspaceId: null,
+        resource: perm.resource,
+        action: perm.action,
+        scope: perm.scope,
+      }
     });
 
-    // ADMIN gets all 'scope: all' for admin resources + ESS 'own'
-    const isAdminResource =
-      adminAllResources.includes(perm.resource) && perm.scope === "all";
-    const isEssOwnPerm =
-      essResources.includes(perm.resource) && perm.scope === "own";
-    if (isAdminResource || isEssOwnPerm) {
-      await prisma.rolePermission.upsert({
-        where: {
-          workspaceId_roleId_permissionId: {
-            workspaceId: workspace.id,
-            roleId: adminRole.id,
-            permissionId: perm.id,
-          },
-        },
-        update: {},
-        create: {
-          workspaceId: workspace.id,
-          roleId: adminRole.id,
-          permissionId: perm.id,
-        },
-      });
-    }
-
-    // EMPLOYEE gets ESS 'own' OR 'all' if explicitly added to essResources (like CompanyEvent)
-    const isEmployeePerm =
-      essResources.includes(perm.resource) &&
-      (perm.scope === "own" || (perm.resource === "CompanyEvent" && perm.scope === "all"));
-
-    if (isEmployeePerm) {
-      await prisma.rolePermission.upsert({
-        where: {
-          workspaceId_roleId_permissionId: {
-            workspaceId: workspace.id,
-            roleId: employeeRole.id,
-            permissionId: perm.id,
-          },
-        },
-        update: {},
-        create: {
-          workspaceId: workspace.id,
-          roleId: employeeRole.id,
-          permissionId: perm.id,
+    if (!existing) {
+      await prisma.permission.create({
+        data: {
+          ...perm,
+          workspaceId: null,
         },
       });
     }
   }
 
-  // 6. Create Users and Employee Records
-  console.log("Creating Users and Employee Records...");
+  // 4. Create Roles and Assign Permissions
+  console.log("Creating Roles...");
+  const roles = [
+    { name: "OWNER", description: "Workspace Owner - Full Access" },
+    { name: "ADMIN", description: "Administrator - Full Access" },
+    { name: "HR", description: "HR Manager - People & Payroll" },
+    { name: "FINANCE", description: "Finance Manager - Accounts" },
+    { name: "USER", description: "Standard Employee - Self Service" },
+  ];
 
-  const usersToCreate = [
-    {
+  for (const roleData of roles) {
+    const role = await prisma.role.upsert({
+      where: {
+        workspaceId_name: { workspaceId: workspace.id, name: roleData.name },
+      },
+      update: {},
+      create: {
+        ...roleData,
+        workspaceId: workspace.id,
+      },
+    });
+
+    console.log(`Assigning permissions to role: ${role.name}...`);
+    // Assign Permissions to Roles
+    const allPerms = await prisma.permission.findMany({
+      where: { workspaceId: null }
+    });
+    
+    for (const p of allPerms) {
+      let shouldAssign = false;
+
+      if (role.name === "OWNER" || role.name === "ADMIN") {
+        shouldAssign = true;
+      } else if (role.name === "USER") {
+        // User gets all "own" permissions
+        if (p.scope === "own") shouldAssign = true;
+        
+        // IMPORTANT: Also allow user to CREATE projects if they are Team Leads? 
+        // No, creation is usually a Manager action. But Leads might need 'update' on projects.
+        // We already have projects:read:own and projects:update:own.
+      } else if (role.name === "HR") {
+        if (["employees", "departments", "designations", "leaves", "attendance", "payroll", "helpdesk"].includes(p.resource)) {
+          shouldAssign = true;
+        }
+      } else if (role.name === "FINANCE") {
+        if (p.resource.startsWith("finance_")) {
+          shouldAssign = true;
+        }
+      }
+
+      if (shouldAssign) {
+        await prisma.rolePermission.upsert({
+          where: {
+            workspaceId_roleId_permissionId: {
+              workspaceId: workspace.id,
+              roleId: role.id,
+              permissionId: p.id,
+            },
+          },
+          update: {},
+          create: {
+            workspaceId: workspace.id,
+            roleId: role.id,
+            permissionId: p.id,
+          },
+        });
+      }
+    }
+  }
+
+  // 5. Create Admin User
+  console.log("Creating Workspace Admin (admin@atlas.com)...");
+  const adminRole = await prisma.role.findFirst({
+    where: { workspaceId: workspace.id, name: "OWNER" },
+  });
+  const adminUser = await prisma.authUser.upsert({
+    where: { email: "admin@atlas.com" },
+    update: {},
+    create: {
       email: "admin@atlas.com",
       username: "admin",
-      name: "System Admin",
-      role: ownerRole,
-      empNo: "EMP-001",
-      firstName: "System",
-      lastName: "Admin",
-      salary: 120000,
+      name: "Amdox Admin",
+      password: passwordHash,
+      verified: true,
     },
-    {
-      email: "hr@atlas.com",
-      username: "hr_manager",
-      name: "HR Manager",
-      role: adminRole,
-      empNo: "EMP-002",
-      firstName: "HR",
-      lastName: "Manager",
-      salary: 85000,
+  });
+
+  await prisma.authAccount.upsert({
+    where: {
+      providerId_accountId: {
+        providerId: "credential",
+        accountId: adminUser.email,
+      },
     },
-    {
-      email: "employee@atlas.com",
-      username: "john_doe",
-      name: "John Doe",
-      role: employeeRole,
-      empNo: "EMP-003",
-      firstName: "John",
-      lastName: "Doe",
-      salary: 50000,
+    update: {
+      password: passwordHash,
     },
+    create: {
+      userId: adminUser.id,
+      providerId: "credential",
+      accountId: adminUser.email,
+      password: passwordHash,
+    },
+  });
+
+  await prisma.workspaceMember.upsert({
+    where: {
+      workspaceId_userId: { workspaceId: workspace.id, userId: adminUser.id },
+    },
+    update: {},
+    create: {
+      workspaceId: workspace.id,
+      userId: adminUser.id,
+      roleId: adminRole!.id,
+      isActive: true,
+    },
+  });
+
+  // 6. Create Departments & Designations
+  console.log("Creating Departments & Designations...");
+  const depts = ["Engineering", "Human Resources", "Finance", "Sales", "IT"];
+  for (const name of depts) {
+    await prisma.department.upsert({
+      where: { workspaceId_name: { workspaceId: workspace.id, name } },
+      update: {},
+      create: { name, code: name.substring(0,3).toUpperCase(), workspaceId: workspace.id },
+    });
+  }
+  
+  const engDept = await prisma.department.findFirst({ where: { name: "Engineering", workspaceId: workspace.id } });
+
+  const titles = ["Software Engineer", "HR Manager", "Accountant", "CTO", "Project Manager"];
+  for (const title of titles) {
+    await prisma.designation.upsert({
+      where: { workspaceId_title: { workspaceId: workspace.id, title } },
+      update: {},
+      create: { title, level: 1, workspaceId: workspace.id },
+    });
+  }
+
+  const sdeDesig = await prisma.designation.findFirst({ where: { title: "Software Engineer", workspaceId: workspace.id } });
+  const pmDesig = await prisma.designation.findFirst({ where: { title: "Project Manager", workspaceId: workspace.id } });
+
+  // 7. Create Employees
+  console.log("Creating Employees...");
+  const employeesToCreate = [
+    { email: "employee@atlas.com", name: "John Doe", username: "jdoe", num: "EMP001", desig: sdeDesig },
+    { email: "jane@atlas.com", name: "Jane Smith", username: "jsmith", num: "EMP002", desig: sdeDesig },
+    { email: "mike@atlas.com", name: "Mike Ross", username: "mross", num: "EMP003", desig: sdeDesig },
+    { email: "harvey@atlas.com", name: "Harvey Specter", username: "hspecter", num: "EMP004", desig: pmDesig },
   ];
 
-  for (const u of usersToCreate) {
+  const userRole = await prisma.role.findFirst({ where: { workspaceId: workspace.id, name: "USER" } });
+
+  const createdEmployees = [];
+
+  for (const emp of employeesToCreate) {
     const authUser = await prisma.authUser.upsert({
-      where: { email: u.email },
-      update: {
-        password: passwordHash,
-      },
+      where: { email: emp.email },
+      update: {},
       create: {
-        email: u.email,
-        username: u.username,
-        name: u.name,
+        email: emp.email,
+        username: emp.username,
+        name: emp.name,
         password: passwordHash,
         verified: true,
       },
     });
 
-    // Link to workspace
+    await prisma.authAccount.upsert({
+      where: {
+        providerId_accountId: {
+          providerId: "credential",
+          accountId: authUser.email,
+        },
+      },
+      update: {
+        password: passwordHash,
+      },
+      create: {
+        userId: authUser.id,
+        providerId: "credential",
+        accountId: authUser.email,
+        password: passwordHash,
+      },
+    });
+
     await prisma.workspaceMember.upsert({
-      where: {
-        workspaceId_userId: { workspaceId: workspace.id, userId: authUser.id },
-      },
-      update: { roleId: u.role.id },
+      where: { workspaceId_userId: { workspaceId: workspace.id, userId: authUser.id } },
+      update: {},
+      create: { workspaceId: workspace.id, userId: authUser.id, roleId: userRole!.id, isActive: true },
+    });
+
+    const employee = await prisma.employee.upsert({
+      where: { workspaceId_email: { workspaceId: workspace.id, email: emp.email } },
+      update: {},
       create: {
         workspaceId: workspace.id,
         userId: authUser.id,
-        roleId: u.role.id,
-      },
-    });
-
-    // Create Employee record
-    await prisma.employee.upsert({
-      where: {
-        workspaceId_email: { workspaceId: workspace.id, email: u.email },
-      },
-      update: { userId: authUser.id },
-      create: {
-        workspaceId: workspace.id,
-        employeeNumber: u.empNo,
-        firstName: u.firstName,
-        lastName: u.lastName,
-        fullName: u.name,
-        email: u.email,
-        dateOfJoining: new Date("2024-01-01"),
+        employeeNumber: emp.num,
+        firstName: emp.name.split(' ')[0],
+        lastName: emp.name.split(' ')[1],
+        fullName: emp.name,
+        email: emp.email,
+        departmentId: engDept!.id,
+        designationId: emp.desig!.id,
         status: EmployeeStatus.ACTIVE,
-        userId: authUser.id,
-        baseSalary: u.salary,
+        dateOfJoining: new Date("2024-01-01"),
       },
     });
-
-    // Create AuthSecurity
-    await prisma.authSecurity.upsert({
-      where: { authId: authUser.id },
-      update: {},
-      create: {
-        authId: authUser.id,
-        failedAttempts: 0,
-        lastPasswordChange: new Date(),
-      },
-    });
+    createdEmployees.push(employee);
   }
 
-  // 7. Salary Components
-  console.log("Seeding Salary Components...");
-  const components = [
+  // 10. Projects
+  console.log("Seeding Projects & Members...");
+  const projects = [
     {
-      name: "Basic Salary",
-      abbr: "BS",
-      type: SalaryComponentType.EARNING,
-      isTaxable: true,
+      projectCode: "PRJ-001",
+      projectName: "ERP Implementation",
+      description: "Implementing the new Atlas ERP suite.",
+      startDate: new Date("2024-06-01"),
+      budgetAmount: 50000,
     },
     {
-      name: "House Rent Allowance",
-      abbr: "HRA",
-      type: SalaryComponentType.EARNING,
-      isTaxable: true,
-    },
-    {
-      name: "Provident Fund",
-      abbr: "PF",
-      type: SalaryComponentType.DEDUCTION,
-      isTaxable: false,
+      projectCode: "PRJ-002",
+      projectName: "Cloud Migration",
+      description: "Moving on-premise servers to AWS.",
+      startDate: new Date("2024-07-15"),
+      budgetAmount: 25000,
     },
   ];
 
-  for (const comp of components) {
-    await prisma.salaryComponent.upsert({
-      where: { workspaceId_abbr: { workspaceId: workspace.id, abbr: comp.abbr } },
+  const john = createdEmployees.find(e => e.email === "employee@atlas.com");
+  const jane = createdEmployees.find(e => e.email === "jane@atlas.com");
+
+  for (const prj of projects) {
+    const createdProject = await prisma.project.upsert({
+      where: { workspaceId_projectCode: { workspaceId: workspace.id, projectCode: prj.projectCode } },
       update: {},
-      create: { ...comp, workspaceId: workspace.id },
+      create: { ...prj, workspaceId: workspace.id, createdBy: superAdmin.id },
     });
-  }
 
-  // 8. Leave Types
-  console.log("Seeding Leave Types...");
-  const leaveTypes = [
-    { name: "Privilege Leave", maxDaysAllowed: 18 },
-    { name: "Sick Leave", maxDaysAllowed: 12 },
-    { name: "Casual Leave", maxDaysAllowed: 12 },
-  ];
-
-  for (const lt of leaveTypes) {
-    await prisma.leaveType.upsert({
-      where: {
-        workspaceId_name: { workspaceId: workspace.id, name: lt.name },
-      },
-      update: {},
-      create: {
-        workspaceId: workspace.id,
-        name: lt.name,
-        maxDaysAllowed: lt.maxDaysAllowed,
-      },
-    });
-  }
-
-  // 9. Finance Accounts
-  console.log("Seeding Chart of Accounts...");
-  const chartOfAccounts = [
-    { accountNumber: "1000", accountName: "Current Assets", accountType: AccountType.ASSET, isGroup: true },
-    { accountNumber: "1100", accountName: "Cash", accountType: AccountType.ASSET, parentNumber: "1000" },
-    { accountNumber: "1200", accountName: "Bank", accountType: AccountType.ASSET, parentNumber: "1000" },
-    { accountNumber: "1300", accountName: "Accounts Receivable", accountType: AccountType.ASSET, parentNumber: "1000" },
-    { accountNumber: "2000", accountName: "Current Liabilities", accountType: AccountType.LIABILITY, isGroup: true },
-    { accountNumber: "2100", accountName: "Accounts Payable", accountType: AccountType.LIABILITY, parentNumber: "2000" },
-    { accountNumber: "3000", accountName: "Equity", accountType: AccountType.EQUITY, isGroup: true },
-    { accountNumber: "3100", accountName: "Share Capital", accountType: AccountType.EQUITY, parentNumber: "3000" },
-    { accountNumber: "3200", accountName: "Retained Earnings", accountType: AccountType.EQUITY, parentNumber: "3000" },
-    { accountNumber: "4000", accountName: "Income", accountType: AccountType.INCOME, isGroup: true },
-    { accountNumber: "4100", accountName: "Sales Revenue", accountType: AccountType.INCOME, parentNumber: "4000" },
-    { accountNumber: "4200", accountName: "Interest Income", accountType: AccountType.INCOME, parentNumber: "4000" },
-    { accountNumber: "5000", accountName: "Expenses", accountType: AccountType.EXPENSE, isGroup: true },
-    { accountNumber: "5100", accountName: "Cost of Goods Sold", accountType: AccountType.EXPENSE, parentNumber: "5000" },
-    { accountNumber: "5200", accountName: "Salaries and Wages", accountType: AccountType.EXPENSE, parentNumber: "5000" },
-    { accountNumber: "5300", accountName: "Rent Expense", accountType: AccountType.EXPENSE, parentNumber: "5000" },
-    { accountNumber: "5400", accountName: "Utilities Expense", accountType: AccountType.EXPENSE, parentNumber: "5000" },
-  ];
-
-  // We need to create them in order or handle parents carefully. 
-  // For simplicity, we create groups first, then children.
-  for (const acc of chartOfAccounts) {
-    let parentId: string | undefined;
-    if (acc.parentNumber) {
-      const parent = await prisma.account.findUnique({
-        where: { workspaceId_accountNumber: { workspaceId: workspace.id, accountNumber: acc.parentNumber } }
+    // Add John and Jane as Members/Leads
+    if (john) {
+      await prisma.projectMember.upsert({
+        where: { projectId_employeeId: { projectId: createdProject.id, employeeId: john.id } },
+        update: {},
+        create: { projectId: createdProject.id, employeeId: john.id, role: ProjectRole.LEAD },
       });
-      parentId = parent?.id;
+    }
+    
+    if (jane && prj.projectCode === "PRJ-001") {
+      await prisma.projectMember.upsert({
+        where: { projectId_employeeId: { projectId: createdProject.id, employeeId: jane.id } },
+        update: {},
+        create: { projectId: createdProject.id, employeeId: jane.id, role: ProjectRole.MEMBER },
+      });
     }
 
-    await prisma.account.upsert({
-      where: {
-        workspaceId_accountNumber: { workspaceId: workspace.id, accountNumber: acc.accountNumber },
-      },
-      update: {},
-      create: {
-        workspaceId: workspace.id,
-        accountNumber: acc.accountNumber,
-        accountName: acc.accountName,
-        accountType: acc.accountType,
-        isGroup: acc.isGroup || false,
-        parentAccountId: parentId,
-      },
-    });
+    // Add tasks
+    if (prj.projectCode === "PRJ-001") {
+      const task = await prisma.task.upsert({
+        where: { workspaceId_taskNumber: { workspaceId: workspace.id, taskNumber: "PRJ-001-1" } },
+        update: {},
+        create: {
+          workspaceId: workspace.id,
+          projectId: createdProject.id,
+          taskNumber: "PRJ-001-1",
+          title: "Setup Database",
+          status: "IN_PROGRESS",
+          priority: "HIGH",
+          createdBy: superAdmin.id,
+        },
+      });
+
+      if (john) {
+        await prisma.taskAssignment.upsert({
+          where: { taskId_employeeId: { taskId: task.id, employeeId: john.id } },
+          update: {},
+          create: { taskId: task.id, employeeId: john.id, allocatedHours: 10 },
+        });
+
+        // Use create instead of upsert for time logs as they don't have unique index on ID alone without workspaceId
+        await prisma.timeLog.create({
+          data: {
+            workspaceId: workspace.id,
+            taskId: task.id,
+            employeeId: john.id,
+            hours: 4,
+            description: "Initial setup of Prisma schema.",
+            date: new Date(),
+          }
+        });
+      }
+    }
   }
 
   console.log("✅ Seeding completed successfully!");
-  console.log("----------------------------------------------------");
-  console.log("Admin: admin@atlas.com / Password123!");
-  console.log("HR: hr@atlas.com / Password123!");
-  console.log("Employee: employee@atlas.com / Password123!");
-  console.log("----------------------------------------------------");
 }
 
 main()

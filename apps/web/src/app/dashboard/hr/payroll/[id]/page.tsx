@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { AppShell } from '@/components/layout/AppShell';
-import { getPayrollRunById, addPayrollEarning, addPayrollDeduction } from '@/lib/hr';
-import { Loader2, ArrowLeft, Plus, Minus } from 'lucide-react';
+import { getPayrollRunById, addPayrollEarning, addPayrollDeduction, postPayrollToLedger } from '@/lib/hr';
+import { Loader2, ArrowLeft, Plus, Minus, Landmark, Check, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,6 +15,7 @@ export default function PayrollRunDetailPage() {
   const { id } = useParams();
   const [run, setRun] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPosting, setIsPosting] = useState(false);
   
   // Modals for editing payslips
   const [activeEntry, setActiveEntry] = useState<any>(null);
@@ -33,6 +34,23 @@ export default function PayrollRunDetailPage() {
       console.error(e);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handlePostToLedger = async () => {
+    if (!window.confirm('Are you sure you want to post this payroll to the General Ledger? This will create an immutable financial record.')) return;
+    
+    setIsPosting(true);
+    try {
+      const res = await postPayrollToLedger(id as string);
+      if (res.success) {
+        alert('Payroll successfully posted to General Ledger!');
+        fetchData();
+      }
+    } catch (e: any) {
+      alert(e.message || 'Failed to post payroll to ledger');
+    } finally {
+      setIsPosting(false);
     }
   };
 
@@ -127,7 +145,27 @@ export default function PayrollRunDetailPage() {
               {run.runNumber} • {new Date(run.periodStart).toLocaleDateString()} - {new Date(run.periodEnd).toLocaleDateString()}
             </p>
           </div>
-          <Badge variant="outline" className="ml-auto">{run.status}</Badge>
+          <div className="ml-auto flex items-center gap-3">
+            {run.journalEntryId ? (
+              <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700 border-emerald-500/20 px-3 py-1 flex items-center gap-1.5">
+                <Check className="h-3.5 w-3.5" /> Posted to Ledger
+              </Badge>
+            ) : run.status === 'COMPLETED' ? (
+              <Button 
+                onClick={handlePostToLedger} 
+                disabled={isPosting}
+                className="bg-primary hover:bg-primary/90"
+              >
+                {isPosting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Landmark className="mr-2 h-4 w-4" />}
+                Post to Ledger
+              </Button>
+            ) : (
+              <Badge variant="outline" className="flex items-center gap-1.5">
+                <AlertCircle className="h-3.5 w-3.5" /> Integration Pending
+              </Badge>
+            )}
+            <Badge variant="outline">{run.status}</Badge>
+          </div>
         </div>
 
         {/* Run Summary */}

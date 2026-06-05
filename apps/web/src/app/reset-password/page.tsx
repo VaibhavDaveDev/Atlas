@@ -10,10 +10,11 @@ import { Label } from '@/components/ui/label';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { Logo } from '@/components/common/Logo';
 import { cn } from '@/lib/utils';
-import { resetPassword } from '@/lib/auth';
+import { authClient } from '@/lib/auth-client';
+import { toast } from 'sonner';
 
 interface PasswordStrength {
-  score: number;
+  score: number; // 0–4
   label: string;
   color: string;
 }
@@ -40,7 +41,7 @@ function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const [resetSessionId] = useState(searchParams.get('session') ?? '');
+  const [email] = useState(searchParams.get('email') ?? '');
   const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -62,16 +63,28 @@ function ResetPasswordForm() {
     }
 
     if (strength.score < 4) {
-      setError('Please choose a stronger password (uppercase, lowercase, number, special character).');
+      setError('Please choose a stronger password.');
       return;
     }
 
     setIsLoading(true);
+    const toastId = toast.loading('Resetting your password...');
     try {
-      await resetPassword(resetSessionId, code.toUpperCase().trim(), newPassword);
+      const { data, error } = await authClient.resetPassword({
+        newPassword,
+        token: code.toUpperCase().trim(),
+      });
+
+      if (error) {
+        throw new Error(error.message ?? 'Failed to reset password');
+      }
+
       setSuccess(true);
+      toast.success('Password reset successfully!', { id: toastId });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to reset password. Please try again.');
+      const message = err instanceof Error ? err.message : 'Failed to reset password. Please try again.';
+      setError(message);
+      toast.error(message, { id: toastId });
     } finally {
       setIsLoading(false);
     }

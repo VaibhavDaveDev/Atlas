@@ -95,50 +95,70 @@ docker rm -f atlas-redis
 docker logs atlas-redis
 ```
 
-### Logging & Monitoring (Loki & Grafana)
+### Observability Stack (LGT Stack + Prometheus)
 
-Atlas uses **Grafana Loki** for log aggregation and **Grafana** for visualization. This allows you to view application logs in a centralized dashboard.
+Atlas uses a comprehensive observability stack for logging, metrics, and tracing:
+- **Grafana Loki:** Log aggregation.
+- **Prometheus:** Metrics collection (latency, throughput, active users).
+- **Grafana Tempo:** Distributed tracing (OpenTelemetry).
+- **Grafana:** Centralized visualization for all of the above.
 
-#### 1. Start the Logging Stack
-Run the following command from the root directory to start Loki and Grafana:
+#### 1. Start the Observability Stack
+Run the following command from the root directory:
 
 ```bash
 docker-compose -f docker-compose.logging.yml up -d
 ```
+#### Useful Docker Compose Commands
 
-- **Loki:** Runs on port `3100` (Log aggregator)
-- **Grafana:** Runs on port `3001` (Visualization Dashboard)
-
-#### 2. Configure Environment
-Update your `apps/api/.env` file to enable Loki integration:
-
-```env
-LOKI_ENABLED=true
-LOKI_URL=http://localhost:3100
-```
-
-#### 3. Access Grafana
-- URL: `http://localhost:3001`
-- Default Credentials: `admin` / `admin`
-- **Data Source:** Loki should be automatically configured (or add it manually pointing to `http://loki:3100`).
-
-**Useful Docker Commands for Logging:**
 ```bash
-# List running containers
-docker ps
-
-# Stop the logging stack
+# Stop the stack (without destroying it)
 docker-compose -f docker-compose.logging.yml stop
 
-# Start the logging stack
+# Start a stopped stack
 docker-compose -f docker-compose.logging.yml start
 
-# Remove logging containers and volumes
-docker-compose -f docker-compose.logging.yml down -v
+# Spin down the stack
+docker-compose -f docker-compose.logging.yml down
 
-# Check logs for Loki/Grafana
-docker-compose -f docker-compose.logging.yml logs -f
+# Spin down and WIPE ALL DATA (Use with caution!)
+docker-compose -f docker-compose.logging.yml down -v
 ```
+- **Loki:** Port `3100`
+- **Prometheus:** Port `9090`
+- **Tempo:** Port `3200` (OTLP Ingest on `4317`/`4318`)
+- **Grafana:** Port `3001` (Default: `admin` / `admin`)
+
+#### 2. End-to-End Tracing
+Atlas uses **OpenTelemetry** to trace requests from the Next.js frontend, through the NestJS API, down to the Prisma database queries. Traces are sent to Tempo and can be viewed in Grafana.
+
+#### 3. Metrics
+The API exposes a Prometheus-compatible metrics endpoint at `/api/v1/metrics`. Prometheus is configured to automatically scrape this endpoint.
+
+---
+
+### Authentication & Multi-Tenancy (Better Auth)
+
+Atlas uses **Better Auth** for secure, multi-tenant authentication, SSO, and MFA.
+
+#### 1. Configure Better Auth Environment
+Update `apps/api/.env` and `apps/web/.env`:
+
+```env
+# Better Auth (Server)
+BETTER_AUTH_SECRET=your-32-char-secret
+BETTER_AUTH_URL=http://localhost:3001
+
+# Better Auth (Client)
+NEXT_PUBLIC_API_URL=http://localhost:3001
+```
+
+#### 2. Generate Auth Schema
+If you make changes to the auth models, run:
+```bash
+pnpm --filter @atlas/database build
+```
+This will update the Prisma client with the latest `AuthUser`, `AuthSession`, `AuthOrganization`, and `AuditTrail` models.
 
 ### Gravatar Integration
 

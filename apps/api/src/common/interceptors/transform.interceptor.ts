@@ -26,9 +26,13 @@ export class TransformInterceptor<T> implements NestInterceptor<T, any> {
     const method = request.method;
     const startTime = Date.now();
 
-    // Skip transformation for metrics endpoint (needs raw Prometheus format)
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    if (path === "/metrics" || path.startsWith("/metrics?")) {
+    // Skip transformation for metrics and Better Auth endpoints
+    if (
+      path === "/metrics" || 
+      path.startsWith("/metrics?") || 
+      path.includes("/api/v1/metrics") ||
+      path.includes("/api/v1/auth")
+    ) {
       return next.handle();
     }
 

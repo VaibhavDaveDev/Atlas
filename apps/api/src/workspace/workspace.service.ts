@@ -7,6 +7,7 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../common/services/prisma.service";
 import { EmailQueueService } from "../common/queues/email/email.queue";
+import { BetterAuthService } from "../auth/services/better-auth.service";
 import { randomBytes } from "crypto";
 import config from "../common/config/app.config";
 
@@ -17,6 +18,7 @@ export class WorkspaceService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly emailQueueService: EmailQueueService,
+    private readonly betterAuth: BetterAuthService,
   ) {}
 
   // ─────────────────────────────────────────────
@@ -31,6 +33,11 @@ export class WorkspaceService {
       where: { id: workspaceId },
       include: {
         settings: true,
+        authOrganization: {
+          include: {
+            ssoProviders: true,
+          },
+        },
         _count: {
           select: { members: { where: { isActive: true } } },
         },
@@ -105,6 +112,172 @@ export class WorkspaceService {
   }
 
   /**
+   * List all workspaces across the platform — Platform Owner only
+   */
+  async listAllWorkspaces(): Promise<any[]> {
+    const workspaces = await this.prisma.workspace.findMany({
+      include: {
+        settings: true,
+        _count: {
+          select: { members: { where: { isActive: true } } },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return workspaces.map((ws) => ({
+      id: ws.id,
+      name: ws.name,
+      subdomain: ws.subdomain,
+      status: ws.status,
+      memberCount: ws._count.members,
+      createdAt: ws.createdAt,
+      isAuditEnabled: ws.isAuditEnabled,
+      settings: ws.settings,
+    }));
+  }
+
+  /**
+   * Enable audit logging for a workspace — irreversible
+   */
+  async enableAuditLogging(workspaceId: string): Promise<any> {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { id: true, isAuditEnabled: true },
+    });
+    if (!workspace) throw new NotFoundException("Workspace not found");
+
+    if (workspace.isAuditEnabled) {
+      return this.getWorkspace(workspaceId); // Already enabled
+    }
+
+    await this.prisma.workspace.update({
+      where: { id: workspaceId },
+      data: { isAuditEnabled: true },
+    });
+
+    return this.getWorkspace(workspaceId);
+  }
+
+  /**
+   * Update MFA enforcement policy for a workspace
+   */
+  async updateMfaPolicy(
+    workspaceId: string,
+    mfaEnforced: boolean,
+  ): Promise<any> {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { id: true },
+    });
+    if (!workspace) throw new NotFoundException("Workspace not found");
+
+    await this.prisma.workspace.update({
+      where: { id: workspaceId },
+      data: { mfaEnforced },
+    });
+
+    return this.getWorkspace(workspaceId);
+  }
+
+  // ─────────────────────────────────────────────
+  // SSO PROVIDER MANAGEMENT
+  // ─────────────────────────────────────────────
+
+  /**
+   * List SSO providers for a workspace
+   */
+  async listSsoProviders(workspaceId: string) {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { authOrganizationId: true },
+    });
+
+    if (!workspace?.authOrganizationId) {
+      return [];
+    }
+
+    return this.prisma.authSsoProvider.findMany({
+      where: { organizationId: workspace.authOrganizationId },
+    });
+  }
+
+  /**
+   * Add a new SSO provider to a workspace
+   */
+  async addSsoProvider(
+    workspaceId: string,
+    data: {
+      name: string;
+      issuer: string;
+      domain: string;
+      protocol: "SAML" | "OIDC";
+      metadataUrl?: string;
+    },
+  ) {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { authOrganizationId: true },
+    });
+
+    if (!workspace) throw new NotFoundException("Workspace not found");
+
+    // Ensure AuthOrg exists
+    let orgId = workspace.authOrganizationId;
+    if (!orgId) {
+      const authOrg = await this.prisma.authOrganization.create({
+        data: {
+          name: "Organization for " + workspaceId,
+          slug: "org-" + workspaceId.slice(0, 8),
+        },
+      });
+      await this.prisma.workspace.update({
+        where: { id: workspaceId },
+        data: { authOrganizationId: authOrg.id },
+      });
+      orgId = authOrg.id;
+    }
+
+    return this.prisma.authSsoProvider.create({
+      data: {
+        organizationId: orgId,
+        providerId: data.protocol.toLowerCase() + "-" + Date.now(),
+        issuer: data.issuer,
+        domain: data.domain,
+        oidcConfig:
+          data.protocol === "OIDC"
+            ? JSON.stringify({ issuer: data.issuer })
+            : null,
+        samlConfig:
+          data.protocol === "SAML"
+            ? JSON.stringify({ metadataUrl: data.metadataUrl })
+            : null,
+      },
+    });
+  }
+
+  /**
+   * Remove an SSO provider
+   */
+  async removeSsoProvider(workspaceId: string, providerId: string) {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { authOrganizationId: true },
+    });
+
+    if (!workspace?.authOrganizationId) {
+      throw new NotFoundException("SSO provider not found for this workspace");
+    }
+
+    return this.prisma.authSsoProvider.deleteMany({
+      where: {
+        id: providerId,
+        organizationId: workspace.authOrganizationId,
+      },
+    });
+  }
+
+  /**
    * Setup a new workspace (used by new users or when creating a secondary workspace)
    */
   async setup(
@@ -125,16 +298,25 @@ export class WorkspaceService {
     }
 
     return await this.prisma.$transaction(async (tx) => {
-      // 1. Create Workspace
+      // 1. Create Better Auth Organization first (to get ID)
+      const authOrg = await tx.authOrganization.create({
+        data: {
+          name: data.name,
+          slug: data.subdomain,
+        },
+      });
+
+      // 2. Create Workspace and link to AuthOrg
       const workspace = await tx.workspace.create({
         data: {
           name: data.name,
           subdomain: data.subdomain,
           status: "ACTIVE",
+          authOrganizationId: authOrg.id,
         },
       });
 
-      // 2. Create Default Roles for this workspace
+      // 3. Create Default Roles for this workspace
       const ownerRole = await tx.role.create({
         data: {
           workspaceId: workspace.id,
@@ -159,7 +341,7 @@ export class WorkspaceService {
         },
       });
 
-      // 3. Add Creator as Owner
+      // 4. Add Creator as Owner to Workspace
       await tx.workspaceMember.create({
         data: {
           workspaceId: workspace.id,
@@ -168,7 +350,16 @@ export class WorkspaceService {
         },
       });
 
-      // 4. Create Default Settings
+      // 5. Add Creator as Owner to Better Auth Organization
+      await tx.authMember.create({
+        data: {
+          organizationId: authOrg.id,
+          userId: userId,
+          role: "owner",
+        },
+      });
+
+      // 6. Create Default Settings
       await tx.workspaceSettings.create({
         data: {
           workspaceId: workspace.id,
@@ -201,9 +392,12 @@ export class WorkspaceService {
     return members.map((m) => ({
       id: m.id,
       userId: m.userId,
-      email: m.user?.email,
-      username: m.user?.username,
-      provider: m.user?.provider,
+      user: {
+        id: m.userId,
+        email: m.user?.email,
+        username: m.user?.username,
+        provider: m.user?.provider,
+      },
       role: { id: m.role.id, name: m.role.name },
       department: m.department,
       joinedAt: m.joinedAt,
@@ -369,16 +563,6 @@ export class WorkspaceService {
     });
     const inviterName = inviter?.username || inviter?.email || "A team member";
 
-    // Generate a secure token
-    const token = randomBytes(32).toString("hex");
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
-
-    // Check if there is already a pending invite, update it if so
-    const existingInvite = await this.prisma.workspaceInvite.findFirst({
-      where: { workspaceId, email },
-    });
-
     // Find role id
     const roleRecord = await this.prisma.role.findUnique({
       where: { workspaceId_name: { workspaceId, name: role } },
@@ -388,12 +572,32 @@ export class WorkspaceService {
       throw new NotFoundException(`Role ${role} not found in this workspace`);
     }
 
+    // Generate a magic link via BetterAuth. The callbackURL embeds the invite
+    // details — after magic-link authentication the frontend reads the query
+    // params and calls the acceptInvite API. Falls back to a random token if
+    // the magic link generation fails (e.g. auth service unavailable).
+    const callbackURL = `${config.web_url}/accept-invite?workspaceId=${workspaceId}&email=${encodeURIComponent(email)}`;
+    const magicLinkUrl =
+      (await this.betterAuth.createMagicLink(email, callbackURL)) ??
+      `${config.web_url}/accept-invite?token=${randomBytes(32).toString("hex")}`;
+
+    // Use the last path segment (token) as the stored invite token for tracking
+    const inviteToken = magicLinkUrl.split("token=").pop() ?? randomBytes(16).toString("hex");
+
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
+
+    // Check if there is already a pending invite, update it if so
+    const existingInvite = await this.prisma.workspaceInvite.findFirst({
+      where: { workspaceId, email },
+    });
+
     let invite;
     if (existingInvite) {
       invite = await this.prisma.workspaceInvite.update({
         where: { id: existingInvite.id },
         data: {
-          token,
+          token: inviteToken,
           expiresAt,
           status: "PENDING",
           roleId: roleRecord.id,
@@ -406,7 +610,7 @@ export class WorkspaceService {
           workspaceId,
           email,
           roleId: roleRecord.id,
-          token,
+          token: inviteToken,
           status: "PENDING",
           invitedById,
           expiresAt,
@@ -414,14 +618,13 @@ export class WorkspaceService {
       });
     }
 
-    // Send invite email (non-blocking — log on failure but don't throw)
+    // Send magic-link invite email (non-blocking)
     try {
       await this.emailQueueService.sendWorkspaceInviteEmail(
         email,
         inviterName,
         workspace.name,
-        token,
-        config.web_url,
+        magicLinkUrl,
       );
     } catch (error) {
       this.logger.error(
@@ -578,5 +781,45 @@ export class WorkspaceService {
         role: true,
       },
     });
+  }
+
+  /**
+   * List all active sessions for members of a workspace
+   */
+  async listWorkspaceSessions(workspaceId: string) {
+    const sessions = await this.prisma.authSession.findMany({
+      where: {
+        user: {
+          workspaces: {
+            some: {
+              workspaceId,
+              isActive: true,
+            },
+          },
+        },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            username: true,
+            image: true,
+          },
+        },
+      },
+      orderBy: { updatedAt: "desc" },
+    });
+
+    return sessions.map((s) => ({
+      id: s.id,
+      token: s.token,
+      expiresAt: s.expiresAt,
+      ipAddress: s.ipAddress,
+      userAgent: s.userAgent,
+      createdAt: s.createdAt,
+      updatedAt: s.updatedAt,
+      user: s.user,
+    }));
   }
 }

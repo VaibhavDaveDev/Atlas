@@ -8,27 +8,38 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { Logo } from '@/components/common/Logo';
-import { forgotPassword } from '@/lib/auth';
+import { authClient } from '@/lib/auth-client';
+import { toast } from 'sonner';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [resetSessionId, setResetSessionId] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
+    const toastId = toast.loading('Sending reset code...');
     try {
-      const result = await forgotPassword(email);
-      if (result.data?.resetSessionId) {
-        setResetSessionId(result.data.resetSessionId);
+      const { data, error } = await authClient.emailOTP.sendVerificationOtp(
+        {
+          email,
+          type: 'forget-password',
+        }
+      );
+
+      if (error) {
+        throw new Error(error.message ?? 'Failed to send reset email');
       }
+
       setSuccess(true);
+      toast.success('Reset code sent!', { id: toastId });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+      setError(message);
+      toast.error(message, { id: toastId });
     } finally {
       setIsLoading(false);
     }
@@ -75,7 +86,7 @@ export default function ForgotPasswordPage() {
                     className="w-full bg-[#111111] hover:bg-[#222222] text-[#ffffff] dark:bg-[#f4f4f5] dark:hover:bg-[#e4e4e7] dark:text-[#09090b] font-semibold transition-all rounded-md" 
                     asChild
                   >
-                    <Link href={`/reset-password?session=${encodeURIComponent(resetSessionId)}`}>
+                    <Link href={`/reset-password?email=${encodeURIComponent(email)}`}>
                       Enter reset code
                     </Link>
                   </Button>

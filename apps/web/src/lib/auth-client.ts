@@ -1,12 +1,18 @@
-import { createAuthClient } from "better-auth/react";
+import { createAuthClient } from 'better-auth/react';
+import { organizationClient } from 'better-auth/client/plugins';
+import { twoFactorClient } from 'better-auth/client/plugins';
+import { ssoClient } from '@better-auth/sso/client';
+import { magicLinkClient } from 'better-auth/client/plugins';
+import { emailOTPClient } from 'better-auth/client/plugins';
 
-const client = createAuthClient({
-    baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001",
-    // Base path MUST match the backend config
-    basePath: "/api/v1/auth",
+export const authClient = createAuthClient({
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
+  basePath: '/api/v1/auth',
+  plugins: [
+    organizationClient(),
+    twoFactorClient(),
+    ssoClient(),
+    magicLinkClient(),
+    emailOTPClient(),
+  ],
 });
-
-// @ts-ignore - Supress inferred type error caused by pnpm strict typing
-export const authClient: any = client;
-
-export const { signIn, signUp, useSession, signOut } = client;

@@ -27,7 +27,7 @@ import {
   DialogFooter 
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { tokenStorage } from '@/lib/auth';
+import { tokenStorage, API_BASE } from '@/lib/auth';
 import { workspaceApi } from '@/lib/workspace';
 import { cn } from '@/lib/utils';
 
@@ -64,7 +64,7 @@ export default function WorkspaceSettingsPage() {
       setRoles(rolesData);
       
       // Default to USER role if it exists
-      if (rolesData.some(r => r.name === 'USER')) {
+      if (rolesData.some((r: any) => r.name === 'USER')) {
         setRole('USER');
       } else if (rolesData.length > 0) {
         setRole(rolesData[0].name);
@@ -115,8 +115,9 @@ export default function WorkspaceSettingsPage() {
     setSuccess(null);
 
     try {
+      if (!workspace?.workspaceId) return;
       // Check if user is already a member
-      const checkRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/workspaces/${workspace.workspaceId}/members/check?email=${email}`, {
+      const checkRes = await fetch(`${API_BASE}/workspaces/${workspace.workspaceId}/members/check?email=${email}`, {
         headers: {
           Authorization: `Bearer ${tokenStorage.getAccessToken()}`,
         },
@@ -137,9 +138,10 @@ export default function WorkspaceSettingsPage() {
   };
 
   const sendInvite = async () => {
+    if (!workspace?.workspaceId) return;
     setIsLoading(true);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/workspaces/${workspace.workspaceId}/invites`, {
+      const response = await fetch(`${API_BASE}/workspaces/${workspace.workspaceId}/invites`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

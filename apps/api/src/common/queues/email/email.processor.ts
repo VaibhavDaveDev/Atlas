@@ -42,6 +42,12 @@ export class EmailProcessor extends WorkerHost {
         case "workspace-invite":
           await this.handleWorkspaceInviteEmail(job);
           break;
+        case "otp":
+          await this.handleOtpEmail(job);
+          break;
+        case "magic-link":
+          await this.handleMagicLinkEmail(job);
+          break;
         default:
           this.logger.warn(
             `Unknown email job type: ${String((job.data as { type?: string }).type || "undefined")}`,
@@ -64,23 +70,15 @@ export class EmailProcessor extends WorkerHost {
     const { email, username, verificationCode, authId } = data;
 
     try {
-      // Send the email
       await this.emailService.sendVerificationEmail(
         email,
         username,
         verificationCode,
       );
 
-      // Update email history status to 'sent'
       await this.prismaService.emailHistory.updateMany({
-        where: {
-          authId,
-          emailType: "verification",
-          emailStatus: "pending",
-        },
-        data: {
-          emailStatus: "sent",
-        },
+        where: { authId, emailType: "verification", emailStatus: "pending" },
+        data: { emailStatus: "sent" },
       });
 
       this.logger.info(`Verification email sent successfully to ${email}`, {
@@ -95,21 +93,15 @@ export class EmailProcessor extends WorkerHost {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
       });
-      // Update email history status to 'failed'
       await this.prismaService.emailHistory.updateMany({
-        where: {
-          authId,
-          emailType: "verification",
-          emailStatus: "pending",
-        },
+        where: { authId, emailType: "verification", emailStatus: "pending" },
         data: {
           emailStatus: "failed",
           errorMessage:
             error instanceof Error ? error.message : "Failed to send email",
         },
       });
-
-      throw error; // Re-throw to trigger retry
+      throw error;
     }
   }
 
@@ -130,8 +122,7 @@ export class EmailProcessor extends WorkerHost {
         email,
         error: error instanceof Error ? error.message : String(error),
       });
-      // Don't throw for welcome emails - they're non-critical
-      // Just log the error and mark job as complete
+      // Non-critical — don't re-throw
     }
   }
 
@@ -140,11 +131,7 @@ export class EmailProcessor extends WorkerHost {
     const { email, username, resetCode } = data;
 
     try {
-      await this.emailService.sendPasswordResetEmail(
-        email,
-        username,
-        resetCode,
-      );
+      await this.emailService.sendPasswordResetEmail(email, username, resetCode);
       this.logger.info(`Password reset email sent successfully to ${email}`, {
         context: "EmailProcessor",
         jobId: job.id,
@@ -157,15 +144,12 @@ export class EmailProcessor extends WorkerHost {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
       });
-      throw error; // Re-throw to trigger retry
+      throw error;
     }
   }
 
   private async handleSecurityNotification(job: Job<EmailJob>): Promise<void> {
-    const data = job.data as Extract<
-      EmailJob,
-      { type: "security-notification" }
-    >;
+    const data = job.data as Extract<EmailJob, { type: "security-notification" }>;
     const { email, subject, message } = data;
 
     try {
@@ -180,37 +164,31 @@ export class EmailProcessor extends WorkerHost {
           <p style="font-size: 12px; color: #666;">This is an automated security notification from Atlas ERP. If you did not perform this action, please contact support immediately.</p>
         </div>`,
       });
-      this.logger.info(
-        `Security notification email sent successfully to ${email}`,
-        {
-          context: "EmailProcessor",
-          jobId: job.id,
-          email,
-        },
-      );
+      this.logger.info(`Security notification email sent successfully to ${email}`, {
+        context: "EmailProcessor",
+        jobId: job.id,
+        email,
+      });
     } catch (error) {
-      this.logger.error(
-        `Failed to send security notification email to ${email}`,
-        {
-          context: "EmailProcessor",
-          email,
-          error: error instanceof Error ? error.message : String(error),
-        },
-      );
+      this.logger.error(`Failed to send security notification email to ${email}`, {
+        context: "EmailProcessor",
+        email,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      // Non-critical — don't re-throw
     }
   }
 
   private async handleWorkspaceInviteEmail(job: Job<EmailJob>): Promise<void> {
     const data = job.data as Extract<EmailJob, { type: "workspace-invite" }>;
-    const { email, inviterName, workspaceName, inviteToken, webAppUrl } = data;
+    const { email, inviterName, workspaceName, magicLinkUrl } = data;
 
     try {
       await this.emailService.sendWorkspaceInviteEmail(
         email,
         inviterName,
         workspaceName,
-        inviteToken,
-        webAppUrl,
+        magicLinkUrl,
       );
       this.logger.info(`Workspace invite email sent successfully to ${email}`, {
         context: "EmailProcessor",
@@ -224,7 +202,58 @@ export class EmailProcessor extends WorkerHost {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
       });
-      throw error; // Re-throw to trigger retry
+      throw error;
+    }
+  }
+
+  private async handleOtpEmail(job: Job<EmailJob>): Promise<void> {
+    const data = job.data as Extract<EmailJob, { type: "otp" }>;
+    const { email, otp, otpType } = data;
+
+    try {
+      await this.emailService.sendOtpEmail(email, otp, otpType);
+      this.logger.info(`OTP email (${otpType}) sent successfully to ${email}`, {
+        context: "EmailProcessor",
+        jobId: job.id,
+        email,
+        otpType,
+      });
+    } catch (error) {
+      this.logger.error(`Failed to send OTP email to ${email}`, {
+        context: "EmailProcessor",
+        email,
+        otpType,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      throw error;
+    }
+  }
+
+  private async handleMagicLinkEmail(job: Job<EmailJob>): Promise<void> {
+    const data = job.data as Extract<EmailJob, { type: "magic-link" }>;
+    const { email, magicLinkUrl, inviterName, workspaceName } = data;
+
+    try {
+      await this.emailService.sendMagicLinkEmail(
+        email,
+        magicLinkUrl,
+        inviterName,
+        workspaceName,
+      );
+      this.logger.info(`Magic link email sent successfully to ${email}`, {
+        context: "EmailProcessor",
+        jobId: job.id,
+        email,
+      });
+    } catch (error) {
+      this.logger.error(`Failed to send magic link email to ${email}`, {
+        context: "EmailProcessor",
+        email,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      throw error;
     }
   }
 }

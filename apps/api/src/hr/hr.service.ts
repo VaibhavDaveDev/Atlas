@@ -5,10 +5,14 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../common/services/prisma.service";
 import { evaluateFormula } from "@atlas/utils";
+import { NotificationsService } from "../notifications/notifications.service";
 
 @Injectable()
 export class HrService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   // ====================
   // DEPARTMENTS
@@ -86,8 +90,8 @@ export class HrService {
   // ====================
   // EMPLOYEES
   // ====================
-  async getEmployees(workspaceId: string): Promise<any> {
-    return this.prisma.employee.findMany({
+  async getEmployees(workspaceId: string, requestingUser?: any): Promise<any> {
+    const employees = await this.prisma.employee.findMany({
       where: { workspaceId, deletedAt: null },
       include: {
         department: { select: { id: true, name: true } },
@@ -95,6 +99,28 @@ export class HrService {
         user: { select: { email: true, username: true } },
       },
     });
+
+    // Sanitize for non-admins
+    const isAdmin =
+      requestingUser?.globalRole === "SUPERADMIN" ||
+      requestingUser?.workspaceRole === "OWNER" ||
+      requestingUser?.workspaceRole === "ADMIN";
+
+    if (!isAdmin) {
+      return employees.map((emp) => {
+        const {
+          baseSalary,
+          panNumber,
+          pfAccount,
+          esiNumber,
+          aadhaarNumber,
+          ...sanitized
+        } = emp as any;
+        return sanitized;
+      });
+    }
+
+    return employees;
   }
 
   async createEmployee(workspaceId: string, data: any): Promise<any> {
@@ -376,6 +402,7 @@ export class HrService {
   ): Promise<any> {
     const application = await this.prisma.leaveApplication.findUnique({
       where: { id, workspaceId },
+      include: { employee: { select: { userId: true } } },
     });
 
     if (!application)
@@ -390,6 +417,22 @@ export class HrService {
         approverRemarks: remarks,
       },
     });
+
+    // Notify the employee
+    if (application.employee?.userId) {
+      await this.notifications.create({
+        workspaceId,
+        userId: application.employee.userId,
+        title: `Leave Application ${status}`,
+        message: `Your leave application has been ${status.toLowerCase()}.`,
+        type:
+          status === "APPROVED"
+            ? "SUCCESS"
+            : status === "REJECTED"
+              ? "ERROR"
+              : "INFO",
+      });
+    }
 
     // If approved, create a negative ledger entry
     if (status === "APPROVED") {
@@ -897,6 +940,7 @@ export class HrService {
         formula: data.formula,
         isTaxable: data.isTaxable ?? false,
         dependsOnDays: data.dependsOnDays ?? true,
+        accountId: data.accountId,
       },
     });
   }
@@ -1761,6 +1805,35 @@ export class HrService {
     });
   }
 
+  async getEmployeeAllTasks(workspaceId: string, employeeId: string): Promise<any> {
+    const [onboarding, offboarding, projectTasks] = await Promise.all([
+      this.prisma.employeeOnboardingTask.findMany({
+        where: { workspaceId, employeeId },
+      }),
+      this.prisma.employeeOffboardingTask.findMany({
+        where: { workspaceId, employeeId },
+      }),
+      this.prisma.taskAssignment.findMany({
+        where: { employeeId },
+        include: {
+          task: {
+            include: { project: true },
+          },
+        },
+      }),
+    ]);
+
+    return {
+      onboarding,
+      offboarding,
+      projectTasks: projectTasks.map((ta) => ({
+        ...ta.task,
+        allocatedHours: ta.allocatedHours,
+        workedHours: ta.workedHours,
+      })),
+    };
+  }
+
   // ====================
   // PERFORMANCE: APPRAISALS
   // ====================
@@ -1777,6 +1850,50 @@ export class HrService {
       },
       include: { employee: true, appraisalCycle: true },
     });
+  }
+
+  async batchInitiateAppraisals(workspaceId: string, data: any): Promise<any> {
+    const { appraisalCycleId, departmentId } = data;
+
+    // Get employees to initiate for
+    const employees = await this.prisma.employee.findMany({
+      where: {
+        workspaceId,
+        status: "ACTIVE",
+        deletedAt: null,
+        ...(departmentId && { departmentId }),
+      },
+    });
+
+    const creations = employees.map((emp) => ({
+      workspaceId,
+      employeeId: emp.id,
+      appraisalCycleId,
+      status: "DRAFT",
+    }));
+
+    // Use createMany to avoid duplicates if possible, or skip existing
+    // Appraisal model has no unique constraint on (employeeId, appraisalCycleId) in schema
+    // so we should check manually to avoid double initiation
+    const existing = await this.prisma.appraisal.findMany({
+      where: {
+        workspaceId,
+        appraisalCycleId,
+        employeeId: { in: employees.map((e) => e.id) },
+      },
+      select: { employeeId: true },
+    });
+
+    const existingIds = new Set(existing.map((e) => e.employeeId));
+    const toCreate = creations.filter((c) => !existingIds.has(c.employeeId));
+
+    if (toCreate.length > 0) {
+      await this.prisma.appraisal.createMany({
+        data: toCreate,
+      });
+    }
+
+    return { initiated: toCreate.length, skipped: existingIds.size };
   }
 
   async createAppraisal(workspaceId: string, data: any): Promise<any> {
@@ -2013,6 +2130,13 @@ export class HrService {
     ticketId: string,
     data: any,
   ): Promise<any> {
+    const ticket = await this.prisma.helpdeskTicket.findUnique({
+      where: { id: ticketId, workspaceId },
+      include: { raisedBy: { select: { userId: true } } },
+    });
+
+    if (!ticket) throw new NotFoundException("Ticket not found");
+
     const updateData: any = {};
     if (data.status) updateData.status = data.status;
     if (data.priority) updateData.priority = data.priority;
@@ -2022,10 +2146,23 @@ export class HrService {
       updateData.resolvedAt = new Date();
     }
 
-    return this.prisma.helpdeskTicket.update({
+    const updated = await this.prisma.helpdeskTicket.update({
       where: { id: ticketId, workspaceId },
       data: updateData,
     });
+
+    // Notify the user who raised the ticket
+    if (ticket.raisedBy?.userId) {
+      await this.notifications.create({
+        workspaceId,
+        userId: ticket.raisedBy.userId,
+        title: "Ticket Updated",
+        message: `Your helpdesk ticket status is now: ${data.status || ticket.status}`,
+        type: "INFO",
+      });
+    }
+
+    return updated;
   }
 
   async addAdminTicketComment(
@@ -2073,6 +2210,33 @@ export class HrService {
         createdBy: userId,
       },
     });
+
+    // Send notification to the creator
+    await this.notifications.create({
+      workspaceId,
+      userId,
+      title: "Event Created",
+      message: `You have successfully created the event: ${event.title}`,
+      type: "SUCCESS",
+    });
+
+    // Notify all users if it's a public event
+    if (event.isPublic) {
+      const members = await this.prisma.workspaceMember.findMany({
+        where: { workspaceId, isActive: true, userId: { not: userId } },
+        select: { userId: true },
+      });
+
+      if (members.length > 0) {
+        await this.notifications.notifyMany({
+          workspaceId,
+          userIds: members.map((m) => m.userId),
+          title: "New Company Event",
+          message: `A new event "${event.title}" has been scheduled.`,
+          type: "INFO",
+        });
+      }
+    }
 
     return event;
   }

@@ -53,6 +53,18 @@ export class PaymentsController {
     return this.paymentsService.findAll(workspaceId);
   }
 
+  @Get(":id")
+  @RequirePermission({
+    resource: "finance_payments",
+    action: "read",
+    scope: "all",
+  })
+  @ApiOperation({ summary: "Get payment by ID" })
+  async findOne(@Param("id") id: string, @Req() req: Request): Promise<any> {
+    const workspaceId = (req as any).user.workspaceId;
+    return this.paymentsService.findOne(workspaceId, id);
+  }
+
   @Post(":id/reconcile")
   @RequirePermission({
     resource: "finance_payments",

@@ -1,40 +1,62 @@
 # Atlas ERP - Developer Documentation
 
-## Auth Module
+## Auth Module (Powered by Better Auth)
 
 ### Overview
-The Auth module provides complete authentication and authorization functionality with workspace (multi-tenancy) support. It includes JWT-based authentication with refresh token rotation, email verification, rate limiting, and account lockout protection.
+The Auth module has been upgraded to use **Better Auth**, providing enterprise-grade authentication, multi-tenancy (Organizations), SSO, and MFA. It replaces the legacy manual JWT implementation with a more robust and scalable plugin-based architecture.
+
+### Key Features
+- **Multi-Tenancy:** Strict isolation between organizations using the `organization` plugin.
+- **SSO Integration:** Support for OIDC and SAML 2.0 (Azure AD, Google Workspace, Okta).
+- **MFA (Two-Factor):** Built-in support for TOTP and backup codes.
+- **Session Management:** Centralized control over active sessions with force-logout capabilities.
+- **Role-Based Access Control (RBAC):** Combined global roles (SuperAdmin) and organization-specific roles.
 
 ### Architecture
 
 #### Authentication Flow
-1. **Registration** → User creates account → Email verification sent
-2. **Email Verification** → User verifies email with 6-digit code
-3. **Login** → User logs in → Receives JWT tokens + workspace list
-4. **Workspace Selection** → User selects workspace → Receives new JWT with workspace context
-5. **Protected Routes** → JWT validated → Workspace membership checked → Permission verified
+1. **Login/Register:** Handled via `@better-auth/react` client or directly via NestJS `BetterAuthService`.
+2. **Organization Context:** Users select an active organization; sessions are scoped to that organization.
+3. **Audit Logging:** Every mutation (POST, PUT, PATCH, DELETE) is automatically captured by the global `AuditInterceptor` and stored in the immutable `AuditTrail`.
 
-#### JWT Token Structure
+### Guards & Decorators
 
-**Access Token** (Short-lived: 1 hour)
+#### 1. ProjectRoleGuard
+Specialized guard for project-specific permissions. Bypasses checks for Workspace Admins/Owners.
+
+**Usage:**
 ```typescript
-{
-  userId: string;
-  role: GlobalRole; // SUPERADMIN, ADMIN, USER
-  tokenVersion: number; // For immediate revocation
-  workspaceId?: string; // Set after workspace selection
-  workspaceRole?: string; // OWNER, ADMIN, MANAGER, USER, VIEWER
-  department?: string | null;
-}
+@UseGuards(AuthGuard, WorkspaceGuard, ProjectRoleGuard)
+@RequireProjectRole('LEAD', 'MANAGER')
+@Get(':projectId/reports')
+async getProjectReports() { ... }
 ```
 
-**Refresh Token** (Long-lived: 7 days)
-```typescript
-{
-  userId: string;
-  jti: string; // Unique token ID for revocation
-}
-```
+#### 2. Audit Logging
+Audit logging is controlled by the `isAuditEnabled` flag on the Workspace. This flag is **irreversible** once enabled to ensure compliance integrity.
+
+---
+
+## Observability Stack (LGT Stack)
+
+Atlas uses the **Loki-Grafana-Tempo (LGT)** stack along with **Prometheus** for full-system visibility.
+
+### 1. Tracing (Grafana Tempo)
+End-to-end tracing is implemented using **OpenTelemetry (OTEL)**.
+- **Frontend:** Instrumentation in Next.js (`apps/web/src/instrumentation.ts`) traces browser requests.
+- **Backend:** Instrumentation in NestJS (`apps/api/src/tracer.ts`) traces API logic, service calls, and Prisma DB queries.
+
+### 2. Metrics (Prometheus)
+The NestJS API exposes metrics at `/api/v1/metrics` using `prom-client`.
+- **Default Metrics:** CPU, Memory, GC.
+- **HTTP Metrics:** Request latency (Histogram), error rates (Counter).
+- **Business Metrics:** Active users, organization counts.
+
+### 3. Logs (Grafana Loki)
+NestJS uses **Winston** with a Loki transport to stream structured JSON logs directly to Loki.
+- **Trace Correlation:** Logs are automatically tagged with `trace_id` for seamless jumping from logs to traces in Grafana.
+
+---
 
 ### API Endpoints
 

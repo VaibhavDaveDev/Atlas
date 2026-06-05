@@ -130,7 +130,7 @@ describe("PaymentsService", () => {
     const jeCall = mockJournalsService.create.mock.calls.find(
       (call) => call[2].entryNumber === "JE-PAY-PAY-GAIN",
     );
-    const lines = jeCall[2].lines;
+    const lines = jeCall![2].lines;
 
     // Bank: 100 * 1.1 = 110 Debit
     expect(lines.find((l) => l.accountId === "bank-acc-1").debit).toBeCloseTo(
@@ -174,7 +174,7 @@ describe("PaymentsService", () => {
     const jeCall = mockJournalsService.create.mock.calls.find(
       (call) => call[2].entryNumber === "JE-PAY-PAY-LOSS",
     );
-    const lines = jeCall[2].lines;
+    const lines = jeCall![2].lines;
 
     // Bank: 100 * 0.9 = 90 Debit
     expect(lines.find((l) => l.accountId === "bank-acc-1").debit).toBeCloseTo(

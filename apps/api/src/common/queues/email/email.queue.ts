@@ -39,8 +39,23 @@ export interface WorkspaceInviteEmailJob {
   email: string;
   inviterName: string;
   workspaceName: string;
-  inviteToken: string;
-  webAppUrl: string;
+  /** BetterAuth-generated magic link URL (replaces raw token) */
+  magicLinkUrl: string;
+}
+
+export interface OtpEmailJob {
+  type: "otp";
+  email: string;
+  otp: string;
+  otpType: "sign-in" | "email-verification" | "forget-password";
+}
+
+export interface MagicLinkEmailJob {
+  type: "magic-link";
+  email: string;
+  magicLinkUrl: string;
+  inviterName?: string;
+  workspaceName?: string;
 }
 
 export type EmailJob =
@@ -48,7 +63,16 @@ export type EmailJob =
   | WelcomeEmailJob
   | PasswordResetEmailJob
   | SecurityNotificationJob
-  | WorkspaceInviteEmailJob;
+  | WorkspaceInviteEmailJob
+  | OtpEmailJob
+  | MagicLinkEmailJob;
+
+const DEFAULT_JOB_OPTIONS = {
+  attempts: 3,
+  backoff: { type: "exponential", delay: 2000 },
+  removeOnComplete: 100,
+  removeOnFail: 500,
+} as const;
 
 @Injectable()
 export class EmailQueueService {
@@ -62,19 +86,8 @@ export class EmailQueueService {
   ): Promise<void> {
     await this.emailQueue.add(
       "send-verification",
-      {
-        type: "verification",
-        email,
-        username,
-        verificationCode,
-        authId,
-      },
-      {
-        attempts: 3,
-        backoff: { type: "exponential", delay: 2000 },
-        removeOnComplete: 100,
-        removeOnFail: 500,
-      },
+      { type: "verification", email, username, verificationCode, authId },
+      DEFAULT_JOB_OPTIONS,
     );
   }
 
@@ -85,18 +98,8 @@ export class EmailQueueService {
   ): Promise<void> {
     await this.emailQueue.add(
       "send-welcome",
-      {
-        type: "welcome",
-        email,
-        username,
-        authId,
-      },
-      {
-        attempts: 3,
-        backoff: { type: "exponential", delay: 2000 },
-        removeOnComplete: 100,
-        removeOnFail: 500,
-      },
+      { type: "welcome", email, username, authId },
+      DEFAULT_JOB_OPTIONS,
     );
   }
 
@@ -108,19 +111,8 @@ export class EmailQueueService {
   ): Promise<void> {
     await this.emailQueue.add(
       "send-password-reset",
-      {
-        type: "password-reset",
-        email,
-        username,
-        resetCode,
-        authId,
-      },
-      {
-        attempts: 3,
-        backoff: { type: "exponential", delay: 2000 },
-        removeOnComplete: 100,
-        removeOnFail: 500,
-      },
+      { type: "password-reset", email, username, resetCode, authId },
+      DEFAULT_JOB_OPTIONS,
     );
   }
 
@@ -133,20 +125,8 @@ export class EmailQueueService {
   ): Promise<void> {
     await this.emailQueue.add(
       "send-security-notification",
-      {
-        type: "security-notification",
-        email,
-        username,
-        subject,
-        message,
-        authId,
-      },
-      {
-        attempts: 3,
-        backoff: { type: "exponential", delay: 2000 },
-        removeOnComplete: 100,
-        removeOnFail: 500,
-      },
+      { type: "security-notification", email, username, subject, message, authId },
+      DEFAULT_JOB_OPTIONS,
     );
   }
 
@@ -154,25 +134,43 @@ export class EmailQueueService {
     email: string,
     inviterName: string,
     workspaceName: string,
-    inviteToken: string,
-    webAppUrl: string,
+    magicLinkUrl: string,
   ): Promise<void> {
     await this.emailQueue.add(
       "send-workspace-invite",
-      {
-        type: "workspace-invite",
-        email,
-        inviterName,
-        workspaceName,
-        inviteToken,
-        webAppUrl,
-      },
-      {
-        attempts: 3,
-        backoff: { type: "exponential", delay: 2000 },
-        removeOnComplete: 100,
-        removeOnFail: 500,
-      },
+      { type: "workspace-invite", email, inviterName, workspaceName, magicLinkUrl },
+      DEFAULT_JOB_OPTIONS,
+    );
+  }
+
+  /**
+   * Send an OTP code email (used by BetterAuth emailOTP plugin callback)
+   */
+  async sendOtpEmail(
+    email: string,
+    otp: string,
+    otpType: "sign-in" | "email-verification" | "forget-password",
+  ): Promise<void> {
+    await this.emailQueue.add(
+      "send-otp",
+      { type: "otp", email, otp, otpType },
+      DEFAULT_JOB_OPTIONS,
+    );
+  }
+
+  /**
+   * Send a magic link email (used by BetterAuth magicLink plugin callback)
+   */
+  async sendMagicLinkEmail(
+    email: string,
+    magicLinkUrl: string,
+    inviterName?: string,
+    workspaceName?: string,
+  ): Promise<void> {
+    await this.emailQueue.add(
+      "send-magic-link",
+      { type: "magic-link", email, magicLinkUrl, inviterName, workspaceName },
+      DEFAULT_JOB_OPTIONS,
     );
   }
 }

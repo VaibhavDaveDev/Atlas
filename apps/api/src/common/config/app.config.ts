@@ -6,17 +6,18 @@ interface AppConfig {
   redis_cache_key_prefix: string;
   node_env: string;
   port: number;
-  email_host: string;
-  email_port: number;
-  email_user: string;
-  email_pass: string;
+  // Brevo transactional email
+  brevo_api_key: string;
   email_from: string;
+  email_from_name: string;
   // Google OAuth
   google_client_id: string;
   google_client_secret: string;
   google_redirect_uri: string;
   web_url: string;
 }
+
+const isProd = process.env.NODE_ENV === "production";
 
 const config: AppConfig = {
   jwt_access_secret:
@@ -26,11 +27,10 @@ const config: AppConfig = {
   redis_cache_key_prefix: process.env.REDIS_CACHE_KEY_PREFIX || "app",
   node_env: process.env.NODE_ENV || "development",
   port: parseInt(process.env.PORT || "5000", 10),
-  email_host: process.env.EMAIL_HOST || "smtp.gmail.com",
-  email_port: parseInt(process.env.EMAIL_PORT || "587", 10),
-  email_user: process.env.EMAIL_USER || "",
-  email_pass: process.env.EMAIL_PASS || "",
-  email_from: process.env.EMAIL_FROM || process.env.EMAIL_USER || "",
+  // Brevo — replaces Mailtrap/nodemailer SMTP
+  brevo_api_key: process.env.BREVO_API_KEY || "",
+  email_from: process.env.EMAIL_FROM || "noreply@atlas-erp.com",
+  email_from_name: process.env.EMAIL_FROM_NAME || "Atlas ERP",
   // Google OAuth
   google_client_id: process.env.GOOGLE_CLIENT_ID || "",
   google_client_secret: process.env.GOOGLE_CLIENT_SECRET || "",

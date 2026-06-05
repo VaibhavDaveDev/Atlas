@@ -7,7 +7,7 @@ export class ReportsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getBalanceSheet(workspaceId: string): Promise<any> {
-    const accounts = await this.prisma.account.findMany({
+    const accounts = await this.prisma.financialAccount.findMany({
       where: { workspaceId, isActive: true },
     });
 
@@ -137,7 +137,7 @@ export class ReportsService {
       recentJournals,
       treasuryAccounts,
     ] = await Promise.all([
-      this.prisma.account.count({ where: { workspaceId } }),
+      this.prisma.financialAccount.count({ where: { workspaceId } }),
       this.prisma.journalEntryLine.aggregate({
         where: {
           journalEntry: {
@@ -176,7 +176,7 @@ export class ReportsService {
         orderBy: { postingDate: "desc" },
         take: 5,
       }),
-      this.prisma.account.aggregate({
+      this.prisma.financialAccount.aggregate({
         where: {
           workspaceId,
           isActive: true,

@@ -5,15 +5,10 @@ import { Bell, Search, LogOut, User, ChevronDown, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/AuthContext';
+import { NotificationCenter } from '../notifications/NotificationCenter';
+import { GlobalSearch } from './GlobalSearch';
 
 export function Topbar({ setMobileOpen }: { setMobileOpen?: React.Dispatch<React.SetStateAction<boolean>> }) {
   const { user, workspace, logout } = useAuth();
@@ -34,28 +29,13 @@ export function Topbar({ setMobileOpen }: { setMobileOpen?: React.Dispatch<React
         >
           <Menu className="h-5 w-5" />
         </Button>
-        <div className="relative hidden sm:flex items-center">
-          <Search className="absolute left-3 h-3.5 w-3.5 text-[#7b7b78] dark:text-[#71717a] pointer-events-none" />
-          <input
-            type="search"
-            placeholder="Search…"
-            className="h-8 w-52 rounded-lg border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff]/50 dark:bg-[#121214]/50 pl-9 pr-3 text-sm outline-none focus:bg-[#ffffff] dark:focus:bg-[#121214] focus:ring-1 focus:ring-[#111111] dark:focus:ring-[#f4f4f5] transition-all placeholder:text-[#7b7b78] dark:placeholder:text-[#71717a] text-[#111111] dark:text-[#f4f4f5]"
-            aria-label="Global search"
-          />
-          <kbd className="absolute right-2.5 text-[10px] font-medium text-[#7b7b78] dark:text-[#71717a] hidden lg:block border border-[#d3cec6] dark:border-[#27272a] rounded px-1.5 bg-[#f5f1ec] dark:bg-[#09090b]">
-            ⌘K
-          </kbd>
-        </div>
+        
+        <GlobalSearch />
       </div>
 
       {/* Right — notifications + user menu */}
       <div className="flex items-center gap-1">
-        {/* Notification bell */}
-        <Button variant="ghost" size="icon" className="relative text-[#626260] dark:text-[#a1a1aa] hover:text-[#111111] dark:hover:text-[#f4f4f5] hover:bg-[#e8e4dc] dark:hover:bg-[#18181b]" aria-label="Notifications">
-          <Bell className="h-4 w-4" />
-          {/* Unread dot */}
-          <span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-orange-600 dark:bg-orange-500" />
-        </Button>
+        <NotificationCenter />
 
         {/* User dropdown */}
         <DropdownMenu>

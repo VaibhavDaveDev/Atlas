@@ -14,7 +14,40 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { authClient } from '@/lib/auth-client';
 
-// ... (interfaces stay same)
+interface EmergencyContact {
+  name: string;
+  relationship: string;
+  phone: string;
+}
+
+interface BankDetails {
+  bankName: string;
+  accountNo: string;
+  ifscCode: string;
+}
+
+interface Profile {
+  fullName: string;
+  email: string;
+  mobileNo?: string;
+  phone?: string;
+  dateOfBirth?: string;
+  gender?: string;
+  maritalStatus?: string;
+  panNumber?: string;
+  pfAccount?: string;
+  esiNumber?: string;
+  aadhaarNumber?: string;
+  avatarUrl?: string;
+  designation?: { title: string };
+  department?: { name: string };
+  dateOfJoining?: string;
+  employeeNumber?: string;
+  status?: string;
+  reportingTo?: { fullName: string };
+  emergencyContact?: EmergencyContact;
+  bankDetails?: BankDetails;
+}
 
 export default function EssProfilePage() {
   const { user } = useAuth();
@@ -38,7 +71,6 @@ export default function EssProfilePage() {
   const [pfAccount, setPfAccount] = useState('');
   const [esiNumber, setEsiNumber] = useState('');
   const [aadhaarNumber, setAadhaarNumber] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState('');
   const [emergencyContact, setEmergencyContact] = useState<EmergencyContact>({ name: '', relationship: '', phone: '' });
   const [bankDetails, setBankDetails] = useState<BankDetails>({ bankName: '', accountNo: '', ifscCode: '' });
 
@@ -116,7 +148,6 @@ export default function EssProfilePage() {
         setPfAccount(data.pfAccount || '');
         setEsiNumber(data.esiNumber || '');
         setAadhaarNumber(data.aadhaarNumber || '');
-        setAvatarUrl(data.avatarUrl || user?.image || '');
         if (data.emergencyContact) setEmergencyContact(data.emergencyContact);
         if (data.bankDetails) setBankDetails(data.bankDetails);
       } catch (error) {

@@ -167,7 +167,7 @@ export default function MembersDirectoryPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {member.user.email}
+                      {member.user?.email || 'N/A'}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">

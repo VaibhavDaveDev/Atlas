@@ -19,9 +19,18 @@ export const metadata: Metadata = {
     template: '%s | Atlas ERP',
   },
   description:
-    'Atlas ERP is an AI-powered, enterprise-grade Cloud ERP Suite for modern businesses. Manage CRM, HR, Finance, and Projects in one unified platform.',
-  keywords: ['ERP', 'CRM', 'Enterprise', 'Cloud', 'Business Management', 'Atlas'],
+    'Atlas ERP is an AI-powered, enterprise-grade Cloud ERP Suite for modern businesses. Manage HR, Finance, and Projects in one unified platform.',
+  keywords: ['ERP', 'Enterprise', 'Cloud', 'HR', 'Finance', 'Business Management', 'Atlas'],
   authors: [{ name: 'Amdox' }],
+  icons: {
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/favicon-96x96.png', sizes: '96x96', type: 'image/png' },
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+    ],
+    apple: [{ url: '/apple-touch-icon.png' }],
+  },
+  manifest: '/site.webmanifest',
   openGraph: {
     title: 'Atlas ERP — Enterprise Cloud Suite',
     description: 'AI-powered Cloud ERP Suite for modern businesses.',

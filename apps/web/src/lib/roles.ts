@@ -1,6 +1,4 @@
-import { tokenStorage } from './auth';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+import { tokenStorage, API_URL } from './auth';
 
 const getHeaders = () => ({
   'Content-Type': 'application/json',

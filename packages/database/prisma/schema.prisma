@@ -198,6 +198,12 @@ enum EmployeeMovementType {
   RE_DESIGNATION
 }
 
+enum ProjectRole {
+  MANAGER
+  LEAD
+  MEMBER
+}
+
 enum ApplicantStatus {
   APPLIED
   SHORTLISTED
@@ -243,6 +249,8 @@ model AuthUser {
   image         String?
   globalRole    GlobalRole  @default(USER)
   verified      Boolean     @default(false)
+  emailVerified Boolean     @default(false)
+  twoFactorEnabled Boolean  @default(false)
   status        UserStatus  @default(ACTIVE)
   tokenVersion  Int         @default(0)
   provider      String      @default("local")
@@ -257,13 +265,129 @@ model AuthUser {
   workspaces    WorkspaceMember[]
   employees     Employee[]
   sentInvites   WorkspaceInvite[] @relation("InvitedBy")
-  accounts      Account[]
+  financialAccounts FinancialAccount[] @relation("UserToAccount")
   ticketComments TicketComment[]
   createdEvents  CompanyEvent[]    @relation("EventAuthor")
+  sessions      AuthSession[]
+  accounts      AuthAccount[]
+  twoFactors    AuthTwoFactor[]
+  authMembers   AuthMember[]
+  authInvitations AuthInvitation[]
   
   @@index([email])
   @@index([status])
   @@map("auth_users")
+}
+
+model AuthSession {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      AuthUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("auth_sessions")
+}
+
+model AuthAccount {
+  id                    String    @id @default(uuid(7))
+  accountId             String
+  providerId            String
+  userId                String
+  user                  AuthUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([providerId, accountId])
+  @@map("auth_accounts")
+}
+
+model AuthVerification {
+  id         String   @id @default(uuid(7))
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  @@map("auth_verifications")
+}
+
+model AuthTwoFactor {
+  id          String @id @default(uuid(7))
+  secret      String
+  backupCodes String
+  userId      String
+  user        AuthUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("auth_two_factors")
+}
+
+model AuthOrganization {
+  id          String       @id @default(uuid(7))
+  name        String
+  slug        String       @unique
+  logo        String?
+  createdAt   DateTime     @default(now())
+  metadata    String?      // JSON string
+  isAuditEnabled Boolean    @default(false)
+  members     AuthMember[]
+  invitations AuthInvitation[]
+  ssoProviders AuthSsoProvider[]
+  workspace   Workspace?
+
+  @@map("auth_organizations")
+}
+
+model AuthMember {
+  id             String           @id @default(uuid(7))
+  organizationId String
+  organization   AuthOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           AuthUser         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           String           // e.g., "owner", "admin", "member"
+  createdAt      DateTime         @default(now())
+
+  @@unique([organizationId, userId])
+  @@map("auth_members")
+}
+
+model AuthInvitation {
+  id             String           @id @default(uuid(7))
+  organizationId String
+  organization   AuthOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  email          String
+  role           String?
+  status         String           @default("pending")
+  expiresAt      DateTime
+  inviterId      String
+  user           AuthUser         @relation(fields: [inviterId], references: [id], onDelete: Cascade)
+
+  @@map("auth_invitations")
+}
+
+model AuthSsoProvider {
+  id             String           @id @default(uuid(7))
+  issuer         String
+  domain         String
+  oidcConfig     String?          // JSON string
+  samlConfig     String?          // JSON string
+  providerId     String
+  organizationId String?
+  organization   AuthOrganization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("auth_sso_providers")
 }
 
 model AuthSecurity {
@@ -295,6 +419,7 @@ model UserProfile {
   phone     String?
   timezone  String   @default("UTC")
   language  String   @default("en")
+  notificationRetentionDays Int @default(30)
   
   @@map("user_profiles")
 }
@@ -310,6 +435,11 @@ model Workspace {
   domain      String?
   status      WorkspaceStatus @default(TRIAL)
   trialEndsAt DateTime?
+  isAuditEnabled Boolean      @default(false)
+  mfaEnforced    Boolean      @default(false)
+  
+  authOrganizationId String?  @unique
+  authOrganization   AuthOrganization? @relation(fields: [authOrganizationId], references: [id])
   
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
@@ -355,6 +485,8 @@ model WorkspaceSettings {
   fiscalYearStart  String    @default("01-01")
   financeSetupCompleted Boolean @default(false)
   exchangeGainLossAccountId String?
+  defaultPayrollPayableAccountId String?
+  defaultSalaryExpenseAccountId String?
   
   weekendHolidays  Json?     // e.g. [0, 6] for Sunday, Saturday
   countryCode      String?   // For holiday sync (e.g. "IN")
@@ -703,6 +835,7 @@ model Department {
   movementsFrom    EmployeeMovement[] @relation("FromDept")
   movementsTo      EmployeeMovement[] @relation("ToDept")
   
+  @@unique([workspaceId, name])
   @@unique([workspaceId, code])
   @@index([workspaceId, isActive])
   @@map("departments")
@@ -720,6 +853,7 @@ model Designation {
   movementsFrom EmployeeMovement[] @relation("FromDesig")
   movementsTo   EmployeeMovement[] @relation("ToDesig")
   
+  @@unique([workspaceId, title])
   @@index([workspaceId, isActive])
   @@map("designations")
 }
@@ -790,6 +924,8 @@ model Employee {
   employeeGoals     EmployeeGoal[]
   separations       EmployeeSeparation[]
   offboardingTasks  EmployeeOffboardingTask[]
+  projectMembers    ProjectMember[]
+  timeLogs          TimeLog[]
   
   @@unique([workspaceId, employeeNumber])
   @@unique([workspaceId, email])
@@ -1047,6 +1183,9 @@ model SalaryComponent {
   dependsOnDays   Boolean               @default(true)
   isActive        Boolean               @default(true)
   
+  accountId       String?
+  account         FinancialAccount?     @relation(fields: [accountId], references: [id])
+  
   createdAt       DateTime              @default(now())
   updatedAt       DateTime              @updatedAt
   
@@ -1227,6 +1366,9 @@ model PayrollRun {
   processedBy     String?
   processedAt     DateTime?
   
+  journalEntryId  String?
+  journalEntry    JournalEntry?     @relation(fields: [journalEntryId], references: [id])
+  
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   
@@ -1313,13 +1455,13 @@ model FiscalPeriod {
   @@map("fiscal_periods")
 }
 
-model Account {
+model FinancialAccount {
   id            String      @id @default(uuid(7))
   workspaceId   String
   
   // Auth Integration (Merged with Finance Account for now based on code usage)
   userId        String?
-  user          AuthUser?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          AuthUser?   @relation("UserToAccount", fields: [userId], references: [id], onDelete: Cascade)
   providerId    String?
   accountId     String?
   accessToken   String?
@@ -1331,8 +1473,8 @@ model Account {
   accountName   String
   accountType   AccountType
   parentAccountId String?
-  parentAccount Account?    @relation("AccountHierarchy", fields: [parentAccountId], references: [id])
-  childAccounts Account[]   @relation("AccountHierarchy")
+  parentAccount FinancialAccount?    @relation("AccountHierarchy", fields: [parentAccountId], references: [id])
+  childAccounts FinancialAccount[]   @relation("AccountHierarchy")
   currencyCode  String      @default("USD")
   isGroup       Boolean     @default(false)
   isActive      Boolean     @default(true)
@@ -1343,6 +1485,7 @@ model Account {
   
   journalEntryLines JournalEntryLine[]
   invoiceItems      InvoiceItem[]
+  salaryComponents  SalaryComponent[]
   
   @@unique([workspaceId, accountNumber])
   @@index([workspaceId, accountType, isActive])
@@ -1368,6 +1511,7 @@ model JournalEntry {
   updatedAt     DateTime  @updatedAt
   
   lines         JournalEntryLine[]
+  payrollRuns   PayrollRun[]
   
   @@unique([workspaceId, entryNumber])
   @@index([workspaceId, postingDate, status])
@@ -1379,7 +1523,7 @@ model JournalEntryLine {
   journalEntryId  String
   journalEntry    JournalEntry  @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
   accountId       String
-  account         Account       @relation(fields: [accountId], references: [id])
+  account         FinancialAccount @relation(fields: [accountId], references: [id])
   
   debit           Decimal       @default(0)
   credit          Decimal       @default(0)
@@ -1429,7 +1573,7 @@ model InvoiceItem {
   invoice         Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   productId       String?
   accountId       String?  // The specific income/expense account for this line
-  account         Account? @relation(fields: [accountId], references: [id])
+  account         FinancialAccount? @relation(fields: [accountId], references: [id])
   description     String
   quantity        Int
   unitPrice       Decimal
@@ -1626,6 +1770,7 @@ model Project {
   
   tasks           Task[]
   milestones      Milestone[]
+  members         ProjectMember[]
   
   @@unique([workspaceId, projectCode])
   @@index([workspaceId, status])
@@ -1672,6 +1817,7 @@ model Task {
   createdBy       String?
   
   assignments     TaskAssignment[]
+  timeLogs        TimeLog[]
   
   @@unique([workspaceId, taskNumber])
   @@index([workspaceId, projectId, status])
@@ -1693,6 +1839,41 @@ model TaskAssignment {
   @@map("task_assignments")
 }
 
+model ProjectMember {
+  id          String      @id @default(uuid(7))
+  projectId   String
+  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  employeeId  String
+  employee    Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  role        ProjectRole @default(MEMBER)
+  
+  joinedAt    DateTime    @default(now())
+  
+  @@unique([projectId, employeeId])
+  @@index([projectId, employeeId])
+  @@map("project_members")
+}
+
+model TimeLog {
+  id          String    @id @default(uuid(7))
+  workspaceId String
+  taskId      String
+  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  employeeId  String
+  employee    Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  hours       Decimal
+  description String?
+  date        DateTime  @db.Date
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@index([workspaceId, taskId])
+  @@index([workspaceId, employeeId])
+  @@map("time_logs")
+}
+
 // ============================================
 // NOTIFICATION & AUDIT
 // ============================================
@@ -1712,6 +1893,7 @@ model Notification {
   createdAt   DateTime            @default(now())
   
   @@index([workspaceId, userId, isRead])
+  @@index([userId, createdAt])
   @@map("notifications")
 }
 
@@ -2010,4 +2192,28 @@ model EmployeeOffboardingTask {
   updatedAt   DateTime @updatedAt
   
   @@map("employee_offboarding_tasks")
+}
+
+// ============================================
+// AUDIT & COMPLIANCE (TimescaleDB Optimized)
+// ============================================
+
+model AuditTrail {
+  id         String   @id @default(uuid(7))
+  workspaceId String
+  userId     String?
+  action     String
+  entity     String
+  entityId   String?
+  details    Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+  
+  // Tamper detection (Hash chaining)
+  hash       String?
+  previousHash String?
+
+  @@index([workspaceId, createdAt])
+  @@map("audit_trail")
 }

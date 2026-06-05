@@ -11,10 +11,32 @@ import { Logo } from '@/components/common/Logo';
 
 type Stage = 'loading' | 'success' | 'error' | 'unauthenticated';
 
+/**
+ * Accept Invite Flow
+ *
+ * Two entry points:
+ *
+ * 1. Magic link email click:
+ *    URL = /api/v1/auth/magic-link/verify?token=xxx&callbackURL=/accept-invite?workspaceId=yyy&email=zzz
+ *    → BetterAuth verifies the token and signs the user in (creating account if needed)
+ *    → Redirects to /accept-invite?workspaceId=yyy&email=zzz (no token param at this point)
+ *    → We call acceptInvite() using workspaceId + the authenticated user's email
+ *
+ * 2. Legacy fallback (raw token links):
+ *    URL = /accept-invite?token=xxx
+ *    → If authenticated: call acceptInvite(token) directly
+ *    → If not authenticated: redirect to login with the invite URL preserved
+ */
 function AcceptInviteInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isLoading: authLoading } = useAuth();
+
+  // Magic link flow params (set by BetterAuth after verifying the magic link)
+  const workspaceId = searchParams.get('workspaceId');
+  const inviteEmail = searchParams.get('email');
+
+  // Legacy raw-token flow param
   const token = searchParams.get('token');
 
   const [stage, setStage] = useState<Stage>('loading');
@@ -25,6 +47,41 @@ function AcceptInviteInner() {
   useEffect(() => {
     if (authLoading) return;
 
+    // ── Case 1: Magic link callback (workspaceId in URL — user is already signed in via magic link) ──
+    if (workspaceId) {
+      if (!user) {
+        // Magic link should have signed the user in — but just in case, show unauthenticated
+        setStage('unauthenticated');
+        return;
+      }
+
+      if (attempted.current) return;
+      attempted.current = true;
+
+      const accept = async () => {
+        try {
+          // The magic link already authenticated the user. Now we just accept the invite
+          // using the workspaceId embedded in the callback URL.
+          const result = await acceptInvite(workspaceId);
+          tokenStorage.setWorkspaces([]);
+          setWorkspaceName(result?.workspace?.name || '');
+          setStage('success');
+          setTimeout(() => router.push('/select-workspace'), 2000);
+        } catch (err) {
+          setStage('error');
+          setErrorMessage(
+            err instanceof Error
+              ? err.message
+              : 'Failed to accept the invite. It may have expired.',
+          );
+        }
+      };
+
+      void accept();
+      return;
+    }
+
+    // ── Case 2: Legacy raw-token flow ─────────────────────────────────────────
     if (!token) {
       setStage('error');
       setErrorMessage('Invalid invite link — no token found.');
@@ -43,24 +100,26 @@ function AcceptInviteInner() {
     const accept = async () => {
       try {
         const result = await acceptInvite(token);
-        // Invalidate the workspaces cache so select-workspace re-fetches from server
         tokenStorage.setWorkspaces([]);
         setWorkspaceName(result?.workspace?.name || '');
         setStage('success');
-
-        setTimeout(() => {
-          router.push('/select-workspace');
-        }, 2000);
+        setTimeout(() => router.push('/select-workspace'), 2000);
       } catch (err) {
         setStage('error');
         setErrorMessage(
-          err instanceof Error ? err.message : 'Failed to accept the invite. It may have expired.',
+          err instanceof Error
+            ? err.message
+            : 'Failed to accept the invite. It may have expired.',
         );
       }
     };
 
     void accept();
-  }, [authLoading, user, token, router]);
+  }, [authLoading, user, token, workspaceId, inviteEmail, router]);
+
+  const inviteUrl = workspaceId
+    ? `/accept-invite?workspaceId=${workspaceId}&email=${encodeURIComponent(inviteEmail ?? '')}`
+    : `/accept-invite?token=${token ?? ''}`;
 
   return (
     <div className="min-h-screen bg-[#f5f1ec] dark:bg-[#09090b] flex flex-col justify-between transition-colors duration-300">
@@ -117,9 +176,9 @@ function AcceptInviteInner() {
               <p className="text-sm text-red-600 dark:text-red-400 max-w-xs">
                 {errorMessage}
               </p>
-              <Button 
-                asChild 
-                variant="outline" 
+              <Button
+                asChild
+                variant="outline"
                 size="sm"
                 className="mt-2 border-[#d3cec6] dark:border-[#27272a] text-[#111111] dark:text-[#f4f4f5] hover:bg-[#e8e4dc] dark:hover:bg-[#18181b]"
               >
@@ -128,7 +187,7 @@ function AcceptInviteInner() {
             </div>
           )}
 
-          {/* Unauthenticated Stage */}
+          {/* Unauthenticated Stage — shown only for legacy raw-token links */}
           {stage === 'unauthenticated' && (
             <div className="w-full mt-6 rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] p-6 text-left shadow-none space-y-6">
               <div className="text-center space-y-2">
@@ -139,24 +198,24 @@ function AcceptInviteInner() {
                   Sign in to accept this invite
                 </h1>
                 <p className="text-sm text-[#626260] dark:text-[#a1a1aa] leading-relaxed">
-                  You need to be logged in to accept a workspace invite. We&apos;ve saved your invite details and will redirect you back here.
+                  You need to be logged in to accept this workspace invite.
                 </p>
               </div>
 
               <div className="space-y-3">
-                <Button 
-                  asChild 
+                <Button
+                  asChild
                   className="w-full bg-[#111111] hover:bg-[#222222] text-[#ffffff] dark:bg-[#f4f4f5] dark:hover:bg-[#e4e4e7] dark:text-[#09090b] font-semibold transition-all rounded-md"
                 >
-                  <Link href={`/login?redirect=/accept-invite?token=${token}`}>
+                  <Link href={`/login?redirect=${encodeURIComponent(inviteUrl)}`}>
                     Sign in and continue
                   </Link>
                 </Button>
-                
+
                 <p className="text-center text-xs text-[#7b7b78] dark:text-[#71717a]">
                   Don&apos;t have an account?{' '}
                   <Link
-                    href={`/register?redirect=/accept-invite?token=${token}`}
+                    href={`/register?redirect=${encodeURIComponent(inviteUrl)}`}
                     className="font-semibold text-[#111111] dark:text-[#f4f4f5] hover:underline"
                   >
                     Create one

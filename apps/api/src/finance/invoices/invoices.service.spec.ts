@@ -83,6 +83,9 @@ describe("InvoicesService", () => {
       total: 1000,
       status: InvoiceStatus.DRAFT,
       invoiceDate: new Date(),
+      items: [
+        { description: "Item 1", quantity: 1, unitPrice: 1000, amount: 1000 },
+      ],
     };
 
     mockPrisma.invoice.findFirst.mockResolvedValue(mockInvoice);
