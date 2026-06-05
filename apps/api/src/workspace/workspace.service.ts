@@ -244,6 +244,7 @@ export class WorkspaceService {
         providerId: data.protocol.toLowerCase() + "-" + Date.now(),
         issuer: data.issuer,
         domain: data.domain,
+        metadata: data.name ? JSON.stringify({ name: data.name }) : null,
         oidcConfig:
           data.protocol === "OIDC"
             ? JSON.stringify({ issuer: data.issuer })

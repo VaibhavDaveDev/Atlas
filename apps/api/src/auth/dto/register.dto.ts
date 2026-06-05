@@ -59,4 +59,13 @@ export class RegisterDto {
   @IsString()
   @MinLength(2, { message: "Last name must be at least 2 characters long" })
   lastName: string;
+
+  @ApiProperty({
+    example: "0.turnstile_token_here",
+    description: "Cloudflare Turnstile verification token",
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  turnstileToken?: string;
 }

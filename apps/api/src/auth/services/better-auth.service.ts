@@ -16,6 +16,7 @@ import { RedisService } from "../../common/services/redis.service";
 import { EmailQueueService } from "../../common/queues/email/email.queue";
 import config from "../../common/config/app.config";
 import * as bcrypt from "bcryptjs";
+import { turnstilePlugin } from "../plugins/turnstile.plugin";
 
 /** OTP / magic-link cool-down window in seconds (5 min = same as OTP TTL) */
 const OTP_COOLDOWN_SECONDS = 300;
@@ -128,6 +129,12 @@ export class BetterAuthService {
         } as any),
 
         sso(),
+
+        // ─── Turnstile Security Verification ─────────────────────────────────
+        // Validates Cloudflare Turnstile tokens on sign-in/sign-up to prevent
+        // bot attacks. Automatically skips verification if TURNSTILE_SECRET_KEY
+        // is not configured (useful for development).
+        turnstilePlugin(),
 
         // ─── Two-Factor (TOTP authenticator app) ────────────────────────────
         // Requires current password before enabling/disabling 2FA.

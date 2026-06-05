@@ -147,7 +147,13 @@ export default function AdminOverviewPage() {
       color: 'bg-indigo-600 text-white',
       href: '/dashboard/admin/tickets',
     },
-
+    {
+      title: 'Security',
+      desc: 'Manage authentication and security settings',
+      icon: Lock,
+      color: 'bg-red-600 text-white',
+      href: '/dashboard/admin/security',
+    },
     {
       title: 'Workspace Settings',
       desc: 'Branding, domain and regional settings',

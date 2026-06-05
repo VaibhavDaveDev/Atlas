@@ -13,7 +13,7 @@ interface AuthContextType {
   workspaces: Workspace[];
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, turnstileToken?: string) => Promise<void>;
   selectWorkspace: (workspaceId: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (data: Partial<User>) => void;
@@ -102,13 +102,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [session, isPending]);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, turnstileToken?: string) => {
     console.log('[AuthContext] login attempt:', email);
     justLoggedInRef.current = true; // Guard against the post-login session sync gap
     try {
-      const { data, error } = await authClient.signIn.email(
-        { email, password }
-      );
+      const { data, error } = await authClient.signIn.email({
+        email, 
+        password,
+        turnstileToken, // Pass directly in the data object
+      });
 
       if (error) {
         console.error('[AuthContext] login error:', error);

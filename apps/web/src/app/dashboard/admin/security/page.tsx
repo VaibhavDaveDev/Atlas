@@ -73,12 +73,42 @@ export default function AdminSecurityPage() {
           'Authorization': `Bearer ${tokenStorage.getAccessToken()}`,
         },
       });
-      if (res.ok) {
-        const data = await res.json();
-        setSsoProviders(data);
+      
+      if (!res.ok) {
+        console.error('Failed to load SSO providers, status:', res.status);
+        setSsoProviders([]);
+        return;
       }
+      
+      const response = await res.json();
+      console.log('SSO providers response:', response);
+      
+      // Handle both array and object responses
+      const data = Array.isArray(response) ? response : (response.data || response.providers || []);
+      
+      // Parse metadata to get name and determine protocol
+      const providersWithParsedData = (Array.isArray(data) ? data : []).map((provider: any) => {
+        let name = 'SSO Provider';
+        try {
+          if (provider.metadata) {
+            const metadata = JSON.parse(provider.metadata);
+            name = metadata.name || name;
+          }
+        } catch (e) {
+          // Ignore parse errors
+        }
+        
+        // Determine protocol
+        let protocol = 'OIDC';
+        if (provider.samlConfig) protocol = 'SAML';
+        if (provider.oidcConfig) protocol = 'OIDC';
+        
+        return { ...provider, name, protocol };
+      });
+      setSsoProviders(providersWithParsedData);
     } catch (error) {
       console.error('Failed to load SSO providers', error);
+      setSsoProviders([]);
     }
   };
 
@@ -165,6 +195,7 @@ export default function AdminSecurityPage() {
       setIsAuditEnabled(workspace.isAuditEnabled);
       setIsMfaEnforced(workspace.mfaEnforced);
       loadSessions();
+      loadSsoProviders(); // Add this line
     }
   }, [workspace]);
 
@@ -176,12 +207,22 @@ export default function AdminSecurityPage() {
           'Authorization': `Bearer ${tokenStorage.getAccessToken()}`,
         },
       });
-      if (res.ok) {
-        const data = await res.json();
-        setActiveSessions(data);
+      
+      if (!res.ok) {
+        console.error('Failed to load sessions, status:', res.status);
+        setActiveSessions([]);
+        return;
       }
+      
+      const response = await res.json();
+      console.log('Sessions response:', response);
+      
+      // Handle both array and object responses
+      const data = Array.isArray(response) ? response : (response.data || response.sessions || []);
+      setActiveSessions(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to load sessions', error);
+      setActiveSessions([]); // Set empty array on error
     }
   };
 
@@ -284,22 +325,22 @@ export default function AdminSecurityPage() {
   return (
     <AppShell>
       <div className="p-6 max-w-5xl mx-auto space-y-8">
-        <div className="flex justify-between items-end">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 sm:gap-0">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-              <Shield className="h-8 w-8 text-primary" /> IT Security & Compliance
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2 sm:gap-3">
+              <Shield className="h-6 w-6 sm:h-8 sm:w-8 text-primary" /> IT Security & Compliance
             </h1>
-            <p className="text-muted-foreground mt-1 text-lg">
+            <p className="text-muted-foreground mt-1 text-sm sm:text-lg">
               Manage tenant security policies, SSO integrations, and immutable audit trails.
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto mt-2 sm:mt-0">
             {isAuditEnabled && (
               <>
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="gap-2" 
+                  className="gap-2 flex-1 sm:flex-none" 
                   onClick={handleVerifyIntegrity}
                   disabled={isVerifyingChain || isRecomputingChain}
                 >
@@ -309,7 +350,7 @@ export default function AdminSecurityPage() {
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="gap-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50" 
+                  className="gap-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50 flex-1 sm:flex-none" 
                   onClick={handleRecomputeChain}
                   disabled={isVerifyingChain || isRecomputingChain}
                 >
@@ -409,7 +450,7 @@ export default function AdminSecurityPage() {
         {/* SSO Integration Section */}
         <Card>
           <CardHeader>
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <Globe className="h-5 w-5" /> Single Sign-On (SSO)
@@ -420,7 +461,7 @@ export default function AdminSecurityPage() {
               </div>
               <Dialog>
                 <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2">
+                  <Button variant="outline" size="sm" className="gap-2 w-full sm:w-auto">
                     <Plus className="h-4 w-4" /> Add Provider
                   </Button>
                 </DialogTrigger>
@@ -428,25 +469,27 @@ export default function AdminSecurityPage() {
                   <DialogHeader>
                     <DialogTitle>Configure SSO Provider</DialogTitle>
                     <DialogDescription>
-                      Add a SAML 2.0 or OIDC provider for your organization.
+                      Add a SAML 2.0 or OIDC provider for your organization. Common providers: Azure AD, Okta, Google Workspace, Auth0.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
                       <Label>Provider Name</Label>
                       <Input 
-                        placeholder="e.g. Azure AD" 
+                        placeholder="e.g. Azure AD, Okta, Google Workspace" 
                         value={newSsoProvider.name}
                         onChange={(e) => setNewSsoProvider({...newSsoProvider, name: e.target.value})}
                       />
+                      <p className="text-xs text-muted-foreground">Friendly name to identify this provider</p>
                     </div>
                     <div className="space-y-2">
                       <Label>Domain</Label>
                       <Input 
-                        placeholder="e.g. acme.com" 
+                        placeholder="e.g. acme.com, microsoft.com" 
                         value={newSsoProvider.domain}
                         onChange={(e) => setNewSsoProvider({...newSsoProvider, domain: e.target.value})}
                       />
+                      <p className="text-xs text-muted-foreground">Users with email addresses from this domain will use SSO</p>
                     </div>
                     <div className="space-y-2">
                       <Label>Protocol</Label>
@@ -455,17 +498,36 @@ export default function AdminSecurityPage() {
                         value={newSsoProvider.protocol}
                         onChange={(e) => setNewSsoProvider({...newSsoProvider, protocol: e.target.value as any})}
                       >
-                        <option value="SAML">SAML 2.0</option>
-                        <option value="OIDC">OIDC (OpenID Connect)</option>
+                        <option value="OIDC">OIDC (OpenID Connect) - Modern, recommended</option>
+                        <option value="SAML">SAML 2.0 - Enterprise standard</option>
                       </select>
                     </div>
                     <div className="space-y-2">
-                      <Label>{newSsoProvider.protocol === 'SAML' ? 'Metadata URL' : 'Issuer URL'}</Label>
+                      <Label>
+                        {newSsoProvider.protocol === 'SAML' ? 'SAML Metadata URL' : 'OIDC Issuer URL'}
+                      </Label>
                       <Input 
-                        placeholder="https://..." 
+                        placeholder={newSsoProvider.protocol === 'SAML' 
+                          ? 'https://login.microsoftonline.com/.../federationmetadata/...' 
+                          : 'https://accounts.google.com'
+                        }
                         value={newSsoProvider.metadataUrl}
                         onChange={(e) => setNewSsoProvider({...newSsoProvider, metadataUrl: e.target.value, issuer: e.target.value})}
                       />
+                      <div className="text-xs text-muted-foreground space-y-1">
+                        {newSsoProvider.protocol === 'SAML' ? (
+                          <>
+                            <p>• <strong>Azure AD:</strong> Find in App registrations → SAML Certificates</p>
+                            <p>• <strong>Okta:</strong> Applications → Your App → Sign On → Metadata URL</p>
+                          </>
+                        ) : (
+                          <>
+                            <p>• <strong>Google:</strong> https://accounts.google.com</p>
+                            <p>• <strong>Azure AD:</strong> https://login.microsoftonline.com/YOUR-TENANT-ID/v2.0</p>
+                            <p>• <strong>Auth0:</strong> https://YOUR-DOMAIN.auth0.com</p>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <DialogFooter>
@@ -490,23 +552,32 @@ export default function AdminSecurityPage() {
             ) : (
               <div className="space-y-4">
                 {ssoProviders.map((provider) => (
-                  <div key={provider.id} className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <div key={provider.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg bg-muted/30 gap-4 sm:gap-0">
+                    <div className="flex items-center gap-4 w-full overflow-hidden">
+                      <div className="h-10 w-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center">
                         <Globe className="h-5 w-5 text-primary" />
                       </div>
-                      <div>
-                        <div className="font-medium flex items-center gap-2">
-                          {provider.issuer.includes('microsoft') ? 'Azure AD' : provider.issuer.includes('google') ? 'Google Workspace' : 'SSO Provider'}
-                          <Badge variant="outline" className="text-[10px]">{provider.samlConfig ? 'SAML' : 'OIDC'}</Badge>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium flex flex-wrap items-center gap-2">
+                          <span className="truncate">{provider.name || 'SSO Provider'}</span>
+                          <Badge variant="outline" className="text-[10px] shrink-0">
+                            {provider.protocol || (provider.samlConfig ? 'SAML' : 'OIDC')}
+                          </Badge>
                         </div>
-                        <div className="text-xs text-muted-foreground font-mono">{provider.domain}</div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          Domain: <span className="font-mono">{provider.domain || 'Not set'}</span>
+                        </div>
+                        {provider.issuer && (
+                          <div className="text-[10px] text-muted-foreground truncate max-w-[200px] sm:max-w-md mt-0.5">
+                            {provider.issuer}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10 w-full sm:w-auto"
                       onClick={() => handleRemoveSsoProvider(provider.id)}
                     >
                       Remove
@@ -521,7 +592,7 @@ export default function AdminSecurityPage() {
         {/* Active Sessions Management */}
         <Card>
           <CardHeader>
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <Lock className="h-5 w-5" /> Active Sessions Management
@@ -530,13 +601,13 @@ export default function AdminSecurityPage() {
                   Monitor and revoke active sessions to protect compromised accounts.
                 </CardDescription>
               </div>
-              <Button variant="destructive" size="sm" onClick={handleRevokeAllSessions} disabled={activeSessions.length <= 1}>
+              <Button variant="destructive" size="sm" className="w-full sm:w-auto" onClick={handleRevokeAllSessions} disabled={activeSessions.length <= 1}>
                 <LogOut className="h-4 w-4 mr-2" /> Revoke All Other Sessions
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="p-0">
-            <Table>
+          <CardContent className="p-0 overflow-x-auto">
+            <Table className="min-w-[600px]">
               <TableHeader>
                 <TableRow>
                   <TableHead className="pl-6">User / Device</TableHead>
