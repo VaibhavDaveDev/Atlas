@@ -383,6 +383,7 @@ model AuthSsoProvider {
   domain         String
   oidcConfig     String?          // JSON string
   samlConfig     String?          // JSON string
+  metadata       String?          // JSON string for additional config like name
   providerId     String
   organizationId String?
   organization   AuthOrganization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)

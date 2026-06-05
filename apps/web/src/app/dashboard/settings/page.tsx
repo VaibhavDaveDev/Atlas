@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useAuth } from '@/contexts/AuthContext';
-import { User, Mail, Shield, Key, Loader2, Moon, Sun, Monitor, Save, Check, Globe, Dice6, Plus, Bell } from 'lucide-react';
+import { User, Mail, Shield, Key, Loader2, Moon, Sun, Monitor, Save, Check, Globe, Dice6, Plus, Bell, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -47,8 +47,10 @@ export default function ProfileSettingsPage() {
   // 2FA state
   const [is2faEnabled, setIs2faEnabled] = useState(false);
   const [show2faDialog, setShow2faDialog] = useState(false);
+  const [show2faSetupStep, setShow2faSetupStep] = useState<'password' | 'qr' | 'backup'>('password');
   const [qrCode, setQrCode] = useState('');
   const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [twoFaPassword, setTwoFaPassword] = useState('');
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
   const [is2faLoading, setIs2faLoading] = useState(false);
 
@@ -61,16 +63,21 @@ export default function ProfileSettingsPage() {
   }, [session]);
 
   const handleEnable2fa = async () => {
+    if (!twoFaPassword) {
+      toast.error('Password is required to enable 2FA');
+      return;
+    }
+    
     setIs2faLoading(true);
     try {
       const { data, error } = await authClient.twoFactor.enable({
-        appName: 'Atlas ERP',
+        password: twoFaPassword,
       });
       if (error) throw error;
       setQrCode(data.totpURI);
-      setShow2faDialog(true);
+      setShow2faSetupStep('qr');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to enable 2FA');
+      toast.error(err instanceof Error ? err.message : 'Failed to enable 2FA. Check your password.');
     } finally {
       setIs2faLoading(false);
     }
@@ -86,10 +93,10 @@ export default function ProfileSettingsPage() {
       
       setBackupCodes(data.backupCodes);
       setIs2faEnabled(true);
+      setShow2faSetupStep('backup');
       toast.success('Two-factor authentication enabled successfully!');
-      // Backup codes would be shown here in a real app
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Invalid code');
+      toast.error(err instanceof Error ? err.message : 'Invalid code. Please try again.');
     } finally {
       setIs2faLoading(false);
     }
@@ -109,6 +116,22 @@ export default function ProfileSettingsPage() {
     } finally {
       setIs2faLoading(false);
     }
+  };
+
+  const handleStart2faSetup = () => {
+    setShow2faDialog(true);
+    setShow2faSetupStep('password');
+    setTwoFaPassword('');
+    setTwoFactorCode('');
+    setQrCode('');
+    setBackupCodes([]);
+  };
+
+  const handleClose2faDialog = () => {
+    setShow2faDialog(false);
+    setShow2faSetupStep('password');
+    setTwoFaPassword('');
+    setTwoFactorCode('');
   };
 
   // Gravatar URL generation
@@ -581,12 +604,12 @@ export default function ProfileSettingsPage() {
                       Disable 2FA
                     </Button>
                   ) : (
-                    <Dialog open={show2faDialog} onOpenChange={setShow2faDialog}>
+                    <Dialog open={show2faDialog} onOpenChange={handleClose2faDialog}>
                       <DialogTrigger asChild>
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          onClick={handleEnable2fa}
+                          onClick={handleStart2faSetup}
                           disabled={is2faLoading}
                           className="border-[#111111] dark:border-[#f4f4f5] text-[#111111] dark:text-[#f4f4f5] hover:bg-[#f5f1ec] dark:hover:bg-[#1c1c1f] font-bold whitespace-nowrap shadow-sm"
                         >
@@ -595,50 +618,128 @@ export default function ProfileSettingsPage() {
                         </Button>
                       </DialogTrigger>
                       <DialogContent className="sm:max-w-md border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214]">
-                        <DialogHeader>
-                          <DialogTitle>Set up Two-Factor Authentication</DialogTitle>
-                          <DialogDescription>
-                            Scan the QR code below with your authenticator app (Google Authenticator, Authy, etc.).
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="flex flex-col items-center space-y-6 py-4">
-                          {qrCode ? (
-                            <div className="p-4 bg-white rounded-xl border-4 border-white shadow-inner">
-                              {/* Using a simple QR generator API for the URI */}
-                              <img 
-                                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrCode)}`} 
-                                alt="QR Code" 
-                                className="w-48 h-48"
-                              />
+                        {show2faSetupStep === 'password' && (
+                          <>
+                            <DialogHeader>
+                              <DialogTitle>Enable Two-Factor Authentication</DialogTitle>
+                              <DialogDescription>
+                                Enter your current password to continue setting up 2FA.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="twofa-current-password" className="text-xs font-bold uppercase tracking-wider text-[#7b7b78] dark:text-[#71717a]">
+                                  Current Password
+                                </Label>
+                                <Input 
+                                  id="twofa-current-password"
+                                  type="password"
+                                  placeholder="Enter your password"
+                                  value={twoFaPassword}
+                                  onChange={(e) => setTwoFaPassword(e.target.value)}
+                                  className="bg-transparent border-[#d3cec6] dark:border-[#27272a]"
+                                  autoFocus
+                                />
+                              </div>
+                              <Button 
+                                className="w-full bg-[#111111] dark:bg-[#f4f4f5] text-white dark:text-black font-bold"
+                                onClick={handleEnable2fa}
+                                disabled={is2faLoading || !twoFaPassword}
+                              >
+                                {is2faLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Continue
+                              </Button>
                             </div>
-                          ) : (
-                            <div className="w-48 h-48 bg-muted animate-pulse rounded-xl flex items-center justify-center">
-                              <Loader2 className="h-8 w-8 animate-spin" />
+                          </>
+                        )}
+
+                        {show2faSetupStep === 'qr' && (
+                          <>
+                            <DialogHeader>
+                              <DialogTitle>Scan QR Code</DialogTitle>
+                              <DialogDescription>
+                                Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.).
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                              {qrCode && (
+                                <div className="flex justify-center p-4 bg-white rounded-lg border border-[#d3cec6]">
+                                  <img 
+                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrCode)}`} 
+                                    alt="2FA QR Code" 
+                                    className="w-48 h-48" 
+                                  />
+                                </div>
+                              )}
+                              
+                              <div className="space-y-2">
+                                <Label htmlFor="2fa-code" className="text-xs font-bold uppercase tracking-wider text-[#7b7b78] dark:text-[#71717a]">
+                                  Verification Code
+                                </Label>
+                                <Input 
+                                  id="2fa-code"
+                                  type="text"
+                                  placeholder="000000"
+                                  value={twoFactorCode}
+                                  onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, ''))}
+                                  className="text-center font-mono tracking-[0.5em] text-lg bg-transparent border-[#d3cec6] dark:border-[#27272a]"
+                                  maxLength={6}
+                                  autoComplete="off"
+                                />
+                              </div>
+                              
+                              <Button 
+                                className="w-full bg-[#111111] dark:bg-[#f4f4f5] text-white dark:text-black font-bold"
+                                onClick={handleVerify2fa}
+                                disabled={is2faLoading || twoFactorCode.length !== 6}
+                              >
+                                {is2faLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Verify & Activate
+                              </Button>
                             </div>
-                          )}
-                          
-                          <div className="w-full space-y-2">
-                            <Label htmlFor="2fa-code" className="text-xs font-bold uppercase tracking-wider text-[#7b7b78] dark:text-[#71717a]">Verification Code</Label>
-                            <Input 
-                              id="2fa-code"
-                              placeholder="000000"
-                              value={twoFactorCode}
-                              onChange={(e) => setTwoFactorCode(e.target.value)}
-                              className="text-center font-mono tracking-[0.5em] text-lg bg-transparent border-[#d3cec6] dark:border-[#27272a]"
-                              maxLength={6}
-                            />
-                          </div>
-                        </div>
-                        <DialogFooter>
-                          <Button 
-                            className="w-full bg-[#111111] dark:bg-[#f4f4f5] text-white dark:text-black font-bold"
-                            onClick={handleVerify2fa}
-                            disabled={is2faLoading || twoFactorCode.length !== 6}
-                          >
-                            {is2faLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Verify & Activate
-                          </Button>
-                        </DialogFooter>
+                          </>
+                        )}
+
+                        {show2faSetupStep === 'backup' && (
+                          <>
+                            <DialogHeader>
+                              <DialogTitle>Save Your Backup Codes</DialogTitle>
+                              <DialogDescription>
+                                Store these backup codes securely. You can use them to access your account if you lose your authenticator device.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                              <div className="bg-[#f5f1ec] dark:bg-[#09090b] p-4 rounded-lg border border-[#d3cec6] dark:border-[#27272a]">
+                                <div className="grid grid-cols-2 gap-2 font-mono text-sm">
+                                  {backupCodes.map((code, i) => (
+                                    <div key={i} className="text-[#111111] dark:text-[#f4f4f5]">
+                                      {code}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                              
+                              <Button 
+                                variant="outline"
+                                className="w-full"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(backupCodes.join('\n'));
+                                  toast.success('Backup codes copied to clipboard');
+                                }}
+                              >
+                                <Copy className="mr-2 h-4 w-4" />
+                                Copy Codes
+                              </Button>
+
+                              <Button 
+                                className="w-full bg-[#111111] dark:bg-[#f4f4f5] text-white dark:text-black font-bold"
+                                onClick={handleClose2faDialog}
+                              >
+                                Done
+                              </Button>
+                            </div>
+                          </>
+                        )}
                       </DialogContent>
                     </Dialog>
                   )}

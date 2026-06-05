@@ -29,6 +29,7 @@ import {
   Milestone as MilestoneIcon,
   Crown,
   Building2,
+  Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -109,6 +110,7 @@ const adminModules: NavItem[] = [
   { label: 'Overview', href: '/dashboard/admin', icon: LayoutDashboard },
   { label: 'Roles & Permissions', href: '/dashboard/workspace/roles', icon: ShieldCheck },
   { label: 'Members', href: '/dashboard/workspace/members', icon: Users },
+  { label: 'Security & Compliance', href: '/dashboard/admin/security', icon: Shield },
   { label: 'IT Helpdesk', href: '/dashboard/admin/tickets', icon: LifeBuoy },
   { label: 'System Logs', href: '/dashboard/admin/logs', icon: Terminal },
 ];

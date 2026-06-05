@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength } from "class-validator";
+import { IsEmail, IsString, MinLength, IsOptional } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
 
 export class LoginDto {
@@ -16,4 +16,13 @@ export class LoginDto {
   @IsString()
   @MinLength(1, { message: "Password is required" })
   password: string;
+
+  @ApiProperty({
+    example: "0.turnstile_token_here",
+    description: "Cloudflare Turnstile verification token",
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  turnstileToken?: string;
 }

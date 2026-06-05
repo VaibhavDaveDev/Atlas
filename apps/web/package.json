@@ -21,6 +21,7 @@
     "@casl/react": "^7.0.0",
     "@lingui/core": "^5.1.0",
     "@lingui/react": "^5.1.0",
+    "@marsidev/react-turnstile": "^1.5.2",
     "@opentelemetry/api": "^1.9.1",
     "@opentelemetry/auto-instrumentations-node": "^0.76.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.218.0",

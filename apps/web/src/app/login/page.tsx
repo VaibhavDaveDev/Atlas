@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useRef } from 'react';
 import Link from 'next/link';
 import { Eye, EyeOff, ArrowLeft, Loader2, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Logo } from '@/components/common/Logo';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { authClient } from '@/lib/auth-client';
+import { TurnstileWidget, TurnstileWidgetHandle } from '@/components/common/TurnstileWidget';
 
 function LoginForm() {
   const { login } = useAuth();
@@ -20,19 +21,30 @@ function LoginForm() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSsoMode, setIsSsoMode] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string>('');
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    
+    if (!turnstileToken) {
+      setError('Please complete the security verification');
+      return;
+    }
+    
     setIsLoading(true);
     const toastId = toast.loading('Signing you in...');
     try {
-      await login(email, password);
+      await login(email, password, turnstileToken);
       toast.success('Welcome back!', { id: toastId });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Invalid credentials. Please try again.';
       setError(message);
       toast.error(message, { id: toastId });
+      // Reset Turnstile on error
+      turnstileRef.current?.reset();
+      setTurnstileToken('');
     } finally {
       setIsLoading(false);
     }
@@ -198,6 +210,22 @@ function LoginForm() {
                   </button>
                 </div>
               </div>
+            )}
+
+            {/* Turnstile Widget */}
+            {!isSsoMode && (
+              <TurnstileWidget
+                ref={turnstileRef}
+                onSuccess={(token) => setTurnstileToken(token)}
+                onError={() => {
+                  setError('Security verification failed. Please try again.');
+                  setTurnstileToken('');
+                }}
+                onExpire={() => {
+                  setTurnstileToken('');
+                }}
+                className="flex justify-center"
+              />
             )}
 
             <Button
