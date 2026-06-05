@@ -28,11 +28,10 @@ export class FinanceSetupController {
     const workspaceId = (req as any).user.workspaceId;
 
     // 1. Initialize COA
-    const gainLossAccountId =
-      await this.accountsService.initializeChartOfAccounts(
-        workspaceId,
-        body.baseCurrency,
-      );
+    const setupResults = await this.accountsService.initializeChartOfAccounts(
+      workspaceId,
+      body.baseCurrency,
+    );
 
     // 2. Update Workspace Settings (Upsert to be safe)
     await this.prisma.workspaceSettings.upsert({
@@ -41,14 +40,18 @@ export class FinanceSetupController {
         baseCurrency: body.baseCurrency,
         fiscalYearStart: body.fiscalYearStart,
         financeSetupCompleted: true,
-        exchangeGainLossAccountId: gainLossAccountId,
+        exchangeGainLossAccountId: setupResults.exchangeGainLossAccountId,
+        defaultPayrollPayableAccountId: setupResults.payrollPayableAccountId,
+        defaultSalaryExpenseAccountId: setupResults.salaryExpenseAccountId,
       },
       create: {
         workspaceId,
         baseCurrency: body.baseCurrency,
         fiscalYearStart: body.fiscalYearStart,
         financeSetupCompleted: true,
-        exchangeGainLossAccountId: gainLossAccountId,
+        exchangeGainLossAccountId: setupResults.exchangeGainLossAccountId,
+        defaultPayrollPayableAccountId: setupResults.payrollPayableAccountId,
+        defaultSalaryExpenseAccountId: setupResults.salaryExpenseAccountId,
       },
     });
 

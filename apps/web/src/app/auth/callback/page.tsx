@@ -29,8 +29,7 @@ function AuthCallbackContent() {
         authApi.tokenStorage.clear();
 
         // Call backend to exchange code for tokens
-        const API_BASE = `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'}/api/v1`;
-        const res = await fetch(`${API_BASE}/auth/google/callback?code=${code}&state=${state}`);
+        const res = await fetch(`${authApi.API_BASE}/auth/google/callback?code=${code}&state=${state}`);
         const responseData = await res.json();
 
         if (!res.ok) {

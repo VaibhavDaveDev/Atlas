@@ -1,5 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { AuthController } from "./auth.controller";
+import { LegacyAuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { GoogleOAuthService } from "./services/google-oauth.service";
 import { AuthGuard } from "../common/guards/auth.guard";
@@ -16,8 +16,8 @@ import { ChangePasswordDto } from "./dto/change-password.dto";
 import type { Request } from "express";
 import { CustomLoggerService } from "../common/services/custom-logger.service";
 
-describe("AuthController", () => {
-  let controller: AuthController;
+describe("LegacyAuthController", () => {
+  let controller: LegacyAuthController;
 
   const mockAuthService = {
     create: vi.fn(),
@@ -50,7 +50,7 @@ describe("AuthController", () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      controllers: [AuthController],
+      controllers: [LegacyAuthController],
       providers: [
         {
           provide: AuthService,
@@ -70,7 +70,7 @@ describe("AuthController", () => {
       .useValue({ canActivate: () => true })
       .compile();
 
-    controller = module.get<AuthController>(AuthController);
+    controller = module.get<LegacyAuthController>(LegacyAuthController);
   });
 
   afterEach(() => {

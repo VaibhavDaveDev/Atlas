@@ -315,6 +315,12 @@ export async function addPayrollDeduction(entryId: string, data: any) {
   });
 }
 
+export async function postPayrollToLedger(runId: string) {
+  return fetchWithAuth(`/hr/payroll/runs/${runId}/post-to-ledger`, {
+    method: 'POST',
+  });
+}
+
 // ====================
 // ATTENDANCE
 // ====================

@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import * as nodemailer from "nodemailer";
+import { BrevoClient } from "@getbrevo/brevo";
 import { promises as fs } from "fs";
 import * as path from "path";
 import config from "../config/app.config";
@@ -16,55 +16,58 @@ export interface EmailOptions {
 
 @Injectable()
 export class EmailService {
-  private transporter: nodemailer.Transporter;
+  private readonly brevo: BrevoClient;
 
   constructor(private readonly customLogger: CustomLoggerService) {
-    // Validate configuration
-    if (!config.email_host || typeof config.email_host !== "string") {
-      throw new Error("Invalid email config: missing or invalid email_host");
-    }
-    if (!config.email_user || typeof config.email_user !== "string") {
-      throw new Error("Invalid email config: missing or invalid email_user");
-    }
-    if (!config.email_pass || typeof config.email_pass !== "string") {
-      throw new Error("Invalid email config: missing or invalid email_pass");
-    }
-    const port = Number(config.email_port);
-    if (isNaN(port) || port <= 0) {
-      throw new Error(
-        "Invalid email config: email_port must be a positive integer",
-      );
+    if (!config.brevo_api_key) {
+      if (config.node_env === "production") {
+        throw new Error("Invalid email config: missing BREVO_API_KEY");
+      } else {
+        this.customLogger.warn(
+          "BREVO_API_KEY is missing. Email service will run in mock mode (logging to console).",
+          "EmailService",
+        );
+      }
     }
 
-    this.transporter = nodemailer.createTransport({
-      host: config.email_host,
-      port: port,
-      secure: port === 465, // true for 465, false for other ports
-      auth: {
-        user: config.email_user,
-        pass: config.email_pass,
-      },
-    });
+    if (config.brevo_api_key) {
+      this.brevo = new BrevoClient({
+        apiKey: config.brevo_api_key,
+        maxRetries: 3,
+        timeoutInSeconds: 30,
+      });
+    }
   }
 
   /**
-   * Send an email
+   * Send an email via Brevo transactional API
    */
   async sendEmail(options: EmailOptions): Promise<void> {
     this.customLogger.log(
-      `Sending email to: ${options.to}, subject: ${options.subject}`,
+      `[MOCK EMAIL] To: ${options.to}, Subject: ${options.subject}`,
       "EmailService",
     );
-    const mailOptions = {
-      from: String(config.email_from || config.email_user),
-      to: options.to,
-      subject: options.subject,
-      text: options.text,
-      html: options.html,
-    };
+
+    if (!this.brevo) {
+      this.customLogger.log(
+        `Email mock: Would have sent to ${options.to}`,
+        "EmailService",
+      );
+      return;
+    }
 
     try {
-      await this.transporter.sendMail(mailOptions);
+      await this.brevo.transactionalEmails.sendTransacEmail({
+        sender: {
+          name: config.email_from_name || "Atlas ERP",
+          email: config.email_from,
+        },
+        to: [{ email: options.to }],
+        subject: options.subject,
+        textContent: options.text,
+        htmlContent: options.html,
+      });
+
       this.customLogger.log(
         `Email sent successfully to: ${options.to}`,
         "EmailService",
@@ -75,7 +78,6 @@ export class EmailService {
         error instanceof Error ? error.stack : undefined,
         "EmailService",
       );
-      console.error("Error sending email:", error);
       throw AppError.badRequest("Email sending failed, something went wrong!");
     }
   }
@@ -97,8 +99,7 @@ export class EmailService {
       let template = await fs.readFile(absolutePath, { encoding: "utf-8" });
 
       for (const key in replacements) {
-        // Escape regex special characters to prevent ReDoS/Injection
-        const escapedKey = key.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&");
+        const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         template = template.replace(
           new RegExp(`{{${escapedKey}}}`, "g"),
           replacements[key],
@@ -168,32 +169,114 @@ export class EmailService {
 
     await this.sendEmail({
       to: email,
-      subject: "Welcome to our platform!",
+      subject: "Welcome to Atlas ERP!",
       html,
     });
   }
 
   /**
-   * Send workspace invite email
+   * Send workspace invite email with a magic link URL
    */
   async sendWorkspaceInviteEmail(
     email: string,
     inviterName: string,
     workspaceName: string,
-    inviteToken: string,
-    webAppUrl: string,
+    magicLinkUrl: string,
   ): Promise<void> {
-    const acceptUrl = `${webAppUrl}/accept-invite?token=${inviteToken}`;
     const html = await this.getEmailTemplate("workspace-invite.html", {
       inviterName,
       workspaceName,
-      acceptUrl,
+      acceptUrl: magicLinkUrl,
       year: new Date().getFullYear().toString(),
     });
 
     await this.sendEmail({
       to: email,
       subject: `You've been invited to join ${workspaceName} on Atlas ERP`,
+      html,
+    });
+  }
+
+  /**
+   * Send a plain OTP code email (for emailOTP plugin callbacks)
+   */
+  async sendOtpEmail(
+    email: string,
+    otp: string,
+    type: "sign-in" | "email-verification" | "forget-password",
+  ): Promise<void> {
+    const subjectMap: Record<typeof type, string> = {
+      "sign-in": "Your Atlas sign-in code",
+      "email-verification": "Verify your email address",
+      "forget-password": "Reset your Atlas password",
+    };
+
+    const labelMap: Record<typeof type, string> = {
+      "sign-in": "Use this code to sign in to Atlas ERP:",
+      "email-verification": "Use this code to verify your email address:",
+      "forget-password": "Use this code to reset your password:",
+    };
+
+    const html = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 24px; background: #ffffff;">
+        <div style="margin-bottom: 32px;">
+          <h1 style="font-size: 20px; font-weight: 600; color: #111111; margin: 0 0 8px;">${subjectMap[type]}</h1>
+          <p style="font-size: 14px; color: #626260; margin: 0;">${labelMap[type]}</p>
+        </div>
+        <div style="background: #f5f1ec; border-radius: 12px; padding: 32px; text-align: center; margin-bottom: 32px;">
+          <span style="font-size: 36px; font-weight: 700; letter-spacing: 12px; color: #111111; font-family: 'Courier New', monospace;">${otp}</span>
+        </div>
+        <p style="font-size: 13px; color: #7b7b78; margin: 0 0 8px;">This code expires in <strong>5 minutes</strong>.</p>
+        <p style="font-size: 13px; color: #7b7b78; margin: 0;">If you didn't request this, you can safely ignore this email.</p>
+        <hr style="border: 0; border-top: 1px solid #e5e2db; margin: 32px 0;" />
+        <p style="font-size: 12px; color: #a1a1aa; margin: 0;">Atlas ERP &mdash; ${new Date().getFullYear()}</p>
+      </div>`;
+
+    await this.sendEmail({
+      to: email,
+      subject: subjectMap[type],
+      html,
+    });
+  }
+
+  /**
+   * Send a magic link invite email
+   */
+  async sendMagicLinkEmail(
+    email: string,
+    magicLinkUrl: string,
+    inviterName?: string,
+    workspaceName?: string,
+  ): Promise<void> {
+    const isInvite = !!(inviterName && workspaceName);
+    const title = isInvite
+      ? `${inviterName} invited you to ${workspaceName}`
+      : "Sign in to Atlas ERP";
+    const bodyText = isInvite
+      ? `${inviterName} has invited you to join <strong>${workspaceName}</strong> on Atlas ERP. Click the button below to accept the invitation and sign in.`
+      : "Click the button below to sign in to Atlas ERP. This link expires in 5 minutes and can only be used once.";
+
+    const html = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 24px; background: #ffffff;">
+        <div style="margin-bottom: 32px;">
+          <h1 style="font-size: 20px; font-weight: 600; color: #111111; margin: 0 0 8px;">${title}</h1>
+          <p style="font-size: 14px; color: #626260; margin: 0;">${bodyText}</p>
+        </div>
+        <div style="margin-bottom: 32px;">
+          <a href="${magicLinkUrl}" style="display: inline-block; background: #111111; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-size: 14px; font-weight: 600;">
+            ${isInvite ? "Accept invitation" : "Sign in to Atlas"}
+          </a>
+        </div>
+        <p style="font-size: 13px; color: #7b7b78; margin: 0 0 8px;">Or copy and paste this link into your browser:</p>
+        <p style="font-size: 12px; color: #7b7b78; word-break: break-all; margin: 0 0 32px;">${magicLinkUrl}</p>
+        <p style="font-size: 13px; color: #7b7b78; margin: 0;">This link expires in <strong>15 minutes</strong> and can only be used once.</p>
+        <hr style="border: 0; border-top: 1px solid #e5e2db; margin: 32px 0;" />
+        <p style="font-size: 12px; color: #a1a1aa; margin: 0;">Atlas ERP &mdash; ${new Date().getFullYear()}</p>
+      </div>`;
+
+    await this.sendEmail({
+      to: email,
+      subject: title,
       html,
     });
   }

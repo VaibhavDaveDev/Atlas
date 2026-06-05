@@ -33,11 +33,11 @@ export class PaymentsService {
     );
 
     // 1. Validate accounts (Hardcoded for now based on seed)
-    const arAccount = await this.prisma.account.findFirst({
+    const arAccount = await this.prisma.financialAccount.findFirst({
       where: { workspaceId, accountNumber: "1300" }, // Accounts Receivable
     });
 
-    const apAccount = await this.prisma.account.findFirst({
+    const apAccount = await this.prisma.financialAccount.findFirst({
       where: { workspaceId, accountNumber: "2100" }, // Accounts Payable
     });
 

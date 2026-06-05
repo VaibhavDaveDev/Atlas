@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useAuth } from '@/contexts/AuthContext';
-import { User, Mail, Shield, Key, Loader2, Moon, Sun, Monitor, Save, Check, Globe, Dice6, Plus } from 'lucide-react';
+import { User, Mail, Shield, Key, Loader2, Moon, Sun, Monitor, Save, Check, Globe, Dice6, Plus, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +11,7 @@ import { useTheme } from 'next-themes';
 import { useUserStore } from '@/stores/useUserStore';
 import { toast } from 'sonner';
 import { cn, md5 } from '@/lib/utils';
+import { API_BASE } from '@/lib/auth';
 import { 
   Dialog, 
   DialogContent, 
@@ -21,6 +22,15 @@ import {
   DialogFooter
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+import { authClient } from '@/lib/auth-client';
 
 export default function ProfileSettingsPage() {
   const { user, updateUser } = useAuth();
@@ -30,8 +40,76 @@ export default function ProfileSettingsPage() {
   const [username, setUsername] = useState(user?.username || '');
   const [email] = useState(user?.email || ''); // Non-editable
   const [avatar, setAvatar] = useState(user?.image || `https://api.dicebear.com/7.x/lorelei/svg?seed=${user?.username || 'user'}`);
+  const [retentionDays, setRetentionDays] = useState(user?.notificationRetentionDays?.toString() || '30');
   const [isSaving, setIsSaving] = useState(false);
   const [showAvatarDialog, setShowAvatarDialog] = useState(false);
+
+  // 2FA state
+  const [is2faEnabled, setIs2faEnabled] = useState(false);
+  const [show2faDialog, setShow2faDialog] = useState(false);
+  const [qrCode, setQrCode] = useState('');
+  const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  const [is2faLoading, setIs2faLoading] = useState(false);
+
+  const { data: session } = authClient.useSession();
+
+  useEffect(() => {
+    if (session?.user) {
+      setIs2faEnabled(!!(session.user as any).twoFactorEnabled);
+    }
+  }, [session]);
+
+  const handleEnable2fa = async () => {
+    setIs2faLoading(true);
+    try {
+      const { data, error } = await authClient.twoFactor.enable({
+        appName: 'Atlas ERP',
+      });
+      if (error) throw error;
+      setQrCode(data.totpURI);
+      setShow2faDialog(true);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to enable 2FA');
+    } finally {
+      setIs2faLoading(false);
+    }
+  };
+
+  const handleVerify2fa = async () => {
+    setIs2faLoading(true);
+    try {
+      const { data, error } = await authClient.twoFactor.verifyTotp({
+        code: twoFactorCode,
+      });
+      if (error) throw error;
+      
+      setBackupCodes(data.backupCodes);
+      setIs2faEnabled(true);
+      toast.success('Two-factor authentication enabled successfully!');
+      // Backup codes would be shown here in a real app
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Invalid code');
+    } finally {
+      setIs2faLoading(false);
+    }
+  };
+
+  const handleDisable2fa = async () => {
+    if (!confirm('Are you sure you want to disable 2FA? This will make your account less secure.')) return;
+    
+    setIs2faLoading(true);
+    try {
+      const { error } = await authClient.twoFactor.disable();
+      if (error) throw error;
+      setIs2faEnabled(false);
+      toast.success('Two-factor authentication disabled');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to disable 2FA');
+    } finally {
+      setIs2faLoading(false);
+    }
+  };
 
   // Gravatar URL generation
   const gravatarUrl = `https://www.gravatar.com/avatar/${md5(email.toLowerCase().trim())}?s=200&d=identicon`;
@@ -65,7 +143,7 @@ export default function ProfileSettingsPage() {
     setIsSaving(true);
     
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/${user?.id}`, {
+      const response = await fetch(`${API_BASE}/user/${user?.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -73,7 +151,8 @@ export default function ProfileSettingsPage() {
         },
         body: JSON.stringify({ 
           username,
-          image: avatar
+          image: avatar,
+          notificationRetentionDays: parseInt(retentionDays, 10)
         }),
       });
 
@@ -85,7 +164,10 @@ export default function ProfileSettingsPage() {
       const responseData = await response.json();
       const updatedUser = responseData.data || responseData;
       
-      updateUser(updatedUser);
+      updateUser({
+        ...updatedUser,
+        notificationRetentionDays: parseInt(retentionDays, 10)
+      });
       setProfileSettings({ username, avatar: updatedUser.image });
       toast.success('Profile updated successfully');
     } catch (err) {
@@ -98,7 +180,7 @@ export default function ProfileSettingsPage() {
   const handleRequestOtp = async () => {
     setIsOtpLoading(true);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/change-password/request`, {
+      const response = await fetch(`${API_BASE}/auth/change-password/request`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
@@ -128,7 +210,7 @@ export default function ProfileSettingsPage() {
     
     setIsSaving(true);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/change-password/confirm`, {
+      const response = await fetch(`${API_BASE}/auth/change-password/confirm`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -297,6 +379,30 @@ export default function ProfileSettingsPage() {
                 </button>
               </div>
             </div>
+
+            <div className="rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] p-6 space-y-5 shadow-none">
+              <h3 className="text-[11px] font-bold uppercase tracking-widest text-[#7b7b78] dark:text-[#71717a] flex items-center gap-2">
+                <Bell className="h-4 w-4" /> Notifications
+              </h3>
+              <div className="space-y-3">
+                <Label htmlFor="retention" className="text-[10px] font-bold uppercase tracking-wider text-[#7b7b78] dark:text-[#71717a]">Keep notifications for</Label>
+                <Select value={retentionDays} onValueChange={setRetentionDays}>
+                  <SelectTrigger id="retention" className="w-full bg-transparent border-[#d3cec6] dark:border-[#27272a] text-xs font-semibold h-9">
+                    <SelectValue placeholder="Select period" />
+                  </SelectTrigger>
+                  <SelectContent className="border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214]">
+                    <SelectItem value="7">7 Days</SelectItem>
+                    <SelectItem value="15">15 Days</SelectItem>
+                    <SelectItem value="30">30 Days</SelectItem>
+                    <SelectItem value="60">60 Days</SelectItem>
+                    <SelectItem value="90">90 Days</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] text-[#7b7b78] dark:text-[#71717a] leading-relaxed italic">
+                  Notifications older than this will be automatically hidden from your view.
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="md:col-span-2 space-y-8">
@@ -437,6 +543,136 @@ export default function ProfileSettingsPage() {
                       </Button>
                     </div>
                   </form>
+                )}
+              </div>
+            </div>
+
+            {/* Two-Factor Authentication */}
+            <div className="rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] overflow-hidden shadow-none">
+              <div className="px-6 py-4 border-b border-[#f5f1ec] dark:border-[#1a1a1e] bg-[#f5f1ec]/30 dark:bg-[#09090b]/30">
+                <h2 className="text-[11px] font-bold uppercase tracking-widest text-[#111111] dark:text-[#f4f4f5] flex items-center gap-2.5">
+                  <Key className="h-4 w-4" /> Two-Factor Authentication (2FA)
+                </h2>
+              </div>
+              <div className="p-6 space-y-6">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-semibold text-[#111111] dark:text-[#f4f4f5] tracking-tight">Status</h3>
+                      {is2faEnabled ? (
+                        <Badge className="bg-emerald-100 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5">Enabled</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5">Disabled</Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-[#626260] dark:text-[#a1a1aa] leading-relaxed">
+                      Add an extra layer of security to your account using an authenticator app (TOTP).
+                    </p>
+                  </div>
+                  {is2faEnabled ? (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleDisable2fa} 
+                      disabled={is2faLoading}
+                      className="border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 font-bold whitespace-nowrap shadow-sm"
+                    >
+                      {is2faLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> : <Shield className="mr-2 h-3.5 w-3.5" />} 
+                      Disable 2FA
+                    </Button>
+                  ) : (
+                    <Dialog open={show2faDialog} onOpenChange={setShow2faDialog}>
+                      <DialogTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={handleEnable2fa}
+                          disabled={is2faLoading}
+                          className="border-[#111111] dark:border-[#f4f4f5] text-[#111111] dark:text-[#f4f4f5] hover:bg-[#f5f1ec] dark:hover:bg-[#1c1c1f] font-bold whitespace-nowrap shadow-sm"
+                        >
+                          {is2faLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> : <Plus className="mr-2 h-3.5 w-3.5" />} 
+                          Enable 2FA
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-md border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214]">
+                        <DialogHeader>
+                          <DialogTitle>Set up Two-Factor Authentication</DialogTitle>
+                          <DialogDescription>
+                            Scan the QR code below with your authenticator app (Google Authenticator, Authy, etc.).
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="flex flex-col items-center space-y-6 py-4">
+                          {qrCode ? (
+                            <div className="p-4 bg-white rounded-xl border-4 border-white shadow-inner">
+                              {/* Using a simple QR generator API for the URI */}
+                              <img 
+                                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrCode)}`} 
+                                alt="QR Code" 
+                                className="w-48 h-48"
+                              />
+                            </div>
+                          ) : (
+                            <div className="w-48 h-48 bg-muted animate-pulse rounded-xl flex items-center justify-center">
+                              <Loader2 className="h-8 w-8 animate-spin" />
+                            </div>
+                          )}
+                          
+                          <div className="w-full space-y-2">
+                            <Label htmlFor="2fa-code" className="text-xs font-bold uppercase tracking-wider text-[#7b7b78] dark:text-[#71717a]">Verification Code</Label>
+                            <Input 
+                              id="2fa-code"
+                              placeholder="000000"
+                              value={twoFactorCode}
+                              onChange={(e) => setTwoFactorCode(e.target.value)}
+                              className="text-center font-mono tracking-[0.5em] text-lg bg-transparent border-[#d3cec6] dark:border-[#27272a]"
+                              maxLength={6}
+                            />
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button 
+                            className="w-full bg-[#111111] dark:bg-[#f4f4f5] text-white dark:text-black font-bold"
+                            onClick={handleVerify2fa}
+                            disabled={is2faLoading || twoFactorCode.length !== 6}
+                          >
+                            {is2faLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Verify & Activate
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                </div>
+
+                {backupCodes.length > 0 && (
+                  <div className="p-4 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 space-y-3 animate-in fade-in duration-500">
+                    <div className="flex items-center gap-2 text-amber-800 dark:text-amber-400">
+                      <AlertTriangle className="h-4 w-4" />
+                      <h4 className="text-xs font-bold uppercase tracking-wider">Save your backup codes</h4>
+                    </div>
+                    <p className="text-[10px] text-amber-700 dark:text-amber-500 font-medium">
+                      If you lose access to your authenticator app, these codes are the ONLY way to access your account.
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 font-mono text-xs">
+                      {backupCodes.map((code, idx) => (
+                        <div key={idx} className="bg-white/50 dark:bg-black/20 p-1.5 rounded text-center border border-amber-200/50 dark:border-amber-900/30">
+                          {code}
+                        </div>
+                      ))}
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full text-[10px] font-bold bg-white dark:bg-black/20 border-amber-200 dark:border-amber-900/50"
+                      onClick={() => {
+                        const text = backupCodes.join('\n');
+                        navigator.clipboard.writeText(text);
+                        toast.success('Backup codes copied to clipboard');
+                      }}
+                    >
+                      Copy Codes
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>

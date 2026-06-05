@@ -1,3 +1,7 @@
+import { otelSDK } from "./tracer";
+// Start the OpenTelemetry SDK
+otelSDK.start();
+
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
 import { AllExceptionsFilter } from "./common/filters/all-exception.filter";
@@ -10,10 +14,32 @@ import {
 import { Logger } from "winston";
 import helmet from "helmet";
 import { setupSwagger } from "./common/config/swagger.config";
+import cookieParser from "cookie-parser";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,
+    // Disable the built-in body parser globally so that Better Auth's
+    // toNodeHandler can read the raw request stream for /api/v1/auth/* routes.
+    // We re-apply express.json() below for all other routes.
+    bodyParser: false,
+  });
+
+  // Enable cookie parsing
+  app.use(cookieParser());
+
+  // Re-apply body parsing for everything EXCEPT Better Auth routes.
+  // Better Auth's toNodeHandler reads the body as a stream; if express.json()
+  // has already consumed it, the sign-in body will be empty.
+  const expressJson = (await import("express")).default.json();
+  const expressUrlEncoded = (await import("express")).default.urlencoded({ extended: true });
+  app.use((req: any, res: any, next: any) => {
+    if (req.path?.startsWith("/api/v1/auth")) return next();
+    expressJson(req, res, next);
+  });
+  app.use((req: any, res: any, next: any) => {
+    if (req.path?.startsWith("/api/v1/auth")) return next();
+    expressUrlEncoded(req, res, next);
   });
 
   // Set global prefix for all API routes

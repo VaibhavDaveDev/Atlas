@@ -4,7 +4,6 @@ import {
   Users,
   BarChart3,
   FolderKanban,
-  TrendingUp,
   Activity,
   ArrowUpRight,
   Building2,
@@ -13,6 +12,9 @@ import {
   ShieldCheck,
   ChevronRight,
   Briefcase,
+  Clock,
+  FileText,
+  User,
 } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useAuth } from '@/contexts/AuthContext';
@@ -92,18 +94,9 @@ const moduleCards = [
     color: 'text-emerald-600 dark:text-emerald-400',
     bg: 'bg-emerald-50/50 dark:bg-emerald-950/20',
     href: '/dashboard/finance',
-    status: 'Setup Required',
-    metrics: ['Balance: ₹0', 'Overdue: 0'],
-  },
-  {
-    title: 'CRM & Sales',
-    desc: 'Leads, deals, and customer relations',
-    icon: TrendingUp,
-    color: 'text-orange-600 dark:text-orange-400',
-    bg: 'bg-orange-50/50 dark:bg-orange-950/20',
-    href: '/dashboard/crm',
     status: 'Active',
-    metrics: ['Open Deals: 0', 'New Leads: 0'],
+    metrics: ['Balance: ₹0', 'Overdue: 0'],
+    adminOnly: true,
   },
   {
     title: 'Project Management',
@@ -114,6 +107,7 @@ const moduleCards = [
     href: '/dashboard/projects',
     status: 'Active',
     metrics: ['Ongoing Tasks: 0', 'Due Today: 0'],
+    adminOnly: true,
   },
 ];
 
@@ -126,6 +120,22 @@ export default function DashboardPage() {
 
   const isAdmin = workspace && ['OWNER', 'ADMIN'].includes(workspace.role);
   const visibleModules = moduleCards.filter(m => !m.adminOnly || isAdmin);
+
+  const adminQuickActions = [
+    { label: 'Apply for Leave', icon: Calendar, href: '/dashboard/ess/leaves' },
+    { label: 'View Payslips', icon: FileText, href: '/dashboard/ess/payslips' },
+    { label: 'Mark Attendance', icon: Clock, href: '/dashboard/ess/attendance' },
+    { label: 'My Profile', icon: User, href: '/dashboard/ess/profile' },
+  ];
+
+  const employeeQuickActions = [
+    { label: 'Check In / Out', icon: Clock, href: '/dashboard/ess' },
+    { label: 'Apply for Leave', icon: Calendar, href: '/dashboard/ess/leaves' },
+    { label: 'View Payslips', icon: FileText, href: '/dashboard/ess/payslips' },
+    { label: 'My Profile', icon: User, href: '/dashboard/ess/profile' },
+  ];
+
+  const quickActions = isAdmin ? adminQuickActions : employeeQuickActions;
 
   return (
     <AppShell>
@@ -154,12 +164,11 @@ export default function DashboardPage() {
         {/* Quick Stats Grid */}
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
-            title="Total Revenue"
-            value="₹1,24,500"
-            change="+12.5%"
-            changeLabel="vs last month"
-            icon={BarChart3}
-            iconColor="text-blue-600 dark:text-blue-400"
+            title="Workspace Members"
+            value={workspace?.memberCount?.toString() ?? '—'}
+            changeLabel="Active in org"
+            icon={Users}
+            iconColor="text-violet-600 dark:text-violet-400"
           />
           <StatCard
             title="Active Projects"
@@ -175,7 +184,7 @@ export default function DashboardPage() {
             change="+1"
             changeLabel="This month"
             icon={Users}
-            iconColor="text-violet-600 dark:text-violet-400"
+            iconColor="text-blue-600 dark:text-blue-400"
           />
           <StatCard
             title="Pending Actions"
@@ -185,54 +194,91 @@ export default function DashboardPage() {
           />
         </div>
 
+        {/* Modules Section — only shown to admins, employees get ESS redirect hint */}
         <div className="grid gap-8 lg:grid-cols-3">
           {/* Main Content Area */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Modules Section */}
-            <div>
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="text-lg font-semibold tracking-tight text-[#111111] dark:text-[#f4f4f5]">Active Modules</h2>
-              </div>
-              <div className="grid gap-5 sm:grid-cols-2">
-                {visibleModules.map((module) => {
-                  const Icon = module.icon;
-                  return (
-                    <Link
-                      key={module.title}
-                      href={module.href}
-                      className="group p-6 rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] transition-all hover:border-[#111111] dark:hover:border-[#f4f4f5] relative overflow-hidden shadow-none"
-                    >
-                      <div className="flex items-start gap-4 mb-5">
-                        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[#d3cec6] dark:border-[#27272a] bg-[#f5f1ec] dark:bg-[#09090b] shadow-sm`}>
-                          <Icon className={`h-5 w-5 ${module.color}`} />
+            {isAdmin ? (
+              <div>
+                <div className="flex items-center justify-between mb-5">
+                  <h2 className="text-lg font-semibold tracking-tight text-[#111111] dark:text-[#f4f4f5]">Active Modules</h2>
+                </div>
+                <div className="grid gap-5 sm:grid-cols-2">
+                  {visibleModules.map((module) => {
+                    const Icon = module.icon;
+                    return (
+                      <Link
+                        key={module.title}
+                        href={module.href}
+                        className="group p-6 rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] transition-all hover:border-[#111111] dark:hover:border-[#f4f4f5] relative overflow-hidden shadow-none"
+                      >
+                        <div className="flex items-start gap-4 mb-5">
+                          <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[#d3cec6] dark:border-[#27272a] bg-[#f5f1ec] dark:bg-[#09090b] shadow-sm`}>
+                            <Icon className={`h-5 w-5 ${module.color}`} />
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="font-semibold text-sm text-[#111111] dark:text-[#f4f4f5] tracking-tight group-hover:text-[#4f46e5] transition-colors truncate">
+                              {module.title}
+                            </h3>
+                            <p className="text-xs text-[#626260] dark:text-[#a1a1aa] mt-0.5 line-clamp-1">{module.desc}</p>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <h3 className="font-semibold text-sm text-[#111111] dark:text-[#f4f4f5] tracking-tight group-hover:text-[#4f46e5] transition-colors truncate">
-                            {module.title}
-                          </h3>
-                          <p className="text-xs text-[#626260] dark:text-[#a1a1aa] mt-0.5 line-clamp-1">{module.desc}</p>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {module.metrics.map((m) => (
+                            <span key={m} className="px-2 py-1 bg-[#f5f1ec] dark:bg-[#09090b] border border-[#d3cec6] dark:border-[#27272a] rounded text-[10px] font-bold text-[#7b7b78] dark:text-[#71717a] leading-none uppercase tracking-tight">
+                              {m}
+                            </span>
+                          ))}
                         </div>
-                      </div>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {module.metrics.map((m) => (
-                          <span key={m} className="px-2 py-1 bg-[#f5f1ec] dark:bg-[#09090b] border border-[#d3cec6] dark:border-[#27272a] rounded text-[10px] font-bold text-[#7b7b78] dark:text-[#71717a] leading-none uppercase tracking-tight">
-                            {m}
+                        <div className="mt-5 pt-4 border-t border-[#f5f1ec] dark:border-[#1a1a1e] flex items-center justify-between">
+                          <span className={`text-[10px] font-bold uppercase tracking-widest ${
+                            module.status === 'Active' ? 'text-emerald-600' : 'text-orange-600'
+                          }`}>
+                            {module.status}
                           </span>
-                        ))}
-                      </div>
-                      <div className="mt-5 pt-4 border-t border-[#f5f1ec] dark:border-[#1a1a1e] flex items-center justify-between">
-                        <span className={`text-[10px] font-bold uppercase tracking-widest ${
-                          module.status === 'Active' ? 'text-emerald-600' : 'text-orange-600'
-                        }`}>
-                          {module.status}
-                        </span>
-                        <ChevronRight className="h-4 w-4 text-[#7b7b78] dark:text-[#71717a] group-hover:translate-x-0.5 transition-transform" />
-                      </div>
-                    </Link>
-                  );
-                })}
+                          <ChevronRight className="h-4 w-4 text-[#7b7b78] dark:text-[#71717a] group-hover:translate-x-0.5 transition-transform" />
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            ) : (
+              /* Employee: show ESS gateway card */
+              <div>
+                <div className="flex items-center justify-between mb-5">
+                  <h2 className="text-lg font-semibold tracking-tight text-[#111111] dark:text-[#f4f4f5]">Employee Self-Service</h2>
+                </div>
+                <Link href="/dashboard/ess" className="group flex flex-col gap-4 p-6 rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] hover:border-[#4f46e5] dark:hover:border-[#818cf8] transition-all shadow-none">
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#f5f1ec] dark:bg-[#09090b] flex items-center justify-center shadow-sm">
+                      <User className="h-6 w-6 text-[#4f46e5] dark:text-[#818cf8]" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm text-[#111111] dark:text-[#f4f4f5] tracking-tight group-hover:text-[#4f46e5] transition-colors">Your ESS Portal</p>
+                      <p className="text-xs text-[#626260] dark:text-[#a1a1aa] mt-0.5">Attendance, leaves, payslips and your profile in one place.</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 pt-4 border-t border-[#f5f1ec] dark:border-[#1a1a1e]">
+                    {[
+                      { label: 'Check In / Out', href: '/dashboard/ess', icon: Clock },
+                      { label: 'Leave Balance', href: '/dashboard/ess/leaves', icon: Calendar },
+                      { label: 'Payslips', href: '/dashboard/ess/payslips', icon: FileText },
+                      { label: 'My Profile', href: '/dashboard/ess/profile', icon: User },
+                    ].map((item) => (
+                      <span key={item.label} className="flex items-center gap-2 text-xs font-medium text-[#626260] dark:text-[#a1a1aa]">
+                        <item.icon className="h-3.5 w-3.5 text-[#7b7b78]" />
+                        {item.label}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest">
+                    <span className="text-emerald-600">Active</span>
+                    <ChevronRight className="h-4 w-4 text-[#7b7b78] group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                </Link>
+              </div>
+            )}
 
             {/* Upcoming Deadlines / Events */}
             <div className="rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] overflow-hidden shadow-none">
@@ -241,7 +287,6 @@ export default function DashboardPage() {
                   <Calendar className="h-4 w-4 text-[#111111] dark:text-[#f4f4f5]" />
                   <h2 className="text-[11px] font-bold uppercase tracking-widest text-[#111111] dark:text-[#f4f4f5]">Upcoming Schedule</h2>
                 </div>
-                <Link href="/dashboard/hr/leaves" className="text-[11px] font-bold text-[#4f46e5] dark:text-[#818cf8] hover:underline uppercase tracking-wider">View Calendar</Link>
               </div>
               <div className="p-16 flex flex-col items-center justify-center text-center">
                 <div className="h-16 w-16 bg-[#f5f1ec] dark:bg-[#09090b] border border-[#d3cec6] dark:border-[#27272a] rounded-xl flex items-center justify-center mb-5 shadow-sm">
@@ -261,12 +306,7 @@ export default function DashboardPage() {
             <div className="rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] p-6 shadow-none">
               <h2 className="text-[11px] font-bold tracking-widest uppercase text-[#7b7b78] dark:text-[#71717a] mb-5">Quick Actions</h2>
               <div className="space-y-1.5">
-                {[
-                  { label: 'Add Employee', icon: Users, href: '/dashboard/hr/employees/new' },
-                  { label: 'Run Payroll', icon: Briefcase, href: '/dashboard/hr/payroll' },
-                  { label: 'Statutory Compliance', icon: ShieldCheck, href: '/dashboard/hr/compliance/india' },
-                  { label: 'Project Settings', icon: Building2, href: '/dashboard/settings' },
-                ].map((action) => (
+                {quickActions.map((action) => (
                   <Link
                     key={action.label}
                     href={action.href}
@@ -304,19 +344,6 @@ export default function DashboardPage() {
                   </div>
                   <div className="h-1.5 w-full bg-[#f5f1ec] dark:bg-[#09090b] border border-[#d3cec6] dark:border-[#27272a] rounded-full overflow-hidden p-[1px]">
                     <div className="h-full bg-blue-600 rounded-full" style={{ width: '15%' }} />
-                  </div>
-                </div>
-              </div>
-              <div className="mt-8 pt-6 border-t border-[#f5f1ec] dark:border-[#1a1a1e]">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-[#f5f1ec] dark:bg-[#09090b] border border-[#d3cec6] dark:border-[#27272a] flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
-                    <div className="h-full w-full bg-gradient-to-br from-[#4f46e5] to-violet-500 opacity-80" />
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-bold text-[#111111] dark:text-[#f4f4f5] uppercase tracking-wider">Atlas AI</p>
-                    <p className="text-[10px] text-[#626260] dark:text-[#a1a1aa] leading-snug mt-0.5 italic">
-                      "India Specific statutory modules are active."
-                    </p>
                   </div>
                 </div>
               </div>

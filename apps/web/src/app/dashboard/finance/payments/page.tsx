@@ -10,7 +10,10 @@ import {
   Landmark, 
   Calendar,
   ArrowUpRight,
-  ArrowDownLeft
+  ArrowDownLeft,
+  CheckCircle2,
+  History,
+  ShieldCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,27 +28,30 @@ import {
 } from '@/components/ui/table';
 import { format } from 'date-fns';
 import { NewPaymentSheet } from '@/components/finance/NewPaymentSheet';
+import { reconcilePayment, getAccounts } from '@/lib/finance';
 
 export default function PaymentsPage() {
   const [payments, setPayments] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<'history' | 'reconciliation'>('history');
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('all');
+  const [selectedPayments, setSelectedPayments] = useState<string[]>([]);
   const [isNewPaymentOpen, setIsNewPaymentOpen] = useState(false);
   const [paymentType, setPaymentType] = useState<'RECEIVED' | 'MADE'>('RECEIVED');
+  const [isReconciling, setIsReconciling] = useState(false);
 
   const fetchPayments = () => {
     setIsLoading(true);
-    getPayments()
-      .then((res) => {
-        if (res.success) {
-          setPayments(res.data);
-        } else {
-          setError(res.error || 'Failed to load payments');
-        }
+    Promise.all([getPayments(), getAccounts()])
+      .then(([payRes, accRes]) => {
+        if (payRes.success) setPayments(payRes.data);
+        if (accRes.success) setAccounts(accRes.data.filter((a: any) => a.accountType === 'ASSET')); // Show bank/cash accounts
       })
       .catch((err) => {
-        setError(err.message || 'Failed to load payments');
+        setError(err.message || 'Failed to load data');
       })
       .finally(() => setIsLoading(false));
   };
@@ -54,15 +60,38 @@ export default function PaymentsPage() {
     fetchPayments();
   }, []);
 
+  const handleReconcile = async () => {
+    if (selectedPayments.length === 0) return;
+    if (!window.confirm(`Are you sure you want to reconcile ${selectedPayments.length} transactions?`)) return;
+
+    setIsReconciling(true);
+    try {
+      for (const id of selectedPayments) {
+        await reconcilePayment(id);
+      }
+      alert('Transactions reconciled successfully!');
+      setSelectedPayments([]);
+      fetchPayments();
+    } catch (e: any) {
+      alert(e.message || 'Reconciliation failed');
+    } finally {
+      setIsReconciling(false);
+    }
+  };
+
   const openNewPayment = (type: 'RECEIVED' | 'MADE') => {
     setPaymentType(type);
     setIsNewPaymentOpen(true);
   };
 
-  const filteredPayments = payments.filter(p => 
-    (p.paymentNumber ?? '').toLowerCase().includes(searchQuery.toLowerCase()) || 
-    (p.remarks ?? '').toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredPayments = payments.filter(p => {
+    const matchesSearch = (p.paymentNumber ?? '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          (p.remarks ?? '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesAccount = selectedAccountId === 'all' || p.accountId === selectedAccountId;
+    const matchesStatus = activeTab === 'history' ? true : p.status !== 'RECONCILED';
+    
+    return matchesSearch && matchesAccount && matchesStatus;
+  });
 
   return (
     <AppShell>
@@ -96,16 +125,60 @@ export default function PaymentsPage() {
           type={paymentType}
         />
 
-        <div className="flex items-center justify-between rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] p-2">
-          <div className="relative w-full max-w-sm">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7b7b78] dark:text-[#a1a1aa]" />
-            <Input
-              placeholder="Search by payment number..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 border-none bg-transparent shadow-none focus-visible:ring-0"
-            />
+        <div className="flex bg-[#f5f1ec] dark:bg-[#09090b] p-1 rounded-lg w-fit border border-[#d3cec6] dark:border-[#27272a]">
+          <button
+            onClick={() => setActiveTab('history')}
+            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-2 ${activeTab === 'history' ? 'bg-[#ffffff] dark:bg-[#121214] shadow-sm text-[#111111] dark:text-[#f4f4f5]' : 'text-[#7b7b78] hover:text-[#111111]'}`}
+          >
+            <History className="h-4 w-4" />
+            Payment History
+          </button>
+          <button
+            onClick={() => setActiveTab('reconciliation')}
+            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-2 ${activeTab === 'reconciliation' ? 'bg-[#ffffff] dark:bg-[#121214] shadow-sm text-[#111111] dark:text-[#f4f4f5]' : 'text-[#7b7b78] hover:text-[#111111]'}`}
+          >
+            <ShieldCheck className="h-4 w-4" />
+            Bank Reconciliation
+          </button>
+        </div>
+
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] p-2">
+          <div className="flex flex-1 items-center gap-2 w-full">
+            <div className="relative w-full max-w-sm">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7b7b78] dark:text-[#a1a1aa]" />
+              <Input
+                placeholder="Search payments..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 border-none bg-transparent shadow-none focus-visible:ring-0"
+              />
+            </div>
+            
+            <div className="h-6 w-px bg-[#d3cec6] dark:bg-[#27272a] hidden md:block" />
+            
+            <select 
+              className="bg-transparent text-sm font-medium focus:outline-none cursor-pointer p-1"
+              value={selectedAccountId}
+              onChange={(e) => setSelectedAccountId(e.target.value)}
+            >
+              <option value="all">All Bank Accounts</option>
+              {accounts.map(acc => (
+                <option key={acc.id} value={acc.id}>{acc.accountName}</option>
+              ))}
+            </select>
           </div>
+
+          {activeTab === 'reconciliation' && selectedPayments.length > 0 && (
+            <Button 
+              size="sm" 
+              onClick={handleReconcile}
+              disabled={isReconciling}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              {isReconciling ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+              Reconcile {selectedPayments.length} Items
+            </Button>
+          )}
         </div>
 
         <div className="rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] overflow-hidden">
@@ -123,15 +196,19 @@ export default function PaymentsPage() {
           ) : filteredPayments.length === 0 ? (
             <div className="p-12 text-center flex flex-col items-center">
               <Landmark className="h-12 w-12 text-[#7b7b78] mb-4 opacity-20" />
-              <h3 className="text-lg font-medium text-[#111111] dark:text-[#f4f4f5]">No payments recorded</h3>
+              <h3 className="text-lg font-medium text-[#111111] dark:text-[#f4f4f5]">No {activeTab === 'reconciliation' ? 'unreconciled' : ''} payments</h3>
               <p className="text-sm text-[#7b7b78] dark:text-[#a1a1aa] mt-1 max-w-xs mx-auto">
-                Any payments received or made will show up here.
+                {activeTab === 'reconciliation' 
+                  ? 'Great! Your books are in sync with your bank statement.'
+                  : 'Any payments received or made will show up here.'
+                }
               </p>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow className="bg-[#f5f1ec] dark:bg-[#09090b] border-[#d3cec6] dark:border-[#27272a]">
+                  {activeTab === 'reconciliation' && <TableHead className="w-[50px]"></TableHead>}
                   <TableHead className="w-[150px] font-bold text-[#111111] dark:text-[#f4f4f5]">Number</TableHead>
                   <TableHead className="w-[120px] font-bold text-[#111111] dark:text-[#f4f4f5]">Type</TableHead>
                   <TableHead className="w-[150px] font-bold text-[#111111] dark:text-[#f4f4f5]">Date</TableHead>
@@ -143,6 +220,19 @@ export default function PaymentsPage() {
               <TableBody>
                 {filteredPayments.map((p) => (
                   <TableRow key={p.id} className="border-[#d3cec6] dark:border-[#27272a] hover:bg-[#f5f1ec]/50 dark:hover:bg-[#18181b]/50 cursor-pointer group">
+                    {activeTab === 'reconciliation' && (
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <input 
+                          type="checkbox" 
+                          className="h-4 w-4 rounded border-[#d3cec6]" 
+                          checked={selectedPayments.includes(p.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) setSelectedPayments([...selectedPayments, p.id]);
+                            else setSelectedPayments(selectedPayments.filter(id => id !== p.id));
+                          }}
+                        />
+                      </TableCell>
+                    )}
                     <TableCell className="font-mono text-sm font-semibold">{p.paymentNumber}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -168,7 +258,7 @@ export default function PaymentsPage() {
                       </span>
                     </TableCell>
                     <TableCell className="text-center">
-                      <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-widest px-2 py-0">
+                      <Badge variant="outline" className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0 ${p.status === 'RECONCILED' ? 'border-emerald-500 text-emerald-600 bg-emerald-500/5' : ''}`}>
                         {p.status}
                       </Badge>
                     </TableCell>

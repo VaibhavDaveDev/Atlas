@@ -58,24 +58,51 @@ export class UserService {
       }
     }
 
-    const updated = await this.prisma.authUser.update({
-      where: { id },
-      data: {
-        username: updateUserDto.username,
-        name:
-          updateUserDto.firstName && updateUserDto.lastName
-            ? `${updateUserDto.firstName} ${updateUserDto.lastName}`
-            : undefined,
-        image: updateUserDto.image,
-      },
-      select: {
-        id: true,
-        email: true,
-        username: true,
-        globalRole: true,
-        verified: true,
-        image: true,
-      },
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const userUpdate = await tx.authUser.update({
+        where: { id },
+        data: {
+          username: updateUserDto.username,
+          name:
+            updateUserDto.firstName && updateUserDto.lastName
+              ? `${updateUserDto.firstName} ${updateUserDto.lastName}`
+              : undefined,
+          image: updateUserDto.image,
+        },
+        select: {
+          id: true,
+          email: true,
+          username: true,
+          globalRole: true,
+          verified: true,
+          image: true,
+        },
+      });
+
+      // Update UserProfile if profile-related fields are provided
+      if (
+        updateUserDto.firstName ||
+        updateUserDto.lastName ||
+        updateUserDto.notificationRetentionDays !== undefined
+      ) {
+        await tx.userProfile.upsert({
+          where: { authId: id },
+          create: {
+            authId: id,
+            firstName: updateUserDto.firstName,
+            lastName: updateUserDto.lastName,
+            notificationRetentionDays:
+              updateUserDto.notificationRetentionDays ?? 30,
+          },
+          update: {
+            firstName: updateUserDto.firstName,
+            lastName: updateUserDto.lastName,
+            notificationRetentionDays: updateUserDto.notificationRetentionDays,
+          },
+        });
+      }
+
+      return userUpdate;
     });
 
     return {

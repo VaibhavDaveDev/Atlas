@@ -45,7 +45,7 @@ export class GoogleCalendarService {
         oauth2Client.setCredentials(credentials);
 
         // Persist the refreshed token back to the database
-        await this.prisma.account.update({
+        await this.prisma.financialAccount.update({
           where: { id: account.id },
           data: {
             accessToken: credentials.access_token,
@@ -87,7 +87,7 @@ export class GoogleCalendarService {
     },
   ): Promise<boolean> {
     try {
-      const account = await this.prisma.account.findFirst({
+      const account = await this.prisma.financialAccount.findFirst({
         where: {
           userId,
           providerId: "google",
@@ -160,7 +160,7 @@ export class GoogleCalendarService {
       location?: string;
     },
   ): Promise<CalendarSyncResult> {
-    const linkedAccounts = await this.prisma.account.findMany({
+    const linkedAccounts = await this.prisma.financialAccount.findMany({
       where: {
         providerId: "google",
         user: {

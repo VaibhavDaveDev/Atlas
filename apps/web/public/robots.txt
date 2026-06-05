@@ -1,0 +1,18 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+
+# Disallow administrative and private areas
+Disallow: /dashboard/
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /verify-email
+Disallow: /select-workspace
+
+# Host
+Host: https://atlas-erp.com
+
+# Sitemaps
+Sitemap: https://atlas-erp.com/sitemap.xml

@@ -79,20 +79,26 @@ export default function EssDashboard() {
   useEffect(() => {
     async function fetchDashboardData() {
       try {
-        const [attData, balData, payslips, profileData, leavesData] = await Promise.all([
+        const [attData, balData, payslips, profileData, leavesData] = await Promise.allSettled([
           getMyAttendance(),
           getMyLeaveBalances(),
           getMyPayslips(),
           getMyProfile(),
           getMyLeaves()
         ]);
-        setAttendance(attData);
-        setBalances(balData || []);
-        if (payslips && payslips.length > 0) setLatestPayslip(payslips[0]);
-        setProfile(profileData);
-        if (leavesData && leavesData.length > 0) setLatestLeave(leavesData[0]);
+        
+        if (attData.status === 'fulfilled') setAttendance(attData.value);
+        if (balData.status === 'fulfilled') setBalances(balData.value || []);
+        if (payslips.status === 'fulfilled' && payslips.value && payslips.value.length > 0) setLatestPayslip(payslips.value[0]);
+        
+        if (profileData.status === 'fulfilled') {
+          setProfile(profileData.value);
+        }
+        
+        if (leavesData.status === 'fulfilled' && leavesData.value && leavesData.value.length > 0) setLatestLeave(leavesData.value[0]);
+        
       } catch (error) {
-        console.error('Failed to fetch dashboard data', error);
+        console.error('Failed to process dashboard data', error);
       } finally {
         setLoading(false);
       }
@@ -181,6 +187,34 @@ export default function EssDashboard() {
           <div className="h-32 bg-muted rounded-xl" />
           <div className="h-32 bg-muted rounded-xl" />
           <div className="h-32 bg-muted rounded-xl" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!profile && !loading) {
+    return (
+      <div className="p-6 max-w-2xl mx-auto mt-12">
+        <div className="rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] p-8 text-center shadow-sm">
+          <div className="h-16 w-16 mx-auto rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 flex items-center justify-center mb-5">
+            <AlertCircle className="h-8 w-8 text-amber-600 dark:text-amber-500" />
+          </div>
+          <h2 className="text-xl font-bold text-[#111111] dark:text-[#f4f4f5] tracking-tight">No Employee Record Found</h2>
+          <p className="mt-2 text-sm text-[#626260] dark:text-[#a1a1aa] leading-relaxed max-w-md mx-auto">
+            You are logged in, but there is no HR employee profile linked to your account. This is common for Platform Owners or initial Workspace Admins.
+          </p>
+          <div className="mt-6 flex justify-center gap-3">
+            <Link href="/dashboard">
+              <Button variant="outline" className="border-[#d3cec6] dark:border-[#27272a]">
+                Back to Dashboard
+              </Button>
+            </Link>
+            <Link href="/dashboard/hr/employees/new">
+              <Button className="bg-[#111111] dark:bg-[#f4f4f5] text-white dark:text-[#111111]">
+                Create Profile in HR
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
     );

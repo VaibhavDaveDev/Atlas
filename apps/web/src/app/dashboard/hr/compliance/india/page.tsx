@@ -27,7 +27,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 export default function IndiaCompliancePage() {
-  const [settings, setSettings] = useState<any>(null);
+  const [settings, setSettings] = useState<any>({
+    pfRate: 0.12,
+    pfCap: 15000,
+    esiEmployeeRate: 0.0075,
+    esiEmployerRate: 0.0325,
+    esiCap: 21000
+  });
   const [statutoryStatus, setStatutoryStatus] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);

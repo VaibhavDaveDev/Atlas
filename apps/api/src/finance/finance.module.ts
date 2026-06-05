@@ -14,6 +14,7 @@ import { ReportsService } from "./reports/reports.service";
 import { ReportsController } from "./reports/reports.controller";
 import { PeriodsService } from "./periods/periods.service";
 import { PeriodsController } from "./periods/periods.controller";
+import { PayrollPostingService } from "./payroll-posting.service";
 import { PrismaService } from "../common/services/prisma.service";
 import { RedisService } from "../common/services/redis.service";
 import { CustomLoggerService } from "../common/services/custom-logger.service";
@@ -37,6 +38,7 @@ import { CustomLoggerService } from "../common/services/custom-logger.service";
     PaymentsService,
     ReportsService,
     PeriodsService,
+    PayrollPostingService,
     PrismaService,
     RedisService,
     CustomLoggerService,
@@ -49,6 +51,7 @@ import { CustomLoggerService } from "../common/services/custom-logger.service";
     PaymentsService,
     ReportsService,
     PeriodsService,
+    PayrollPostingService,
   ],
 })
 export class FinanceModule {}

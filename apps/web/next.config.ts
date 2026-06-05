@@ -19,6 +19,8 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  experimental: {
+  },
 
   // Fix webpack issues with monorepo
   webpack: (config, { isServer }) => {

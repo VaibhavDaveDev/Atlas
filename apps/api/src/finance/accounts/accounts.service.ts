@@ -7,7 +7,7 @@ import { PrismaService } from "../../common/services/prisma.service";
 import { CustomLoggerService } from "../../common/services/custom-logger.service";
 import { CreateAccountDto } from "./dto/create-account.dto";
 import { UpdateAccountDto } from "./dto/update-account.dto";
-import { Account } from "@atlas/database";
+import { FinancialAccount } from "@atlas/database";
 
 @Injectable()
 export class AccountsService {
@@ -19,14 +19,14 @@ export class AccountsService {
   async create(
     workspaceId: string,
     createAccountDto: CreateAccountDto,
-  ): Promise<Account> {
+  ): Promise<FinancialAccount> {
     this.logger.log(
       `Creating account: ${createAccountDto.accountName}`,
       "AccountsService",
     );
 
     // Check if account number already exists in workspace
-    const existing = await this.prisma.account.findUnique({
+    const existing = await this.prisma.financialAccount.findUnique({
       where: {
         workspaceId_accountNumber: {
           workspaceId,
@@ -39,7 +39,7 @@ export class AccountsService {
       throw new BadRequestException("Account number already exists");
     }
 
-    return this.prisma.account.create({
+    return this.prisma.financialAccount.create({
       data: {
         ...createAccountDto,
         workspaceId,
@@ -47,8 +47,8 @@ export class AccountsService {
     });
   }
 
-  async findAll(workspaceId: string): Promise<Account[]> {
-    return this.prisma.account.findMany({
+  async findAll(workspaceId: string): Promise<FinancialAccount[]> {
+    return this.prisma.financialAccount.findMany({
       where: { workspaceId },
       include: {
         parentAccount: true,
@@ -57,8 +57,8 @@ export class AccountsService {
     });
   }
 
-  async findOne(workspaceId: string, id: string): Promise<Account> {
-    const account = await this.prisma.account.findFirst({
+  async findOne(workspaceId: string, id: string): Promise<FinancialAccount> {
+    const account = await this.prisma.financialAccount.findFirst({
       where: { id, workspaceId },
       include: {
         parentAccount: true,
@@ -77,7 +77,7 @@ export class AccountsService {
     workspaceId: string,
     id: string,
     updateAccountDto: UpdateAccountDto,
-  ): Promise<Account> {
+  ): Promise<FinancialAccount> {
     this.logger.log(`Updating account: ${id}`, "AccountsService");
 
     const account = await this.findOne(workspaceId, id);
@@ -87,7 +87,7 @@ export class AccountsService {
       updateAccountDto.accountNumber &&
       updateAccountDto.accountNumber !== account.accountNumber
     ) {
-      const existing = await this.prisma.account.findUnique({
+      const existing = await this.prisma.financialAccount.findUnique({
         where: {
           workspaceId_accountNumber: {
             workspaceId,
@@ -101,17 +101,17 @@ export class AccountsService {
       }
     }
 
-    return this.prisma.account.update({
+    return this.prisma.financialAccount.update({
       where: { id },
       data: updateAccountDto,
     });
   }
 
-  async remove(workspaceId: string, id: string): Promise<Account> {
+  async remove(workspaceId: string, id: string): Promise<FinancialAccount> {
     this.logger.warn(`Removing account: ${id}`, "AccountsService");
 
     // Check if it has child accounts
-    const childAccounts = await this.prisma.account.count({
+    const childAccounts = await this.prisma.financialAccount.count({
       where: { parentAccountId: id },
     });
 
@@ -132,7 +132,7 @@ export class AccountsService {
       );
     }
 
-    return this.prisma.account.delete({
+    return this.prisma.financialAccount.delete({
       where: { id },
     });
   }
@@ -140,7 +140,11 @@ export class AccountsService {
   async initializeChartOfAccounts(
     workspaceId: string,
     baseCurrency: string,
-  ): Promise<string> {
+  ): Promise<{
+    exchangeGainLossAccountId: string;
+    payrollPayableAccountId: string;
+    salaryExpenseAccountId: string;
+  }> {
     this.logger.log(
       `Initializing COA for workspace: ${workspaceId}`,
       "AccountsService",
@@ -172,6 +176,12 @@ export class AccountsService {
         currencyCode: baseCurrency,
       },
       {
+        accountNumber: "2300",
+        accountName: "Salaries Payable",
+        accountType: "LIABILITY" as any,
+        currencyCode: baseCurrency,
+      },
+      {
         accountNumber: "3000",
         accountName: "Retained Earnings",
         accountType: "EQUITY" as any,
@@ -195,13 +205,23 @@ export class AccountsService {
         accountType: "EXPENSE" as any,
         currencyCode: baseCurrency,
       },
+      {
+        accountNumber: "6300",
+        accountName: "Salary Expenses",
+        accountType: "EXPENSE" as any,
+        currencyCode: baseCurrency,
+      },
     ];
 
-    let exchangeGainLossId = "";
+    const result = {
+      exchangeGainLossAccountId: "",
+      payrollPayableAccountId: "",
+      salaryExpenseAccountId: "",
+    };
 
     await this.prisma.$transaction(async (tx) => {
       for (const acc of defaultAccounts) {
-        const created = await tx.account.upsert({
+        const created = await tx.financialAccount.upsert({
           where: {
             workspaceId_accountNumber: {
               workspaceId,
@@ -214,12 +234,17 @@ export class AccountsService {
             workspaceId,
           },
         });
+
         if (acc.accountNumber === "5800") {
-          exchangeGainLossId = created.id;
+          result.exchangeGainLossAccountId = created.id;
+        } else if (acc.accountNumber === "2300") {
+          result.payrollPayableAccountId = created.id;
+        } else if (acc.accountNumber === "6300") {
+          result.salaryExpenseAccountId = created.id;
         }
       }
     });
 
-    return exchangeGainLossId;
+    return result;
   }
 }

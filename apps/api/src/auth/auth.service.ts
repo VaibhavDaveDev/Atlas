@@ -663,6 +663,11 @@ export class AuthService {
             lockExpiresAt: true,
           },
         },
+        profile: {
+          select: {
+            notificationRetentionDays: true,
+          },
+        },
       },
     });
 
@@ -920,6 +925,8 @@ export class AuthService {
           role: user.globalRole,
           verified: user.verified,
           image: user.image,
+          notificationRetentionDays:
+            user.profile?.notificationRetentionDays ?? 30,
         },
         workspaces,
         expiresIn: this.parseExpiryToSeconds(AUTH_CONFIG.TOKEN_EXPIRY.ACCESS),
@@ -1355,6 +1362,10 @@ export class AuthService {
             name: true,
             subdomain: true,
             status: true,
+            isAuditEnabled: true,
+            _count: {
+              select: { members: { where: { isActive: true } } },
+            },
           },
         },
         role: true,
@@ -1369,6 +1380,8 @@ export class AuthService {
       role: wm.role.name,
       department: wm.department,
       joinedAt: wm.joinedAt,
+      isAuditEnabled: wm.workspace.isAuditEnabled,
+      memberCount: wm.workspace._count.members,
     }));
   }
 
@@ -1394,6 +1407,10 @@ export class AuthService {
             name: true,
             subdomain: true,
             status: true,
+            isAuditEnabled: true,
+            _count: {
+              select: { members: { where: { isActive: true } } },
+            },
           },
         },
         user: {
@@ -1461,6 +1478,8 @@ export class AuthService {
         status: member.workspace.status,
         role: member.role.name,
         department: member.department,
+        isAuditEnabled: member.workspace.isAuditEnabled,
+        memberCount: member.workspace._count.members,
       },
     };
   }
@@ -1476,10 +1495,20 @@ export class AuthService {
         globalRole: true,
         verified: true,
         image: true,
+        profile: {
+          select: {
+            notificationRetentionDays: true,
+          },
+        },
       },
     });
     if (!user) throw AppError.notFound("User not found");
-    return user;
+
+    const { profile, ...userData } = user;
+    return {
+      ...userData,
+      notificationRetentionDays: profile?.notificationRetentionDays ?? 30,
+    };
   }
 
   /**

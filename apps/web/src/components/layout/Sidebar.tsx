@@ -24,7 +24,11 @@ import {
   LifeBuoy,
   FileText,
   LogOut,
-  TrendingUp
+  TrendingUp,
+  ListTodo,
+  Milestone as MilestoneIcon,
+  Crown,
+  Building2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -38,13 +42,31 @@ interface NavItem {
   badge?: string;
 }
 
-const mainModules: NavItem[] = [
+interface NavItemExtended extends NavItem {
+  platformOnly?: boolean;
+}
+
+const mainModules: NavItemExtended[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { label: 'My Work', href: '/dashboard/my-work', icon: ListTodo },
   { label: 'ESS', href: '/dashboard/ess', icon: User },
   { label: 'HR', href: '/dashboard/hr', icon: Users2 },
-  { label: 'CRM', href: '/dashboard/crm', icon: Users, badge: 'Soon' },
-  { label: 'Finance', href: '/dashboard/finance', icon: BarChart3, badge: 'Soon' },
-  { label: 'Projects', href: '/dashboard/projects', icon: FolderKanban, badge: 'Soon' },
+  { label: 'Finance', href: '/dashboard/finance', icon: BarChart3 },
+  { label: 'Projects', href: '/dashboard/projects', icon: FolderKanban },
+  { label: 'Platform Admin', href: '/dashboard/platform-admin', icon: Crown, platformOnly: true },
+];
+
+const myWorkModules: NavItem[] = [
+  { label: 'My Tasks', href: '/dashboard/my-work', icon: ListTodo },
+  { label: 'My Projects', href: '/dashboard/my-work/projects', icon: Briefcase },
+];
+
+const projectModules: NavItem[] = [
+  { label: 'Overview', href: '/dashboard/projects', icon: LayoutDashboard },
+  { label: 'Active Projects', href: '/dashboard/projects/active', icon: Briefcase },
+  { label: 'Tasks', href: '/dashboard/projects/tasks', icon: ListTodo },
+  { label: 'Milestones', href: '/dashboard/projects/milestones', icon: MilestoneIcon },
+  { label: 'Analytics', href: '/dashboard/projects/analytics', icon: BarChart3 },
 ];
 
 const essModules: NavItem[] = [
@@ -91,6 +113,10 @@ const adminModules: NavItem[] = [
   { label: 'System Logs', href: '/dashboard/admin/logs', icon: Terminal },
 ];
 
+const platformOwnerModules: NavItem[] = [
+  { label: 'All Organisations', href: '/dashboard/platform-admin', icon: Building2 },
+];
+
 const bottomItems: NavItem[] = [
   { label: 'Workspace Settings', href: '/dashboard/workspace/settings', icon: Settings },
 ];
@@ -110,30 +136,56 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
     setMobileOpen?.(false);
   }, [pathname, setMobileOpen]);
 
+  const isWorkspaceAdmin = workspace?.role === 'ADMIN' || workspace?.role === 'OWNER';
+  const isPlatformOwner = user?.role === 'admin';
+
+  // Filter main modules based on roles
+  const filteredMainModules = mainModules.filter(m => {
+    if ((m as NavItemExtended).platformOnly) return isPlatformOwner;
+    if (m.label === 'HR' || m.label === 'Finance' || m.label === 'Projects') {
+      return isWorkspaceAdmin;
+    }
+    return true;
+  });
+
   const isHrRoute = pathname.startsWith('/dashboard/hr');
   const isFinanceRoute = pathname.startsWith('/dashboard/finance');
-  const isAdminRoute = pathname.startsWith('/dashboard/admin') || pathname.startsWith('/dashboard/workspace/roles');
+  const isProjectRoute = pathname.startsWith('/dashboard/projects');
+  const isAdminRoute = pathname.startsWith('/dashboard/admin') || 
+                       pathname.startsWith('/dashboard/workspace/roles') ||
+                       pathname.startsWith('/dashboard/workspace/members');
   const isEssRoute = pathname.startsWith('/dashboard/ess');
+  const isMyWorkRoute = pathname.startsWith('/dashboard/my-work');
+  const isPlatformAdminRoute = pathname.startsWith('/dashboard/platform-admin');
   
-  let displayItems = mainModules;
+  let displayItems: NavItem[] = filteredMainModules;
   let sectionLabel = 'Modules';
 
-  if (isHrRoute) {
+  if (isHrRoute && isWorkspaceAdmin) {
     displayItems = hrModules;
     sectionLabel = 'HR Management';
-  } else if (isFinanceRoute) {
+  } else if (isFinanceRoute && isWorkspaceAdmin) {
     displayItems = financeModules;
     sectionLabel = 'Financial Management';
-  } else if (isAdminRoute) {
+  } else if (isProjectRoute && isWorkspaceAdmin) {
+    displayItems = projectModules;
+    sectionLabel = 'Project Management';
+  } else if (isAdminRoute && isWorkspaceAdmin) {
     displayItems = adminModules;
     sectionLabel = 'IT Administration';
+  } else if (isPlatformAdminRoute && isPlatformOwner) {
+    displayItems = platformOwnerModules;
+    sectionLabel = 'Platform Admin';
   } else if (isEssRoute) {
     displayItems = essModules;
     sectionLabel = 'ESS';
+  } else if (isMyWorkRoute || (isProjectRoute && !isWorkspaceAdmin)) {
+    displayItems = myWorkModules;
+    sectionLabel = 'My Work';
   }
   
-  const collapsedOtherModules = (isHrRoute || isFinanceRoute || isAdminRoute || isEssRoute) 
-    ? mainModules.filter(m => !pathname.startsWith(m.href)) 
+  const collapsedOtherModules = (isHrRoute || isFinanceRoute || isProjectRoute || isAdminRoute || isEssRoute || isMyWorkRoute || isPlatformAdminRoute) 
+    ? filteredMainModules.filter(m => !pathname.startsWith(m.href)) 
     : [];
 
   return (
@@ -195,7 +247,8 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
                                  item.href === '/dashboard/hr' || 
                                  item.href === '/dashboard/finance' || 
                                  item.href === '/dashboard/admin' ||
-                                 item.href === '/dashboard/ess';
+                                 item.href === '/dashboard/ess' ||
+                                 item.href === '/dashboard/my-work';
               
               const isActive = isModuleRoot 
                 ? pathname === item.href 
@@ -234,7 +287,7 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
           </ul>
 
           {/* Other Modules Collapsed list if in a specific module context */}
-          {(isHrRoute || isAdminRoute || isEssRoute) && collapsedOtherModules.length > 0 && (
+          {(isHrRoute || isAdminRoute || isEssRoute || isPlatformAdminRoute || isFinanceRoute || isProjectRoute) && collapsedOtherModules.length > 0 && (
             <div className="mt-8">
               {!collapsed && (
                 <div className="px-2 pb-2">

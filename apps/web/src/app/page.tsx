@@ -15,7 +15,7 @@ import { Logo } from '@/components/common/Logo';
 
 export const metadata: Metadata = {
   title: 'Atlas ERP — Enterprise Cloud Suite',
-  description: 'AI-powered Cloud ERP Suite. Unify CRM, HR, Finance and Projects in one platform.',
+  description: 'AI-powered Cloud ERP Suite. Unify HR, Finance and Projects in one platform.',
 };
 
 const features = [
@@ -31,9 +31,9 @@ const features = [
   {
     num: '02',
     icon: Users,
-    title: 'CRM & HR',
+    title: 'HR & People',
     description:
-      'End-to-end customer lifecycle management and HR workflows — onboarding, payroll, and performance in one place.',
+      'End-to-end HR workflows — onboarding, attendance, payroll, and performance in one unified place.',
     iconClass: 'bg-purple-50 dark:bg-purple-950/40 border-purple-100 dark:border-purple-900/40 text-purple-600 dark:text-purple-400',
     hoverBorder: 'hover:border-purple-400/50 dark:hover:border-purple-500/30',
   },
@@ -115,7 +115,7 @@ export default function HomePage() {
             </h1>
 
             <p className="mx-auto mt-8 max-w-2xl text-base md:text-lg leading-relaxed text-[#626260] dark:text-[#a1a1aa]">
-              Atlas brings CRM, HR, Finance, and Project Management into a beautifully unified,
+              Atlas brings HR, Finance, and Project Management into a beautifully unified,
               editorial-grade cloud workspace — built for high-performance teams.
             </p>
 
@@ -226,13 +226,42 @@ export default function HomePage() {
                   </Link>
                 </Button>
                 <Button 
-                  variant="outline" 
+                  variant="ghost" 
                   size="lg" 
-                  className="border-white/10 hover:border-white/20 text-white bg-white/5 hover:bg-white/10 font-semibold px-8 py-5 transition-all rounded-md"
+                  className="border border-white/10 hover:border-white/20 text-white hover:text-white bg-white/5 hover:bg-white/10 font-semibold px-8 py-5 transition-all rounded-md"
                   asChild
                 >
                   <Link href="/login">Sign in</Link>
                 </Button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Contact Us Section */}
+        <section className="py-24 border-b border-[#d3cec6] dark:border-[#27272a] bg-[#f5f1ec]/50 dark:bg-[#09090b]/50">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-12 rounded-2xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] p-8 md:p-12 shadow-sm">
+              <div className="max-w-xl text-left">
+                <h2 className="text-2xl md:text-3xl font-semibold tracking-[-0.02em] text-[#111111] dark:text-[#f4f4f5]">
+                  Have questions? We're here to help.
+                </h2>
+                <p className="mt-4 text-sm text-[#626260] dark:text-[#a1a1aa] leading-relaxed">
+                  Whether you need technical support, have a feature request, or just want to say hello, our team is ready to assist you.
+                </p>
+              </div>
+              <div className="flex flex-col items-start gap-4 shrink-0">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 text-indigo-600 dark:text-indigo-400">
+                    <Globe className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#7b7b78] dark:text-[#71717a] mb-0.5">Email Support</p>
+                    <a href="mailto:workspace.atlas@protonmail.com" className="text-base font-semibold text-[#111111] dark:text-[#f4f4f5] hover:text-[#4f46e5] transition-colors">
+                      workspace.atlas@protonmail.com
+                    </a>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -242,17 +271,22 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="border-t border-[#d3cec6] dark:border-[#27272a] py-12 bg-[#ffffff]/20 dark:bg-[#09090b]/20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-6 text-xs text-[#7b7b78] dark:text-[#71717a]">
-          <div className="flex items-center gap-2 select-none">
-            <Logo variant="mark" width={20} height={20} />
-            <span className="font-semibold text-[#111111] dark:text-[#f4f4f5]">Atlas ERP</span>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
+            <div className="flex items-center gap-2 select-none">
+              <Logo variant="mark" width={20} height={20} />
+              <span className="font-semibold text-[#111111] dark:text-[#f4f4f5]">Atlas ERP</span>
+            </div>
+            <span>© 2026 Atlas Inc. All rights reserved.</span>
           </div>
-          <span>© {new Date().getFullYear()} Amdox. All rights reserved.</span>
-          <div className="flex gap-6">
+          <div className="flex flex-wrap justify-center gap-x-8 gap-y-4">
+            <a href="mailto:workspace.atlas@protonmail.com" className="hover:text-[#4f46e5] dark:hover:text-[#818cf8] transition-colors">
+              Contact
+            </a>
+            <Link href="/terms" className="hover:text-[#4f46e5] dark:hover:text-[#818cf8] transition-colors">
+              Terms
+            </Link>
             <Link href="/login" className="hover:text-[#4f46e5] dark:hover:text-[#818cf8] transition-colors">
               Sign In
-            </Link>
-            <Link href="/register" className="hover:text-[#4f46e5] dark:hover:text-[#818cf8] transition-colors">
-              Register
             </Link>
           </div>
         </div>

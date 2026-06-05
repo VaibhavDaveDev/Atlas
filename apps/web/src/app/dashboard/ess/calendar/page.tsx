@@ -14,7 +14,6 @@ import {
   LayoutGrid,
   List,
   CalendarDays,
-  ChevronDown,
 } from 'lucide-react';
 import { getCalendar } from '@/lib/ess';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -131,8 +130,6 @@ export default function EssCalendarPage() {
   }, [currentDate]);
 
   const getDayContent = (date: Date) => {
-    const dateStr = format(date, 'yyyy-MM-dd');
-    
     const dayHolidays = filters.holidays ? (data.holidays || []).filter((h: any) => isSameDay(new Date(h.date), date)) : [];
     const dayEvents = filters.events ? (data.events || []).filter((e: any) => {
       const start = new Date(e.startDate);
@@ -497,7 +494,7 @@ export default function EssCalendarPage() {
                        <span className={cn("text-lg font-bold mt-0.5", isDateToday(date) ? "text-blue-600" : "text-[#111111] dark:text-[#f4f4f5]")}>{format(date, 'd')}</span>
                      </div>
                      <div className="relative h-full min-h-[1000px]">
-                        {dayEvents.map(e => {
+                        {dayEvents.map((e: any) => {
                           const startH = new Date(e.startDate).getHours();
                           const startM = new Date(e.startDate).getMinutes();
                           const endH = new Date(e.endDate).getHours();

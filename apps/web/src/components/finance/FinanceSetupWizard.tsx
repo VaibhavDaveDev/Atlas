@@ -10,11 +10,7 @@ import { setupFinance } from '@/lib/finance';
 import { Loader2, Landmark, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { useAuth } from '@/contexts/AuthContext';
-import { workspaceApi } from '@/lib/workspace';
-
 export function FinanceSetupWizard({ onSuccess }: { onSuccess: () => void }) {
-  const { workspace, setWorkspaces } = useAuth();
   const [loading, setLoading] = useState(false);
   const [baseCurrency, setBaseCurrency] = useState('USD');
   const [fiscalYearStart, setFiscalYearStart] = useState('01-01');

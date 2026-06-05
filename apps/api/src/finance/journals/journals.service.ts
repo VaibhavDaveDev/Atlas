@@ -6,7 +6,7 @@ import {
 import { PrismaService } from "../../common/services/prisma.service";
 import { CustomLoggerService } from "../../common/services/custom-logger.service";
 import { CreateJournalEntryDto } from "./dto/create-journal-entry.dto";
-import { Account, JournalEntry } from "@atlas/database";
+import { FinancialAccount, JournalEntry } from "@atlas/database";
 import { PeriodsService } from "../periods/periods.service";
 
 @Injectable()
@@ -101,7 +101,7 @@ export class JournalsService {
 
       // 4. Update Account Balances
       for (const line of createDto.lines) {
-        await tx.account.update({
+        await tx.financialAccount.update({
           where: { id: line.accountId },
           data: {
             balance: {
@@ -170,7 +170,7 @@ export class JournalsService {
     return this.prisma.$transaction(async (tx) => {
       // 1. Reverse account balances
       for (const line of entry.lines) {
-        await tx.account.update({
+        await tx.financialAccount.update({
           where: { id: line.accountId },
           data: {
             balance: {

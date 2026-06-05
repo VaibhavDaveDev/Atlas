@@ -49,8 +49,17 @@ export class PermissionGuard implements CanActivate {
     const { resource, action, scope } = requirement;
     const workspaceId = user.workspaceId;
 
+    // Define scope priority
+    const scopePriority = {
+      all: 3,
+      department: 2,
+      own: 1,
+    };
+
+    const requiredScopeLevel = scopePriority[scope || "all"] || 3;
+
     // Check role-based permissions
-    const rolePermission = await this.prismaService.rolePermission.findFirst({
+    const rolePermissions = await this.prismaService.rolePermission.findMany({
       where: {
         workspaceId,
         role: {
@@ -59,30 +68,46 @@ export class PermissionGuard implements CanActivate {
         permission: {
           resource,
           action,
-          scope: scope || "all",
         },
+      },
+      include: {
+        permission: true,
       },
     });
 
-    if (rolePermission) {
+    if (
+      rolePermissions.some((rp) => {
+        const permissionScopeLevel =
+          scopePriority[rp.permission.scope as keyof typeof scopePriority] || 0;
+        return permissionScopeLevel >= requiredScopeLevel;
+      })
+    ) {
       return true;
     }
 
     // Check user-specific permissions
-    const userPermission = await this.prismaService.userPermission.findFirst({
+    const userPermissions = await this.prismaService.userPermission.findMany({
       where: {
         workspaceId,
         userId: user.userId,
         permission: {
           resource,
           action,
-          scope: scope || "all",
         },
         OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
       },
+      include: {
+        permission: true,
+      },
     });
 
-    if (userPermission) {
+    if (
+      userPermissions.some((up) => {
+        const permissionScopeLevel =
+          scopePriority[up.permission.scope as keyof typeof scopePriority] || 0;
+        return permissionScopeLevel >= requiredScopeLevel;
+      })
+    ) {
       return true;
     }
 

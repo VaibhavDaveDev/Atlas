@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { getPayrollRuns, createPayrollRun, getSalaryComponents, getSalaryStructures, getTaxSlabs, createSalaryComponent, createSalaryStructure, createTaxSlab } from '@/lib/hr';
-import { Loader2, Plus, Receipt, ArrowRight, HelpCircle, Trash2, Banknote, Landmark, CreditCard } from 'lucide-react';
+import { getAccounts } from '@/lib/finance';
+import { Loader2, Plus, Receipt, ArrowRight, HelpCircle, Trash2, Banknote, Landmark, CreditCard, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,6 +20,7 @@ export default function PayrollRunsPage() {
   const [components, setComponents] = useState<any[]>([]);
   const [structures, setStructures] = useState<any[]>([]);
   const [taxSlabs, setTaxSlabs] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   const [isCreatingRun, setIsCreatingRun] = useState(false);
@@ -37,8 +39,9 @@ export default function PayrollRunsPage() {
         const res = await getPayrollRuns();
         if (res.success) setRuns(res.data);
       } else if (activeTab === 'components') {
-        const res = await getSalaryComponents();
-        if (res.success) setComponents(res.data);
+        const [compRes, accRes] = await Promise.all([getSalaryComponents(), getAccounts()]);
+        if (compRes.success) setComponents(compRes.data);
+        if (accRes.success) setAccounts(accRes.data);
       } else if (activeTab === 'structures') {
         const [structRes, compRes] = await Promise.all([getSalaryStructures(), getSalaryComponents()]);
         if (structRes.success) setStructures(structRes.data);
@@ -231,6 +234,7 @@ export default function PayrollRunsPage() {
             <th className="px-6 py-4 font-medium">Type</th>
             <th className="px-6 py-4 font-medium">Calculation</th>
             <th className="px-6 py-4 font-medium text-center">Taxable</th>
+            <th className="px-6 py-4 font-medium">Account Mapping</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
@@ -247,6 +251,9 @@ export default function PayrollRunsPage() {
                 {comp.calculationType === 'FORMULA' ? <span className="font-mono text-primary">{comp.formula}</span> : `${comp.calculationType} (${comp.amount || 0})`}
               </td>
               <td className="px-6 py-4 text-center">{comp.isTaxable ? 'Yes' : 'No'}</td>
+              <td className="px-6 py-4 text-xs text-muted-foreground">
+                {accounts.find(a => a.id === comp.accountId)?.accountName || 'Default Account'}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -306,7 +313,7 @@ export default function PayrollRunsPage() {
   }
 
   function CreateComponentForm() {
-    const [formData, setFormData] = useState({ name: '', abbr: '', type: 'EARNING', calculationType: 'FLAT', amount: '', formula: '', isTaxable: true, dependsOnDays: true });
+    const [formData, setFormData] = useState({ name: '', abbr: '', type: 'EARNING', calculationType: 'FLAT', amount: '', formula: '', isTaxable: true, dependsOnDays: true, accountId: '' });
     const [isSaving, setIsSaving] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -357,12 +364,41 @@ export default function PayrollRunsPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-2"><Label>Type</Label>
+            <div className="space-y-2">
+              <Label>Type</Label>
               <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})}>
                 <option value="EARNING">Earning</option>
                 <option value="DEDUCTION">Deduction</option>
               </select>
             </div>
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5">
+                <Label>GL Account Mapping</Label>
+                <HoverCard openDelay={0}>
+                  <HoverCardTrigger asChild>
+                    <button type="button" className="inline-flex items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                    </button>
+                  </HoverCardTrigger>
+                  <HoverCardContent className="w-80 text-xs">
+                    Link this component to a specific ledger account. If empty, workspace defaults (Salaries Payable/Expense) will be used.
+                  </HoverCardContent>
+                </HoverCard>
+              </div>
+              <select 
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring font-medium" 
+                value={formData.accountId} 
+                onChange={e => setFormData({...formData, accountId: e.target.value})}
+              >
+                <option value="">Default Workspace Account</option>
+                {accounts.filter(a => !a.isGroup).map(acc => (
+                  <option key={acc.id} value={acc.id}>{acc.accountNumber} - {acc.accountName}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <div className="flex items-center gap-1.5">
                 <Label>Calc Type</Label>
@@ -383,31 +419,31 @@ export default function PayrollRunsPage() {
                 <option value="FORMULA">Formula</option>
               </select>
             </div>
-          </div>
-
-          {formData.calculationType === 'FORMULA' ? (
-            <div className="space-y-2">
-              <div className="flex items-center gap-1.5">
-                <Label>Formula</Label>
-                <HoverCard openDelay={0}>
-                  <HoverCardTrigger asChild>
-                    <button type="button" aria-label="Formula information" className="inline-flex items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                    </button>
-                  </HoverCardTrigger>
-                  <HoverCardContent className="w-80">
-                    <p className="text-sm">Use Abbrs of other components. Example: BS * 0.4</p>
-                  </HoverCardContent>
-                </HoverCard>
+            
+            {formData.calculationType === 'FORMULA' ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-1.5">
+                  <Label>Formula</Label>
+                  <HoverCard openDelay={0}>
+                    <HoverCardTrigger asChild>
+                      <button type="button" aria-label="Formula information" className="inline-flex items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                        <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                      </button>
+                    </HoverCardTrigger>
+                    <HoverCardContent className="w-80">
+                      <p className="text-sm">Use Abbrs of other components. Example: BS * 0.4</p>
+                    </HoverCardContent>
+                  </HoverCard>
+                </div>
+                <Input required value={formData.formula} onChange={e => setFormData({...formData, formula: e.target.value})} placeholder="BS * 0.4" />
               </div>
-              <Input required value={formData.formula} onChange={e => setFormData({...formData, formula: e.target.value})} placeholder="BS * 0.4" />
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <Label>Amount / %</Label>
-              <Input required type="number" step="0.01" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} placeholder="0.00" />
-            </div>
-          )}
+            ) : (
+              <div className="space-y-2">
+                <Label>Amount / %</Label>
+                <Input required type="number" step="0.01" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} placeholder="0.00" />
+              </div>
+            )}
+          </div>
 
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center py-2">
             <label className="flex items-center text-sm gap-2 cursor-pointer">

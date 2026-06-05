@@ -10,8 +10,7 @@ import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { Logo } from '@/components/common/Logo';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-
-const API_BASE = `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'}/api/v1`;
+import { authClient } from '@/lib/auth-client';
 
 interface PasswordStrength {
   score: number; // 0–4
@@ -38,6 +37,7 @@ function getPasswordStrength(password: string): PasswordStrength {
 }
 
 function RegisterContent() {
+  const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -53,16 +53,21 @@ function RegisterContent() {
     setError('');
     setIsLoading(true);
     const toastId = toast.loading('Creating your account...');
+    
     try {
-      const res = await fetch(`${API_BASE}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, email, password }),
-      });
-      if (!res.ok) {
-        const body = await res.json();
-        throw new Error(body.message ?? 'Registration failed');
+      const { data, error } = await authClient.signUp.email(
+        {
+          email,
+          password,
+          name,
+          username, // Additional field
+        }
+      );
+
+      if (error) {
+        throw new Error(error.message ?? 'Registration failed');
       }
+
       setSuccess(true);
       toast.success('Registration successful!', { id: toastId });
     } catch (err) {
@@ -77,21 +82,10 @@ function RegisterContent() {
   const handleGoogleSignup = async () => {
     const toastId = toast.loading('Connecting to Google...');
     try {
-      const res = await fetch(`${API_BASE}/auth/google`);
-      const responseData = await res.json();
-      
-      if (!res.ok) {
-        throw new Error(responseData.message || 'Failed to connect to authentication server');
-      }
-      
-      const url = responseData.data?.url || responseData.url;
-      
-      if (url) {
-        toast.success('Redirecting to Google...', { id: toastId });
-        window.location.href = url;
-      } else {
-        throw new Error('Invalid response from authentication server');
-      }
+      await authClient.signIn.social({
+        provider: 'google',
+        callbackURL: '/dashboard'
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to initialize Google signup';
       setError(message);
@@ -178,6 +172,22 @@ function RegisterContent() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Name */}
+            <div className="space-y-1.5">
+              <Label htmlFor="name" className="text-sm font-medium text-[#111111] dark:text-[#f4f4f5]">Full Name</Label>
+              <Input
+                id="name"
+                type="text"
+                placeholder="John Doe"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                disabled={isLoading}
+                autoFocus
+                className="bg-transparent border-[#d3cec6] dark:border-[#27272a] focus-visible:ring-[#111111] dark:focus-visible:ring-[#f4f4f5]"
+              />
+            </div>
+
             {/* Username */}
             <div className="space-y-1.5">
               <Label htmlFor="username" className="text-sm font-medium text-[#111111] dark:text-[#f4f4f5]">Username</Label>
@@ -193,7 +203,6 @@ function RegisterContent() {
                 pattern="^[a-zA-Z0-9_\-]+$"
                 title="Letters, numbers, underscores and hyphens only"
                 disabled={isLoading}
-                autoFocus
                 className="bg-transparent border-[#d3cec6] dark:border-[#27272a] focus-visible:ring-[#111111] dark:focus-visible:ring-[#f4f4f5]"
               />
             </div>
@@ -332,8 +341,12 @@ export default function RegisterPage() {
         </Suspense>
       </div>
 
-      {/* Empty footer area for visual balance */}
-      <div className="py-4" />
+      {/* Footer support link */}
+      <div className="py-8 flex justify-center">
+        <p className="text-[10px] uppercase tracking-widest font-bold text-[#7b7b78] dark:text-[#71717a]">
+          Support: <a href="mailto:workspace.atlas@protonmail.com" className="hover:text-[#111111] dark:hover:text-[#f4f4f5] transition-colors underline decoration-[#d3cec6] dark:decoration-[#27272a] underline-offset-4">workspace.atlas@protonmail.com</a>
+        </p>
+      </div>
     </div>
   );
 }

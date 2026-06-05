@@ -24,12 +24,14 @@ export default function PerformanceDashboard() {
   const [isCreatingCycle, setIsCreatingCycle] = useState(false);
   const [isCreatingGoal, setIsCreatingGoal] = useState(false);
   const [isCreatingAppraisal, setIsCreatingAppraisal] = useState(false);
+  const [isBulkInitiating, setIsBulkInitiating] = useState(false);
 
   useEffect(() => {
     // Reset form visibility when switching tabs
     setIsCreatingCycle(false);
     setIsCreatingGoal(false);
     setIsCreatingAppraisal(false);
+    setIsBulkInitiating(false);
 
     loadData();
     loadEmployees();
@@ -100,7 +102,12 @@ export default function PerformanceDashboard() {
               </button>
             ))}
           </div>
-          <div className="shrink-0">
+          <div className="flex items-center gap-2">
+            {activeTab === 'appraisals' && (
+              <Button variant="outline" onClick={() => setIsBulkInitiating(true)}>
+                Bulk Initiate
+              </Button>
+            )}
             <Button className="bg-[#111111] dark:bg-[#f4f4f5] dark:text-[#111111]" onClick={handleCreateClick}>
               <Plus className="mr-2 h-4 w-4" /> 
               {activeTab === 'cycles' ? 'New Cycle' : activeTab === 'goals' ? 'Assign Goal' : 'Initiate Appraisal'}
@@ -120,9 +127,14 @@ export default function PerformanceDashboard() {
           </FormContainer>
         )}
         {activeTab === 'appraisals' && (
-          <FormContainer title="Initiate Appraisal" isOpen={isCreatingAppraisal} setIsOpen={setIsCreatingAppraisal}>
-            <CreateAppraisalForm />
-          </FormContainer>
+          <>
+            <FormContainer title="Initiate Appraisal" isOpen={isCreatingAppraisal} setIsOpen={setIsCreatingAppraisal}>
+              <CreateAppraisalForm />
+            </FormContainer>
+            <FormContainer title="Bulk Initiate Appraisals" isOpen={isBulkInitiating} setIsOpen={setIsBulkInitiating}>
+              <BulkInitiateForm />
+            </FormContainer>
+          </>
         )}
 
         {/* Dynamic Content rendered as Data Tables */}
@@ -347,6 +359,62 @@ export default function PerformanceDashboard() {
         <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
           <Button type="button" variant="outline" onClick={() => setIsCreatingAppraisal(false)}>Cancel</Button>
           <Button type="submit" disabled={isSaving}>{isSaving ? 'Initiating...' : 'Initiate Appraisal'}</Button>
+        </div>
+      </form>
+    );
+  }
+
+  function BulkInitiateForm() {
+    const [formData, setFormData] = useState({ appraisalCycleId: '', departmentId: '' });
+    const [isSaving, setIsSaving] = useState(false);
+    const [departments, setDepartments] = useState<any[]>([]);
+
+    useEffect(() => {
+      const fetchDepts = async () => {
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+        const res = await fetch(`${baseUrl}/api/v1/hr/departments`, {
+          headers: { Authorization: `Bearer ${tokenStorage.getAccessToken()}` }
+        });
+        const json = await res.json();
+        setDepartments(json.data || json);
+      };
+      fetchDepts();
+    }, []);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setIsSaving(true);
+      try {
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+        const res = await fetch(`${baseUrl}/api/v1/hr/performance/appraisals/batch`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenStorage.getAccessToken()}` },
+          body: JSON.stringify(formData),
+        });
+        const result = await res.json();
+        alert(`Successfully initiated ${result.initiated} appraisals. ${result.skipped} were already initiated.`);
+        setIsBulkInitiating(false);
+        loadData();
+      } catch (error) { console.error(error); } finally { setIsSaving(false); }
+    };
+
+    return (
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-2"><Label>Appraisal Cycle</Label>
+          <select required className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" value={formData.appraisalCycleId} onChange={e => setFormData({...formData, appraisalCycleId: e.target.value})}>
+            <option value="">Select Cycle</option>
+            {cycles.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+        <div className="space-y-2"><Label>Department (Optional - Leave empty for all employees)</Label>
+          <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" value={formData.departmentId} onChange={e => setFormData({...formData, departmentId: e.target.value})}>
+            <option value="">All Departments</option>
+            {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+          </select>
+        </div>
+        <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
+          <Button type="button" variant="outline" onClick={() => setIsBulkInitiating(false)}>Cancel</Button>
+          <Button type="submit" disabled={isSaving}>{isSaving ? 'Initiating...' : 'Bulk Initiate'}</Button>
         </div>
       </form>
     );

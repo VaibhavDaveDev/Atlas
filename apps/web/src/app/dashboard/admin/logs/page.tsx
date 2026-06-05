@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useAuth } from '@/contexts/AuthContext';
-import { Terminal, Activity, Search, RefreshCw, AlertCircle, Server } from 'lucide-react';
+import { Terminal, Activity, Search, RefreshCw, AlertCircle, Server, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -21,15 +21,21 @@ import { tokenStorage } from '@/lib/auth';
 import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 export default function AdminLogsPage() {
   const { workspace } = useAuth();
   const [activeTab, setActiveTab] = useState('activity');
   const [isLoading, setIsLoading] = useState(false);
   
   const [activityLogs, setActivityLogs] = useState<any[]>([]);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [systemLogs, setSystemLogs] = useState<any[]>([]);
   
   const [searchQuery, setSearchQuery] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [actorId, setActorId] = useState('');
 
   useEffect(() => {
     loadLogs();
@@ -39,11 +45,23 @@ export default function AdminLogsPage() {
     if (!workspace) return;
     setIsLoading(true);
     try {
-      const endpoint = activeTab === 'activity' 
-        ? `/api/v1/logs/activity/${workspace.workspaceId}` 
-        : '/api/v1/logs/system';
+      let endpoint = '';
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      if (actorId) params.append('userId', actorId);
       
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${endpoint}`, {
+      const query = params.toString() ? `?${params.toString()}` : '';
+
+      if (activeTab === 'activity') {
+        endpoint = `/api/v1/logs/activity/${workspace.workspaceId}${query}`;
+      } else if (activeTab === 'audit') {
+        endpoint = `/api/v1/logs/audit/${workspace.workspaceId}${query}`;
+      } else {
+        endpoint = '/api/v1/logs/system';
+      }
+      
+      const res = await fetch(`${API_URL}${endpoint}`, {
         headers: {
           'Authorization': `Bearer ${tokenStorage.getAccessToken()}`,
         },
@@ -54,6 +72,8 @@ export default function AdminLogsPage() {
       
       if (activeTab === 'activity') {
         setActivityLogs(data.logs || []);
+      } else if (activeTab === 'audit') {
+        setAuditLogs(data.logs || []);
       } else {
         setSystemLogs(data.logs || []);
       }
@@ -65,13 +85,17 @@ export default function AdminLogsPage() {
   };
 
   const filteredActivityLogs = activityLogs.filter(log => 
-    log.entityType.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    log.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    log.userId.toLowerCase().includes(searchQuery.toLowerCase())
+    log.entityType?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    log.action?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredAuditLogs = auditLogs.filter(log => 
+    log.entity?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    log.action?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const filteredSystemLogs = systemLogs.filter(log => 
-    log.message.toLowerCase().includes(searchQuery.toLowerCase())
+    log.message?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -93,13 +117,16 @@ export default function AdminLogsPage() {
             <TabsTrigger value="activity" className="px-6 flex items-center gap-2">
               <Activity className="h-4 w-4" /> Activity Logs
             </TabsTrigger>
+            <TabsTrigger value="audit" className="px-6 flex items-center gap-2">
+              <History className="h-4 w-4" /> Audit Trail (Immutable)
+            </TabsTrigger>
             <TabsTrigger value="system" className="px-6 flex items-center gap-2">
-              <Terminal className="h-4 w-4" /> System Logs (Loki)
+              <Server className="h-4 w-4" /> System Logs
             </TabsTrigger>
           </TabsList>
 
-          <div className="mt-6 flex items-center gap-2">
-            <div className="relative flex-1 max-w-sm">
+          <div className="mt-6 flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search logs..."
@@ -108,6 +135,29 @@ export default function AdminLogsPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
+            <Input
+              type="date"
+              className="w-[150px]"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              placeholder="Start Date"
+            />
+            <Input
+              type="date"
+              className="w-[150px]"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              placeholder="End Date"
+            />
+            <Input
+              placeholder="Actor ID"
+              className="w-[150px]"
+              value={actorId}
+              onChange={(e) => setActorId(e.target.value)}
+            />
+            <Button variant="secondary" onClick={loadLogs} disabled={isLoading}>
+              Apply Filters
+            </Button>
           </div>
 
           <TabsContent value="activity" className="mt-4">
@@ -145,7 +195,7 @@ export default function AdminLogsPage() {
                             </Badge>
                           </TableCell>
                           <TableCell className="capitalize">{log.entityType}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground font-mono">{log.userId.split('-')[0]}...</TableCell>
+                          <TableCell className="text-xs text-muted-foreground font-mono">{log.userId?.split('-')[0] || 'Unknown'}...</TableCell>
                           <TableCell className="text-xs text-muted-foreground">
                             {new Date(log.createdAt).toLocaleString()}
                           </TableCell>
@@ -161,18 +211,89 @@ export default function AdminLogsPage() {
             </Card>
           </TabsContent>
 
+          <TabsContent value="audit" className="mt-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-sm font-medium">Immutable Audit Trail</CardTitle>
+                    <CardDescription>SOC 2 compliant, tamper-evident logs stored in TimescaleDB.</CardDescription>
+                  </div>
+                  {!workspace?.isAuditEnabled && (
+                    <Badge variant="outline" className="text-amber-600 border-amber-600 bg-amber-50">
+                      AUDITING DISABLED
+                    </Badge>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="pl-6">Action</TableHead>
+                      <TableHead>Entity</TableHead>
+                      <TableHead>Actor</TableHead>
+                      <TableHead>Time</TableHead>
+                      <TableHead className="text-right pr-6">Metadata</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoading && auditLogs.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="h-24 text-center">Loading compliance logs...</TableCell>
+                      </TableRow>
+                    ) : filteredAuditLogs.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                          {workspace?.isAuditEnabled 
+                            ? "No audit records found." 
+                            : "Enable auditing in Security Settings to start recording compliance logs."}
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredAuditLogs.map((log) => (
+                        <TableRow key={log.id}>
+                          <TableCell className="pl-6 font-medium">
+                            <Badge variant="outline" className="text-[10px] font-mono border-primary/20 text-primary">
+                              {log.action}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="capitalize">
+                            <div className="flex flex-col">
+                              <span>{log.entity}</span>
+                              <span className="text-[10px] text-muted-foreground font-mono">{log.entityId?.slice(0, 8)}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground font-mono">{log.userId?.split('-')[0] || 'System'}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {new Date(log.createdAt).toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-right pr-6">
+                            <Badge variant="secondary" className="text-[9px] cursor-help" title={JSON.stringify(log.details)}>
+                              JSON DATA
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="system" className="mt-4">
-            <Card className="bg-slate-950 text-slate-50 border-slate-800">
+            <Card className="bg-slate-950 text-slate-50 border-slate-800 shadow-xl">
               <CardHeader className="border-b border-slate-800 pb-3">
                 <div className="flex justify-between items-center">
                   <div>
                     <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <Server className="h-4 w-4" /> Real-time Application Logs
+                      <Terminal className="h-4 w-4 text-emerald-500" /> Application Logs (Console)
                     </CardTitle>
-                    <CardDescription className="text-slate-400">Streaming directly from Grafana Loki.</CardDescription>
+                    <CardDescription className="text-slate-400">Streaming recent server output for debugging.</CardDescription>
                   </div>
-                  <Badge variant="outline" className="border-green-500/50 text-green-400 text-[10px]">
-                    LOKI CONNECTED
+                  <Badge variant="outline" className="border-emerald-500/30 text-emerald-500 bg-emerald-500/5 text-[10px] animate-pulse">
+                    LIVE VIEW
                   </Badge>
                 </div>
               </CardHeader>
@@ -180,9 +301,9 @@ export default function AdminLogsPage() {
                 <ScrollArea className="h-[500px] w-full">
                   <div className="p-4 font-mono text-xs space-y-1">
                     {isLoading && systemLogs.length === 0 ? (
-                      <div className="text-slate-500 italic">Connecting to Loki...</div>
+                      <div className="text-slate-500 italic">Loading application logs...</div>
                     ) : filteredSystemLogs.length === 0 ? (
-                      <div className="text-slate-500 italic">No system logs available or Loki is disabled.</div>
+                      <div className="text-slate-500 italic">No system logs available.</div>
                     ) : (
                       filteredSystemLogs.map((log, i) => (
                         <div key={i} className="flex gap-4 hover:bg-slate-900/50 py-1 px-2 rounded group">

@@ -72,6 +72,7 @@ export interface ILoginResponse {
     role: string;
     verified: boolean;
     image?: string | null;
+    notificationRetentionDays?: number;
   };
   workspaces?: Array<{
     workspaceId: string;

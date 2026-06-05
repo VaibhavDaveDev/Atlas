@@ -96,7 +96,7 @@ describe("WorkspaceGuard", () => {
   });
 
   it("should allow access and attach workspace info to request if valid", async () => {
-    const req = {
+    const req: any = {
       user: { globalRole: "USER", userId: "u1", workspaceId: "w1" },
     };
     const context = {

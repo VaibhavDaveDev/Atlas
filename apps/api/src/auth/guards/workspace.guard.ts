@@ -48,12 +48,37 @@ export class WorkspaceGuard implements CanActivate {
     });
 
     if (!membership) {
-      throw new UnauthorizedException("User is not a member of this workspace");
+      throw new UnauthorizedException("User not authenticated or not a member of this workspace");
     }
 
     // Check if workspace is active
     if (membership.workspace.status !== "ACTIVE") {
       throw new UnauthorizedException("Workspace is not active");
+    }
+
+    // Check for MFA enforcement
+    // We only enforce if the workspace policy is active AND the user is not already verified via MFA
+    // Better Auth 'session' object (if present) tells us if the current session is MFA-verified.
+    if (membership.workspace.mfaEnforced) {
+      const session = (request as any).betterAuthSession;
+
+      // If the user has 2FA enabled but the session is not MFA-verified, 
+      // Better Auth would usually handle the challenge, but we double-check here.
+      // If the user hasn't even SET UP 2FA, they must be forced to setup page.
+      const isMfaVerified = session?.session?.authFlags?.includes('mfa') || false;
+      const hasTwoFactorEnabled = (session?.user as any)?.twoFactorEnabled || false;
+
+      if (!hasTwoFactorEnabled) {
+        // User has not set up 2FA yet, but it's required.
+        // We throw a specific error that the frontend can catch to redirect to /settings/2fa
+        throw new UnauthorizedException("MFA_SETUP_REQUIRED");
+      }
+
+      if (!isMfaVerified) {
+        // User HAS enabled it, but this specific session isn't verified.
+        // Better Auth should have handled this during sign-in, but this is a safety net.
+        throw new UnauthorizedException("MFA_VERIFICATION_REQUIRED");
+      }
     }
 
     // Attach workspace info to request
@@ -62,5 +87,6 @@ export class WorkspaceGuard implements CanActivate {
     request.user.department = membership.department;
 
     return true;
-  }
-}
+    }
+    }
+

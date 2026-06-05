@@ -7,14 +7,13 @@ import { PrismaService } from "../../common/services/prisma.service";
 
 describe("PermissionGuard", () => {
   let guard: PermissionGuard;
-  let reflector: Reflector;
 
   const mockPrismaService = {
     rolePermission: {
-      findFirst: vi.fn(),
+      findMany: vi.fn(),
     },
     userPermission: {
-      findFirst: vi.fn(),
+      findMany: vi.fn(),
     },
   };
 
@@ -32,7 +31,10 @@ describe("PermissionGuard", () => {
     }).compile();
 
     guard = module.get<PermissionGuard>(PermissionGuard);
-    reflector = module.get<Reflector>(Reflector);
+
+    // Clear mocks before each test
+    mockPrismaService.rolePermission.findMany.mockClear();
+    mockPrismaService.userPermission.findMany.mockClear();
   });
 
   it("should be defined", () => {
@@ -89,6 +91,7 @@ describe("PermissionGuard", () => {
     mockReflector.getAllAndOverride.mockReturnValue({
       resource: "test",
       action: "read",
+      scope: "all",
     });
     const context = {
       getHandler: vi.fn(),
@@ -100,14 +103,22 @@ describe("PermissionGuard", () => {
       }),
     } as unknown as ExecutionContext;
 
-    mockPrismaService.rolePermission.findFirst.mockResolvedValue({ id: "rp1" });
+    mockPrismaService.rolePermission.findMany.mockResolvedValue([
+      {
+        id: "rp1",
+        permission: { resource: "test", action: "read", scope: "all" },
+      },
+    ]);
 
     expect(await guard.canActivate(context)).toBe(true);
-    expect(mockPrismaService.rolePermission.findFirst).toHaveBeenCalledWith({
+    expect(mockPrismaService.rolePermission.findMany).toHaveBeenCalledWith({
       where: {
         workspaceId: "w1",
         role: { name: "ADMIN" },
-        permission: { resource: "test", action: "read", scope: "all" },
+        permission: { resource: "test", action: "read" },
+      },
+      include: {
+        permission: true,
       },
     });
   });
@@ -116,6 +127,7 @@ describe("PermissionGuard", () => {
     mockReflector.getAllAndOverride.mockReturnValue({
       resource: "test",
       action: "read",
+      scope: "all",
     });
     const context = {
       getHandler: vi.fn(),
@@ -127,8 +139,13 @@ describe("PermissionGuard", () => {
       }),
     } as unknown as ExecutionContext;
 
-    mockPrismaService.rolePermission.findFirst.mockResolvedValue(null);
-    mockPrismaService.userPermission.findFirst.mockResolvedValue({ id: "up1" });
+    mockPrismaService.rolePermission.findMany.mockResolvedValue([]);
+    mockPrismaService.userPermission.findMany.mockResolvedValue([
+      {
+        id: "up1",
+        permission: { resource: "test", action: "read", scope: "all" },
+      },
+    ]);
 
     expect(await guard.canActivate(context)).toBe(true);
   });
@@ -137,6 +154,7 @@ describe("PermissionGuard", () => {
     mockReflector.getAllAndOverride.mockReturnValue({
       resource: "test",
       action: "read",
+      scope: "all",
     });
     const context = {
       getHandler: vi.fn(),
@@ -148,8 +166,8 @@ describe("PermissionGuard", () => {
       }),
     } as unknown as ExecutionContext;
 
-    mockPrismaService.rolePermission.findFirst.mockResolvedValue(null);
-    mockPrismaService.userPermission.findFirst.mockResolvedValue(null);
+    mockPrismaService.rolePermission.findMany.mockResolvedValue([]);
+    mockPrismaService.userPermission.findMany.mockResolvedValue([]);
 
     await expect(guard.canActivate(context)).rejects.toThrow(
       ForbiddenException,

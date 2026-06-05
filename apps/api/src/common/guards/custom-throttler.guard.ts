@@ -38,7 +38,7 @@ export class CustomThrottlerGuard extends ThrottlerGuard {
     }
 
     // Skip throttling for metrics endpoints (Prometheus)
-    if (path.startsWith("/metrics")) {
+    if (path.startsWith("/metrics") || path.includes("/api/v1/metrics")) {
       return true;
     }
 

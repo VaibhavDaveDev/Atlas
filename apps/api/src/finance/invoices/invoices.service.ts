@@ -100,19 +100,19 @@ export class InvoicesService {
     }
 
     // 1. Find relevant accounts (Hardcoded for now based on seed)
-    const arAccount = await this.prisma.account.findFirst({
+    const arAccount = await this.prisma.financialAccount.findFirst({
       where: { workspaceId, accountNumber: "1300" }, // Accounts Receivable
     });
 
-    const salesAccount = await this.prisma.account.findFirst({
+    const salesAccount = await this.prisma.financialAccount.findFirst({
       where: { workspaceId, accountNumber: "4100" }, // Sales Revenue
     });
 
-    const apAccount = await this.prisma.account.findFirst({
+    const apAccount = await this.prisma.financialAccount.findFirst({
       where: { workspaceId, accountNumber: "2100" }, // Accounts Payable
     });
 
-    const expenseAccount = await this.prisma.account.findFirst({
+    const expenseAccount = await this.prisma.financialAccount.findFirst({
       where: { workspaceId, accountNumber: "5100" }, // COGS
     });
 

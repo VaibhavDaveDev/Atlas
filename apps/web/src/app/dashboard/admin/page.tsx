@@ -109,7 +109,7 @@ export default function AdminOverviewPage() {
     },
     {
       title: 'Active Members',
-      value: '3',
+      value: workspace?.memberCount?.toString() || '0',
       subtitle: 'Across all roles',
       icon: Users,
       iconColor: 'text-blue-600 dark:text-blue-400',
@@ -147,13 +147,7 @@ export default function AdminOverviewPage() {
       color: 'bg-indigo-600 text-white',
       href: '/dashboard/admin/tickets',
     },
-    {
-      title: 'Invite Members',
-      desc: 'Add new users to workspace',
-      icon: Users,
-      color: 'bg-blue-600 text-white',
-      href: '/dashboard/workspace/settings',
-    },
+
     {
       title: 'Workspace Settings',
       desc: 'Branding, domain and regional settings',
@@ -276,23 +270,6 @@ export default function AdminOverviewPage() {
                   </span>
                 </div>
               </div>
-            </div>
-
-            {/* Help/Docs */}
-            <div className="rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] p-6 shadow-none relative overflow-hidden group">
-              <div className="absolute top-0 right-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full bg-[#4f46e5]/5 group-hover:bg-[#4f46e5]/10 transition-colors" />
-              <h2 className="text-sm font-semibold text-[#111111] dark:text-[#f4f4f5] tracking-tight mb-2">Need Help?</h2>
-              <p className="text-xs text-[#626260] dark:text-[#a1a1aa] leading-relaxed mb-5 italic">
-                Learn how to configure granular permissions and manage user overrides in our developer documentation.
-              </p>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="w-full text-[11px] font-bold uppercase tracking-widest border-[#d3cec6] dark:border-[#27272a] text-[#111111] dark:text-[#f4f4f5] hover:bg-[#f5f1ec] dark:hover:bg-[#1c1c1f]" 
-                asChild
-              >
-                <Link href="#">View Documentation</Link>
-              </Button>
             </div>
           </div>
         </div>

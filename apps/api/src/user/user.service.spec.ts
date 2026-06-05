@@ -19,7 +19,12 @@ describe("UserService", () => {
   const mockPrismaService = {
     authUser: {
       findUnique: vi.fn(),
+      update: vi.fn(),
     },
+    userProfile: {
+      upsert: vi.fn(),
+    },
+    $transaction: vi.fn((callback) => callback(mockPrismaService)),
   };
 
   beforeEach(async () => {
@@ -104,7 +109,7 @@ describe("UserService", () => {
       mockPrismaService.authUser.findUnique.mockResolvedValueOnce(existingUser); // For initial check
       mockPrismaService.authUser.findUnique.mockResolvedValueOnce(null); // For username uniqueness check
 
-      mockPrismaService.authUser.update = vi.fn().mockResolvedValue({
+      mockPrismaService.authUser.update.mockResolvedValue({
         id: userId,
         email: "test@test.com",
         username: "new_name",

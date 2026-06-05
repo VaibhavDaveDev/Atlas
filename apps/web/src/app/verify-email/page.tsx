@@ -8,8 +8,9 @@ import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/common/Logo';
+import { authClient } from '@/lib/auth-client';
+import { toast } from 'sonner';
 
-const API_BASE = `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'}/api/v1`;
 const CODE_LENGTH = 6;
 
 function VerifyEmailForm() {
@@ -24,7 +25,7 @@ function VerifyEmailForm() {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const handleChange = (index: number, value: string) => {
-    if (!/^[0-9A-Fa-f]?$/.test(value)) return;
+    if (!/^[0-9A-Z]?$/i.test(value)) return;
     const newCode = [...code];
     newCode[index] = value.toUpperCase();
     setCode(newCode);
@@ -55,19 +56,23 @@ function VerifyEmailForm() {
     if (fullCode.length !== CODE_LENGTH) return;
     setError('');
     setIsLoading(true);
+    const toastId = toast.loading('Verifying your email...');
     try {
-      const res = await fetch(`${API_BASE}/auth/verify-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, code: fullCode }),
+      const { data, error } = await authClient.emailOTP.verifyEmail({
+        email,
+        code: fullCode,
       });
-      if (!res.ok) {
-        const body = await res.json();
-        throw new Error(body.message ?? 'Verification failed');
+
+      if (error) {
+        throw new Error(error.message ?? 'Verification failed');
       }
+
       setSuccess(true);
+      toast.success('Email verified successfully!', { id: toastId });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Invalid code. Please try again.');
+      const message = err instanceof Error ? err.message : 'Invalid code. Please try again.';
+      setError(message);
+      toast.error(message, { id: toastId });
     } finally {
       setIsLoading(false);
     }
@@ -76,14 +81,22 @@ function VerifyEmailForm() {
   const handleResend = async () => {
     setIsResending(true);
     setError('');
+    const toastId = toast.loading('Sending a new code...');
     try {
-      await fetch(`${API_BASE}/auth/resend-verification-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+      const { data, error } = await authClient.emailOTP.sendVerificationOtp({
+        email,
+        type: 'email-verification',
       });
-    } catch {
-      setError('Failed to resend. Please try again.');
+
+      if (error) {
+        throw new Error(error.message ?? 'Failed to resend verification code');
+      }
+
+      toast.success('New verification code sent!', { id: toastId });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to resend. Please try again.';
+      setError(message);
+      toast.error(message, { id: toastId });
     } finally {
       setIsResending(false);
     }
