@@ -299,6 +299,26 @@ async function main() {
   const sdeDesig = await prisma.designation.findFirst({ where: { title: "Software Engineer", workspaceId: workspace.id } });
   const pmDesig = await prisma.designation.findFirst({ where: { title: "Project Manager", workspaceId: workspace.id } });
 
+  // Create Employee record for the Admin
+  console.log("Creating Employee record for Admin...");
+  await prisma.employee.upsert({
+    where: { workspaceId_email: { workspaceId: workspace.id, email: "admin@atlas.com" } },
+    update: {},
+    create: {
+      workspaceId: workspace.id,
+      userId: adminUser.id,
+      employeeNumber: "ADMIN001",
+      firstName: "Amdox",
+      lastName: "Admin",
+      fullName: "Amdox Admin",
+      email: "admin@atlas.com",
+      departmentId: engDept!.id,
+      designationId: pmDesig!.id,
+      status: EmployeeStatus.ACTIVE,
+      dateOfJoining: new Date("2024-01-01"),
+    },
+  });
+
   // 7. Create Employees
   console.log("Creating Employees...");
   const employeesToCreate = [
