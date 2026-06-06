@@ -14,4 +14,9 @@ allowBuilds:
   protobufjs: true
   sharp: true
   unrs-resolver: true
-  workerd: set this to true or false
+  workerd: true
+  miniflare: true
+  '@cloudflare/workerd-linux-64': true
+  '@cloudflare/workerd-windows-64': true
+  '@cloudflare/workerd-darwin-64': true
+  '@cloudflare/workerd-darwin-arm64': true
