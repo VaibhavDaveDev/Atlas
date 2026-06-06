@@ -69,11 +69,8 @@ tempo-data
 /packages/database/node_modules
 
 # Notes or Docs
-CHECKLIST.md
-SETUP.md
+DEPLOYMENT_GUIDE.md
 Project_SRS.md
-HR_Payroll_Plan.md
-Progress.md
 
 # Graphify
 graphify-out
