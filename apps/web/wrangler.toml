@@ -3,5 +3,5 @@ name = "atlas-erp-web"
 compatibility_date = "2026-01-01"
 compatibility_flags = ["nodejs_compat"]
 
-# Required for Cloudflare Pages - points to opennextjs-cloudflare output
-pages_build_output_dir = ".worker-next/assets"
+# Required for Cloudflare Pages - v1.x outputs to .open-next/assets
+pages_build_output_dir = ".open-next/assets"
