@@ -3,12 +3,5 @@ name = "atlas-erp-web"
 compatibility_date = "2026-01-01"
 compatibility_flags = ["nodejs_compat"]
 
-# Increase limits for enterprise applications
-limits = { cpu_ms = 50000 }
-
-# Workers config
-workers_dev = true
-
-# Environment variables can be set in Cloudflare dashboard
-# [vars]
-# NODE_ENV = "production"
+# Required for Cloudflare Pages - points to opennextjs-cloudflare output
+pages_build_output_dir = ".worker-next/assets"
