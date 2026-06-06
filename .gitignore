@@ -67,6 +67,7 @@ tempo-data
 # Database
 .prisma
 /packages/database/node_modules
+seed.ts.prod
 
 # Notes or Docs
 DEPLOYMENT_GUIDE.md

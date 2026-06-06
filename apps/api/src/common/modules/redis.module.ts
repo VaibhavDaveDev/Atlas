@@ -9,54 +9,72 @@ const createRedisClient = (
   configService: ConfigService,
   logger: Logger,
 ): RedisType => {
-  const isProduction = configService.get("NODE_ENV") === "production";
+  const redisUrl = configService.get<string>("REDIS_URL");
 
-  const client = new Redis({
-    host: configService.get<string>("REDIS_HOST", "localhost"),
-    port: configService.get<number>("REDIS_PORT", 6379),
-    username: configService.get<string>("REDIS_USER"),
-    password: configService.get<string>("REDIS_PASSWORD"),
-    db: configService.get<number>("REDIS_DB", 0),
-
-    // Connection & Retry Configuration
-    maxRetriesPerRequest: 3,
-    retryStrategy: (times: number) => {
-      if (times > 10) {
-        logger.error("Redis max connection retries reached. Stopping...", {
-          context: "RedisModule",
-        });
-        return null;
-      }
-      const delay = Math.min(times * 100, 3000);
-      logger.warn(`Redis reconnecting in ${delay}ms (attempt ${times})`, {
+  const retryStrategy = (times: number) => {
+    if (times > 10) {
+      logger.error("Redis max connection retries reached. Stopping...", {
         context: "RedisModule",
-        attempt: times,
-        delay,
       });
-      return delay;
-    },
+      return null;
+    }
+    const delay = Math.min(times * 100, 3000);
+    logger.warn(`Redis reconnecting in ${delay}ms (attempt ${times})`, {
+      context: "RedisModule",
+      attempt: times,
+      delay,
+    });
+    return delay;
+  };
 
-    // TLS for production environments
-    ...(isProduction &&
-      configService.get<string>("REDIS_TLS") === "true" && {
-        tls: {
-          rejectUnauthorized: true,
+  // If REDIS_URL is provided (e.g. Upstash rediss://... URL), use it directly.
+  // ioredis automatically enables TLS when the scheme is "rediss://".
+  const connectionOptions = redisUrl
+    ? {
+        // Parse URL but override TLS to not reject self-signed / Upstash certs
+        ...(redisUrl.startsWith("rediss://") ? { tls: { rejectUnauthorized: false } } : {}),
+      }
+    : {
+        host: configService.get<string>("REDIS_HOST", "localhost"),
+        port: configService.get<number>("REDIS_PORT", 6379),
+        username: configService.get<string>("REDIS_USER"),
+        password: configService.get<string>("REDIS_PASSWORD"),
+        db: configService.get<number>("REDIS_DB", 0),
+        // TLS via individual env vars
+        ...(configService.get<string>("REDIS_TLS") === "true"
+          ? { tls: { rejectUnauthorized: false } }
+          : {}),
+      };
+
+  const client = redisUrl
+    ? new Redis(redisUrl, {
+        maxRetriesPerRequest: 3,
+        retryStrategy,
+        enableReadyCheck: true,
+        enableOfflineQueue: true,
+        connectTimeout: 10000,
+        commandTimeout: 5000,
+        lazyConnect: false,
+        tls: { rejectUnauthorized: false },
+        reconnectOnError: (err: Error) => {
+          const targetErrors = ["READONLY", "ECONNRESET", "ETIMEDOUT"];
+          return targetErrors.some((e) => err.message.includes(e));
         },
-      }),
-
-    // Performance & Reliability
-    enableReadyCheck: true,
-    enableOfflineQueue: true,
-    connectTimeout: 10000,
-    commandTimeout: 5000,
-    lazyConnect: false,
-
-    // Auto-reconnect on connection loss
-    reconnectOnError: (err: Error) => {
-      const targetErrors = ["READONLY", "ECONNRESET", "ETIMEDOUT"];
-      return targetErrors.some((e) => err.message.includes(e));
-    },
-  });
+      })
+    : new Redis({
+        ...connectionOptions,
+        maxRetriesPerRequest: 3,
+        retryStrategy,
+        enableReadyCheck: true,
+        enableOfflineQueue: true,
+        connectTimeout: 10000,
+        commandTimeout: 5000,
+        lazyConnect: false,
+        reconnectOnError: (err: Error) => {
+          const targetErrors = ["READONLY", "ECONNRESET", "ETIMEDOUT"];
+          return targetErrors.some((e) => err.message.includes(e));
+        },
+      });
 
   // Event listeners for monitoring
   client.on("error", (err) =>
