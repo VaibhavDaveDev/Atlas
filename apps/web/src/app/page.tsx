@@ -282,6 +282,9 @@ export default function HomePage() {
             <a href="mailto:workspace.atlas@protonmail.com" className="hover:text-[#4f46e5] dark:hover:text-[#818cf8] transition-colors">
               Contact
             </a>
+            <Link href="/privacy" className="hover:text-[#4f46e5] dark:hover:text-[#818cf8] transition-colors">
+              Privacy
+            </Link>
             <Link href="/terms" className="hover:text-[#4f46e5] dark:hover:text-[#818cf8] transition-colors">
               Terms
             </Link>

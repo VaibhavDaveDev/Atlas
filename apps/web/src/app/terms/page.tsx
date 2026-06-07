@@ -110,7 +110,16 @@ export default function TermsPage() {
             <span className="font-semibold text-[#111111] dark:text-[#f4f4f5]">Atlas ERP</span>
           </div>
           <span>© 2026 Atlas Inc. All rights reserved.</span>
-          <div className="flex gap-6">
+          <div className="flex flex-wrap justify-center gap-x-8 gap-y-4">
+            <a href="mailto:workspace.atlas@protonmail.com" className="hover:text-[#4f46e5] dark:hover:text-[#818cf8] transition-colors">
+              Contact
+            </a>
+            <Link href="/privacy" className="hover:text-[#4f46e5] dark:hover:text-[#818cf8] transition-colors">
+              Privacy
+            </Link>
+            <Link href="/terms" className="hover:text-[#4f46e5] dark:hover:text-[#818cf8] transition-colors">
+              Terms
+            </Link>
             <Link href="/login" className="hover:text-[#4f46e5] dark:hover:text-[#818cf8] transition-colors">
               Sign In
             </Link>
