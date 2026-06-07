@@ -46,34 +46,39 @@ const createRedisClient = (
           : {}),
       };
 
+  const sharedOptions = {
+    // CRITICAL: Don't queue commands when Redis is disconnected.
+    // Commands fail immediately → caught by RedisService try/catch → cache miss → re-fetch from DB.
+    // Without this, queued commands pile up and cause MaxRetriesPerRequestError storms.
+    enableOfflineQueue: false,
+
+    // Don't retry individual commands — let them fail fast.
+    // Connection-level retries (retryStrategy) still work for reconnection.
+    maxRetriesPerRequest: null,
+
+    // Don't block startup if Redis is unavailable.
+    lazyConnect: true,
+
+    enableReadyCheck: false,
+    connectTimeout: 10000,
+    commandTimeout: 3000,
+    retryStrategy,
+
+    // Reconnect automatically on ECONNRESET (Upstash idle timeout resets)
+    reconnectOnError: (err: Error) => {
+      const targetErrors = ["READONLY", "ECONNRESET", "ETIMEDOUT"];
+      return targetErrors.some((e) => err.message.includes(e));
+    },
+  };
+
   const client = redisUrl
     ? new Redis(redisUrl, {
-        maxRetriesPerRequest: 3,
-        retryStrategy,
-        enableReadyCheck: true,
-        enableOfflineQueue: true,
-        connectTimeout: 10000,
-        commandTimeout: 5000,
-        lazyConnect: false,
+        ...sharedOptions,
         tls: { rejectUnauthorized: false },
-        reconnectOnError: (err: Error) => {
-          const targetErrors = ["READONLY", "ECONNRESET", "ETIMEDOUT"];
-          return targetErrors.some((e) => err.message.includes(e));
-        },
       })
     : new Redis({
         ...connectionOptions,
-        maxRetriesPerRequest: 3,
-        retryStrategy,
-        enableReadyCheck: true,
-        enableOfflineQueue: true,
-        connectTimeout: 10000,
-        commandTimeout: 5000,
-        lazyConnect: false,
-        reconnectOnError: (err: Error) => {
-          const targetErrors = ["READONLY", "ECONNRESET", "ETIMEDOUT"];
-          return targetErrors.some((e) => err.message.includes(e));
-        },
+        ...sharedOptions,
       });
 
   // Event listeners for monitoring

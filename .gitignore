@@ -1,4 +1,4 @@
-﻿# Dependencies
+# Dependencies
 node_modules
 .pnp
 .pnp.js
@@ -76,3 +76,11 @@ Project_SRS.md
 # Graphify
 graphify-out
 .agent
+
+# Build artifacts outside dist/ (compiled by tsc when rootDir is misconfigured)
+apps/api/test-better-auth-session.js
+apps/api/test-better-auth-session.js.map
+apps/api/test-better-auth-session.d.ts
+apps/api/vitest.config.js
+apps/api/vitest.config.js.map
+apps/api/vitest.config.d.ts

@@ -87,7 +87,7 @@ async function main() {
     { resource: "CompanyEvent", action: "create", scope: "all" },
     { resource: "CompanyEvent", action: "update", scope: "all" },
     { resource: "CompanyEvent", action: "delete", scope: "all" },
-    
+
     // --- Finance permissions (scope: all) ---
     { resource: "finance_accounts", action: "read", scope: "all" },
     { resource: "finance_accounts", action: "create", scope: "all" },
@@ -103,13 +103,13 @@ async function main() {
     { resource: "finance_payments", action: "read", scope: "all" },
     { resource: "finance_payments", action: "create", scope: "all" },
     { resource: "finance_payments", action: "delete", scope: "all" },
-    
+
     // --- Project permissions (scope: all) ---
     { resource: "projects", action: "read", scope: "all" },
     { resource: "projects", action: "create", scope: "all" },
     { resource: "projects", action: "update", scope: "all" },
     { resource: "projects", action: "delete", scope: "all" },
-    
+
     // --- ESS / Employee permissions (scope: own) ---
     { resource: "employees", action: "read", scope: "own" },
     { resource: "employees", action: "update", scope: "own" },
@@ -120,7 +120,7 @@ async function main() {
     { resource: "leave", action: "create", scope: "own" },
     { resource: "leave", action: "update", scope: "own" },
     { resource: "leaves", action: "read", scope: "own" },
-    
+
     // --- Employee Project Access ---
     { resource: "projects", action: "read", scope: "own" },
     { resource: "projects", action: "update", scope: "own" },
@@ -183,7 +183,7 @@ async function main() {
     const allPerms = await prisma.permission.findMany({
       where: { workspaceId: null }
     });
-    
+
     for (const p of allPerms) {
       let shouldAssign = false;
 
@@ -192,7 +192,7 @@ async function main() {
       } else if (role.name === "USER") {
         // User gets all "own" permissions
         if (p.scope === "own") shouldAssign = true;
-        
+
         // IMPORTANT: Also allow user to CREATE projects if they are Team Leads? 
         // No, creation is usually a Manager action. But Leads might need 'update' on projects.
         // We already have projects:read:own and projects:update:own.
@@ -281,10 +281,10 @@ async function main() {
     await prisma.department.upsert({
       where: { workspaceId_name: { workspaceId: workspace.id, name } },
       update: {},
-      create: { name, code: name.substring(0,3).toUpperCase(), workspaceId: workspace.id },
+      create: { name, code: name.substring(0, 3).toUpperCase(), workspaceId: workspace.id },
     });
   }
-  
+
   const engDept = await prisma.department.findFirst({ where: { name: "Engineering", workspaceId: workspace.id } });
 
   const titles = ["Software Engineer", "HR Manager", "Accountant", "CTO", "Project Manager"];
@@ -426,7 +426,7 @@ async function main() {
         create: { projectId: createdProject.id, employeeId: john.id, role: ProjectRole.LEAD },
       });
     }
-    
+
     if (jane && prj.projectCode === "PRJ-001") {
       await prisma.projectMember.upsert({
         where: { projectId_employeeId: { projectId: createdProject.id, employeeId: jane.id } },
