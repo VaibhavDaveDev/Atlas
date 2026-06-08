@@ -10,7 +10,7 @@ import {
   ParseUUIDPipe,
   Query,
 } from "@nestjs/common";
-import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
+import { ApiTags, ApiOperation, ApiCookieAuth } from "@nestjs/swagger";
 import { UserService } from "./user.service";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
@@ -23,7 +23,7 @@ import { User } from "./entities/user.entity";
 import { AuthGuard } from "../common/guards/auth.guard";
 
 @ApiTags("users")
-@ApiBearerAuth("JWT-auth")
+@ApiCookieAuth("better-auth-cookie")
 @UseGuards(AuthGuard) // All user management endpoints require authentication
 @Controller("user")
 export class UserController {

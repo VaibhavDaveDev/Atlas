@@ -11,7 +11,7 @@ import {
   Param,
   Query,
 } from "@nestjs/common";
-import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
+import { ApiTags, ApiOperation, ApiCookieAuth } from "@nestjs/swagger";
 import { HrService } from "./hr.service";
 import { PayrollPostingService } from "../finance/payroll-posting.service";
 import { AuthGuard } from "../common/guards/auth.guard";
@@ -25,7 +25,7 @@ import type { Request } from "express";
 @ApiTags("hr")
 @Controller("hr")
 @UseGuards(AuthGuard, WorkspaceGuard, RolesGuard, PermissionGuard)
-@ApiBearerAuth("JWT-auth")
+@ApiCookieAuth("better-auth-cookie")
 export class HrController {
   constructor(
     private readonly hrService: HrService,

@@ -10,7 +10,11 @@ export const authClient = createAuthClient({
   basePath: '/api/v1/auth',
   plugins: [
     organizationClient(),
-    twoFactorClient(),
+    twoFactorClient({
+      onTwoFactorRedirect() {
+        window.location.href = '/auth/2fa';
+      },
+    }),
     ssoClient(),
     magicLinkClient(),
     emailOTPClient(),

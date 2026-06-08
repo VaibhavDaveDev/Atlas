@@ -4,19 +4,13 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 const API_BASE = `${API_URL}/api/v1`;
 
 const getAuthHeaders = () => {
-  const token = tokenStorage.getAccessToken();
   const workspace = tokenStorage.getWorkspace();
   
   // Extract workspaceId robustly
   const workspaceId = (workspace as any)?.workspaceId || (workspace as any)?.id;
 
-  if (!workspaceId && token) {
-    console.warn('Workspace ID missing from storage while token is present. Requests might fail.');
-  }
-
   return {
     'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(workspaceId ? { 'x-workspace-id': workspaceId } : {}),
   };
 };
@@ -24,6 +18,7 @@ const getAuthHeaders = () => {
 async function fetchESS(endpoint: string, options: RequestInit = {}) {
   const res = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
+    credentials: 'include',
     headers: {
       ...getAuthHeaders(),
       ...(options.headers || {}),

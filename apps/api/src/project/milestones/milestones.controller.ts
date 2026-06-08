@@ -13,7 +13,7 @@ import {
 import {
   ApiTags,
   ApiOperation,
-  ApiBearerAuth,
+  ApiCookieAuth,
   ApiQuery,
 } from "@nestjs/swagger";
 import { MilestonesService } from "./milestones.service";
@@ -30,7 +30,7 @@ import type { Request } from "express";
 @ApiTags("project-management")
 @Controller("project/milestones")
 @UseGuards(AuthGuard, WorkspaceGuard, RolesGuard, PermissionGuard, ProjectRoleGuard)
-@ApiBearerAuth("JWT-auth")
+@ApiCookieAuth("better-auth-cookie")
 export class MilestonesController {
   constructor(private readonly milestonesService: MilestonesService) {}
 

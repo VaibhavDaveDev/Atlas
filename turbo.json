@@ -6,6 +6,14 @@
       "dependsOn": ["^build"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**", "node_modules/.prisma/**"]
     },
+    "@atlas/api#build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
+    },
+    "@atlas/database#build": {
+      "dependsOn": [],
+      "outputs": ["node_modules/.prisma/**", "node_modules/@prisma/client/**"]
+    },
     "dev": {
       "cache": false,
       "persistent": true

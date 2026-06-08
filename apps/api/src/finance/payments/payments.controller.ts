@@ -8,7 +8,7 @@ import {
   UseGuards,
   Req,
 } from "@nestjs/common";
-import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
+import { ApiTags, ApiOperation, ApiCookieAuth } from "@nestjs/swagger";
 import { PaymentsService } from "./payments.service";
 import { CreatePaymentDto } from "./dto/create-payment.dto";
 import { AuthGuard } from "../../common/guards/auth.guard";
@@ -21,7 +21,7 @@ import type { Request } from "express";
 @ApiTags("finance-payments")
 @Controller("finance/payments")
 @UseGuards(AuthGuard, WorkspaceGuard, RolesGuard, PermissionGuard)
-@ApiBearerAuth("JWT-auth")
+@ApiCookieAuth("better-auth-cookie")
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 

@@ -7,6 +7,7 @@ import { ActivityLogService } from "../common/services/activity-log.service";
 import { RedisService } from "../common/services/redis.service";
 import { EmailQueueService } from "../common/queues/email/email.queue";
 import { CustomLoggerService } from "../common/services/custom-logger.service";
+import { AuditTrailService } from "../logs/audit-trail.service";
 import AppError from "../common/errors/app.error";
 import * as bcrypt from "bcryptjs";
 
@@ -118,6 +119,10 @@ describe("AuthService", () => {
       verbose: vi.fn(),
     };
 
+    const mockAuditTrailService = {
+      logMutation: vi.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
@@ -144,6 +149,10 @@ describe("AuthService", () => {
         {
           provide: CustomLoggerService,
           useValue: mockCustomLoggerService,
+        },
+        {
+          provide: AuditTrailService,
+          useValue: mockAuditTrailService,
         },
       ],
     }).compile();

@@ -109,15 +109,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data, error } = await authClient.signIn.email({
         email, 
         password,
+        // @ts-expect-error - Custom plugin field
         turnstileToken, // Pass directly in the data object
       });
 
       if (error) {
         console.error('[AuthContext] login error:', error);
-        throw new Error(error.message || 'Login failed');
+        
+        // Provide user-friendly error messages
+        let errorMessage = error.message || 'Login failed';
+        
+        // Handle throttling errors
+        if (errorMessage.includes('Too Many Requests') || errorMessage.includes('ThrottlerException')) {
+          errorMessage = 'Too many login attempts. Please wait a moment and try again.';
+        }
+        
+        // Handle invalid credentials
+        if (errorMessage.includes('Invalid') || errorMessage.includes('incorrect')) {
+          errorMessage = 'Invalid email or password. Please try again.';
+        }
+        
+        throw new Error(errorMessage);
       }
       
       console.log('[AuthContext] login success, data received:', !!data);
+
+      if ((data as any)?.twoFactorRedirect) {
+        console.log('[AuthContext] 2FA required, waiting for redirect...');
+        await new Promise(() => {}); // Never resolve so UI stays loading during redirect
+        return;
+      }
 
       // Always call getSession() after sign-in — it's the most reliable way
       // to get the session token that was just created. The token is stored in
@@ -132,7 +153,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (token) {
         console.log('[AuthContext] Session token stored successfully');
         authApi.tokenStorage.setBetterAuthToken(token);
-        authApi.tokenStorage.setAccessToken(token);
       } else {
         console.warn('[AuthContext] No session token found after login — API calls may fail!');
       }
@@ -150,9 +170,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         authApi.tokenStorage.setUser(mappedUser);
       }
 
-      // Fetch workspaces from our API after successful BetterAuth login
-      const workspacesRes = await authApi.getMyWorkspaces();
-      const workspaces = workspacesRes.data || [];
+      // Retry mechanism for fetching workspaces after login
+      // Better Auth cookies may take a moment to be set
+      let workspaces: any[] = [];
+      let retryCount = 0;
+      const maxRetries = 3;
+      
+      while (retryCount < maxRetries) {
+        try {
+          console.log(`[AuthContext] Fetching workspaces (attempt ${retryCount + 1}/${maxRetries})...`);
+          const workspacesRes = await authApi.getMyWorkspaces();
+          workspaces = workspacesRes.data || [];
+          console.log('[AuthContext] Successfully fetched workspaces:', workspaces.length);
+          break; // Success, exit retry loop
+        } catch (workspaceError: any) {
+          retryCount++;
+          console.warn(`[AuthContext] Workspace fetch attempt ${retryCount} failed:`, workspaceError.message);
+          
+          if (retryCount < maxRetries) {
+            // Wait progressively longer between retries
+            const delay = retryCount * 300;
+            console.log(`[AuthContext] Retrying in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          } else {
+            console.error('[AuthContext] All workspace fetch attempts failed');
+            throw new Error('Login successful but failed to load workspaces. Please refresh the page.');
+          }
+        }
+      }
       
       authApi.tokenStorage.setWorkspaces(workspaces);
       setWorkspaces(workspaces);
@@ -172,7 +217,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // auth.ts already sets — no manual token extraction needed.
       const response = await authApi.selectWorkspace(workspaceId);
       
-      authApi.tokenStorage.setAccessToken(response.data.accessToken);
       authApi.tokenStorage.setWorkspace(response.data.workspace);
       
       setWorkspace(response.data.workspace);
@@ -229,7 +273,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           !errorMessage.includes('status 404') &&
           !errorMessage.includes('Unauthorized') &&
           !errorMessage.includes('No token found') &&
-          !errorMessage.includes('No authentication token found')
+          !errorMessage.includes('No authentication token found') &&
+          !errorMessage.includes('MFA_SETUP_REQUIRED')
         ) {
           console.error('Failed to check attendance before logout', err);
         }

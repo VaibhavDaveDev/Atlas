@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useAuth } from '@/contexts/AuthContext';
-import { User, Mail, Shield, Key, Loader2, Moon, Sun, Monitor, Save, Check, Globe, Dice6, Plus, Bell, Copy } from 'lucide-react';
+import { User, Mail, Shield, Key, Loader2, Moon, Sun, Monitor, Globe, Plus, Bell, Copy, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -53,6 +53,8 @@ export default function ProfileSettingsPage() {
   const [twoFaPassword, setTwoFaPassword] = useState('');
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
   const [is2faLoading, setIs2faLoading] = useState(false);
+  const [showDisable2faDialog, setShowDisable2faDialog] = useState(false);
+  const [disable2faPassword, setDisable2faPassword] = useState('');
 
   const { data: session } = authClient.useSession();
 
@@ -61,6 +63,25 @@ export default function ProfileSettingsPage() {
       setIs2faEnabled(!!(session.user as any).twoFactorEnabled);
     }
   }, [session]);
+
+  useEffect(() => {
+    // Check if the user was redirected here because their workspace requires MFA
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('reason') === 'mfa_setup_required') {
+        // Automatically open the 2FA dialog
+        setShow2faDialog(true);
+        setShow2faSetupStep('password');
+        toast.warning('Your workspace requires you to set up Two-Factor Authentication.', {
+          duration: 10000,
+        });
+        
+        // Clean up the URL to prevent reopening on refresh
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+      }
+    }
+  }, []);
 
   const handleEnable2fa = async () => {
     if (!twoFaPassword) {
@@ -86,12 +107,17 @@ export default function ProfileSettingsPage() {
   const handleVerify2fa = async () => {
     setIs2faLoading(true);
     try {
-      const { data, error } = await authClient.twoFactor.verifyTotp({
+      const { error } = await authClient.twoFactor.verifyTotp({
         code: twoFactorCode,
       });
       if (error) throw error;
       
-      setBackupCodes(data.backupCodes);
+      const backupCodesRes = await authClient.twoFactor.generateBackupCodes({
+        password: twoFaPassword,
+      });
+      if (backupCodesRes.data) {
+        setBackupCodes(backupCodesRes.data.backupCodes);
+      }
       setIs2faEnabled(true);
       setShow2faSetupStep('backup');
       toast.success('Two-factor authentication enabled successfully!');
@@ -102,14 +128,17 @@ export default function ProfileSettingsPage() {
     }
   };
 
-  const handleDisable2fa = async () => {
-    if (!confirm('Are you sure you want to disable 2FA? This will make your account less secure.')) return;
+  const handleDisable2fa = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!disable2faPassword) return;
     
     setIs2faLoading(true);
     try {
-      const { error } = await authClient.twoFactor.disable();
+      const { error } = await authClient.twoFactor.disable({ password: disable2faPassword });
       if (error) throw error;
       setIs2faEnabled(false);
+      setShowDisable2faDialog(false);
+      setDisable2faPassword('');
       toast.success('Two-factor authentication disabled');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to disable 2FA');
@@ -118,20 +147,22 @@ export default function ProfileSettingsPage() {
     }
   };
 
-  const handleStart2faSetup = () => {
-    setShow2faDialog(true);
-    setShow2faSetupStep('password');
-    setTwoFaPassword('');
-    setTwoFactorCode('');
-    setQrCode('');
-    setBackupCodes([]);
+  const handle2faDialogOpenChange = (open: boolean) => {
+    setShow2faDialog(open);
+    if (open) {
+      setShow2faSetupStep('password');
+      setTwoFaPassword('');
+      setTwoFactorCode('');
+      setQrCode('');
+      setBackupCodes([]);
+    } else {
+      setTwoFaPassword('');
+      setTwoFactorCode('');
+    }
   };
 
   const handleClose2faDialog = () => {
-    setShow2faDialog(false);
-    setShow2faSetupStep('password');
-    setTwoFaPassword('');
-    setTwoFactorCode('');
+    handle2faDialogOpenChange(false);
   };
 
   // Gravatar URL generation
@@ -170,8 +201,8 @@ export default function ProfileSettingsPage() {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
+        credentials: 'include',
         body: JSON.stringify({ 
           username,
           image: avatar,
@@ -205,9 +236,7 @@ export default function ProfileSettingsPage() {
     try {
       const response = await fetch(`${API_BASE}/auth/change-password/request`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -237,8 +266,8 @@ export default function ProfileSettingsPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
         },
+        credentials: 'include',
         body: JSON.stringify({ currentPassword, newPassword, otp }),
       });
 
@@ -592,24 +621,74 @@ export default function ProfileSettingsPage() {
                       Add an extra layer of security to your account using an authenticator app (TOTP).
                     </p>
                   </div>
-                  {is2faEnabled ? (
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={handleDisable2fa} 
-                      disabled={is2faLoading}
-                      className="border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 font-bold whitespace-nowrap shadow-sm"
-                    >
-                      {is2faLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> : <Shield className="mr-2 h-3.5 w-3.5" />} 
-                      Disable 2FA
-                    </Button>
-                  ) : (
-                    <Dialog open={show2faDialog} onOpenChange={handleClose2faDialog}>
+                  {is2faEnabled && (
+                    <Dialog open={showDisable2faDialog} onOpenChange={(open) => {
+                      setShowDisable2faDialog(open);
+                      if (!open) setDisable2faPassword('');
+                    }}>
                       <DialogTrigger asChild>
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          onClick={handleStart2faSetup}
+                          disabled={is2faLoading}
+                          className="border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 font-bold whitespace-nowrap shadow-sm"
+                        >
+                          {is2faLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> : <Shield className="mr-2 h-3.5 w-3.5" />} 
+                          Disable 2FA
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-md border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214]">
+                        <DialogHeader>
+                          <DialogTitle>Disable Two-Factor Authentication</DialogTitle>
+                          <DialogDescription>
+                            Enter your current password to confirm you want to disable 2FA. This will make your account less secure.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={handleDisable2fa} className="space-y-4 py-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="disable-2fa-password">Password</Label>
+                            <Input
+                              id="disable-2fa-password"
+                              type="password"
+                              value={disable2faPassword}
+                              onChange={(e) => setDisable2faPassword(e.target.value)}
+                              placeholder="Enter your password"
+                              required
+                              className="border-[#d3cec6] dark:border-[#27272a] focus-visible:ring-[#111111] dark:focus-visible:ring-[#f4f4f5]"
+                            />
+                          </div>
+                          <DialogFooter className="gap-2 sm:gap-0">
+                            <Button 
+                              type="button" 
+                              variant="outline" 
+                              onClick={() => {
+                                setShowDisable2faDialog(false);
+                                setDisable2faPassword('');
+                              }}
+                              className="border-[#d3cec6] dark:border-[#27272a] hover:bg-[#e8e4dc] dark:hover:bg-[#1c1c1f]"
+                            >
+                              Cancel
+                            </Button>
+                            <Button 
+                              type="submit" 
+                              disabled={is2faLoading || !disable2faPassword}
+                              className="bg-red-600 hover:bg-red-700 text-white border-transparent dark:bg-red-600 dark:hover:bg-red-700 dark:text-white"
+                            >
+                              {is2faLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                              Disable 2FA
+                            </Button>
+                          </DialogFooter>
+                        </form>
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                  
+                  {!is2faEnabled && (
+                    <Dialog open={show2faDialog} onOpenChange={handle2faDialogOpenChange}>
+                      <DialogTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
                           disabled={is2faLoading}
                           className="border-[#111111] dark:border-[#f4f4f5] text-[#111111] dark:text-[#f4f4f5] hover:bg-[#f5f1ec] dark:hover:bg-[#1c1c1f] font-bold whitespace-nowrap shadow-sm"
                         >
@@ -703,40 +782,54 @@ export default function ProfileSettingsPage() {
                         {show2faSetupStep === 'backup' && (
                           <>
                             <DialogHeader>
-                              <DialogTitle>Save Your Backup Codes</DialogTitle>
-                              <DialogDescription>
-                                Store these backup codes securely. You can use them to access your account if you lose your authenticator device.
+                              <DialogTitle className="text-xl">Save Your Backup Codes</DialogTitle>
+                              <DialogDescription className="text-[#626260] dark:text-[#a1a1aa]">
+                                Store these backup codes securely. You can use them to access your account if you lose your authenticator device. Each code can only be used once.
                               </DialogDescription>
                             </DialogHeader>
-                            <div className="space-y-4 py-4">
-                              <div className="bg-[#f5f1ec] dark:bg-[#09090b] p-4 rounded-lg border border-[#d3cec6] dark:border-[#27272a]">
-                                <div className="grid grid-cols-2 gap-2 font-mono text-sm">
+                            <div className="space-y-6 py-4">
+                              <div className="bg-[#f5f1ec] dark:bg-[#18181b] p-4 rounded-xl border border-[#d3cec6] dark:border-[#27272a] max-h-60 overflow-y-auto">
+                                <div className="flex flex-col gap-3 font-mono text-xs md:text-sm">
                                   {backupCodes.map((code, i) => (
-                                    <div key={i} className="text-[#111111] dark:text-[#f4f4f5]">
-                                      {code}
+                                    <div key={i} className="flex items-center justify-between bg-white dark:bg-[#09090b] p-3 rounded-md border border-[#e8e4dc] dark:border-[#27272a]">
+                                      <span className="text-[#111111] dark:text-[#f4f4f5] select-all break-all pr-4">{code}</span>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-[#626260] hover:text-[#111111] dark:text-[#a1a1aa] dark:hover:text-[#f4f4f5] shrink-0"
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(code);
+                                          toast.success('Copied to clipboard');
+                                        }}
+                                      >
+                                        <Copy className="h-4 w-4" />
+                                      </Button>
                                     </div>
                                   ))}
                                 </div>
                               </div>
                               
-                              <Button 
-                                variant="outline"
-                                className="w-full"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(backupCodes.join('\n'));
-                                  toast.success('Backup codes copied to clipboard');
-                                }}
-                              >
-                                <Copy className="mr-2 h-4 w-4" />
-                                Copy Codes
-                              </Button>
+                              <div className="flex flex-col gap-3">
+                                <Button 
+                                  variant="outline"
+                                  className="w-full border-[#d3cec6] dark:border-[#27272a] hover:bg-[#e8e4dc] dark:hover:bg-[#18181b]"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(backupCodes.join('\n'));
+                                    toast.success('All backup codes copied to clipboard');
+                                  }}
+                                >
+                                  <Copy className="mr-2 h-4 w-4" />
+                                  Copy All Codes
+                                </Button>
 
-                              <Button 
-                                className="w-full bg-[#111111] dark:bg-[#f4f4f5] text-white dark:text-black font-bold"
-                                onClick={handleClose2faDialog}
-                              >
-                                Done
-                              </Button>
+                                <Button 
+                                  className="w-full bg-[#111111] dark:bg-[#f4f4f5] text-white dark:text-black font-semibold"
+                                  onClick={handleClose2faDialog}
+                                >
+                                  I have saved my backup codes
+                                </Button>
+                              </div>
                             </div>
                           </>
                         )}

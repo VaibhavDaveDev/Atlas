@@ -6,13 +6,13 @@ import {
   UseGuards,
   Request,
 } from "@nestjs/common";
-import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
+import { ApiTags, ApiOperation, ApiCookieAuth } from "@nestjs/swagger";
 import { NotificationsService } from "./notifications.service";
 import { AuthGuard } from "../common/guards/auth.guard";
 import { Notification } from "@atlas/database";
 
 @ApiTags("notifications")
-@ApiBearerAuth("JWT-auth")
+@ApiCookieAuth("better-auth-cookie")
 @UseGuards(AuthGuard)
 @Controller("notifications")
 export class NotificationsController {

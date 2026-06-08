@@ -79,6 +79,34 @@ export default function EssCalendarPage() {
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [modalType, setModalType] = useState<'event' | 'holiday' | 'leave' | null>(null);
 
+  // Swipe detection for mobile
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  const minSwipeDistance = 50;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+    
+    if (isLeftSwipe) {
+      nextPeriod();
+    } else if (isRightSwipe) {
+      prevPeriod();
+    }
+  };
+
   const month = currentDate.getMonth() + 1;
   const year = currentDate.getFullYear();
 
@@ -267,9 +295,12 @@ export default function EssCalendarPage() {
           <div className="flex-1 flex flex-col md:flex-row gap-6 min-h-0">
             <div className="flex-1 overflow-hidden flex flex-col">
               <div 
-                className="grid grid-cols-7 border-l border-t border-[#d3cec6] dark:border-[#27272a] rounded-t-2xl overflow-hidden shadow-sm flex-1"
+                className="grid grid-cols-7 border-l border-t border-[#d3cec6] dark:border-[#27272a] rounded-t-2xl overflow-hidden shadow-sm flex-1 touch-pan-y"
                 role="grid"
                 aria-label={`Calendar for ${format(currentDate, 'MMMM yyyy')}`}
+                onTouchStart={onTouchStart}
+                onTouchMove={onTouchMove}
+                onTouchEnd={onTouchEnd}
               >
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
                   <div 
@@ -436,8 +467,8 @@ export default function EssCalendarPage() {
                             <div className="min-w-0 flex-1">
                               <h4 className="text-sm font-bold text-[#111111] dark:text-[#f4f4f5] group-hover:text-blue-600 transition-colors truncate">{e.title}</h4>
                               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
-                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#7b7b78] uppercase tracking-tighter">
-                                  <Clock className="h-3 w-3 text-blue-500" /> {format(new Date(e.startDate), 'hh:mm a')}
+                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#7b7b78] uppercase tracking-tighter whitespace-nowrap">
+                                  <Clock className="h-3 w-3 text-blue-500" /> {format(new Date(e.startDate), 'h:mm a')}
                                 </div>
                                 {e.location && (
                                   <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#7b7b78] uppercase tracking-tighter truncate max-w-[150px]">
@@ -472,13 +503,18 @@ export default function EssCalendarPage() {
           </div>
         ) : viewMode === 'week' ? (
           /* Week View Implementation */
-          <div className="flex-1 bg-white dark:bg-[#121214] border border-[#d3cec6] dark:border-[#27272a] rounded-2xl overflow-hidden flex flex-col shadow-sm">
+          <div 
+            className="flex-1 bg-white dark:bg-[#121214] border border-[#d3cec6] dark:border-[#27272a] rounded-2xl overflow-hidden flex flex-col shadow-sm touch-pan-y"
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+          >
              <div className="grid grid-cols-8 divide-x dark:divide-[#27272a] h-full overflow-y-auto">
                <div className="col-span-1 bg-[#fcfaf8] dark:bg-[#1a1a1e] border-b dark:border-[#27272a]">
                  <div className="h-16" />
                  {Array.from({length: 24}).map((_, i) => (
                    <div key={i} className="h-20 border-t dark:border-white/5 flex items-start justify-end pr-3 pt-3">
-                     <span className="text-[10px] font-bold text-[#7b7b78] uppercase tracking-widest">{format(setHours(new Date(), i), 'hh a')}</span>
+                     <span className="text-[10px] font-bold text-[#7b7b78] uppercase tracking-widest whitespace-nowrap">{format(setHours(new Date(), i), 'h a')}</span>
                    </div>
                  ))}
                </div>
@@ -510,7 +546,7 @@ export default function EssCalendarPage() {
                               style={{ top: `${top}px`, height: `${height}px` }}
                             >
                               <p className="text-[10px] font-bold leading-tight line-clamp-2">{e.title}</p>
-                              <p className="text-[9px] text-white/80 mt-1">{format(new Date(e.startDate), 'h:mm a')}</p>
+                              <p className="text-[9px] text-white/80 mt-1 whitespace-nowrap">{format(new Date(e.startDate), 'h:mm a')}</p>
                             </div>
                           );
                         })}
@@ -522,10 +558,29 @@ export default function EssCalendarPage() {
           </div>
         ) : (
           /* Agenda (List) View */
-          <div className="flex-1 space-y-4 max-w-4xl mx-auto w-full pb-10">
-            {[...data.holidays, ...data.events].sort((a, b) => new Date(a.date || a.startDate).getTime() - new Date(b.date || b.startDate).getTime())
-              .filter(item => new Date(item.date || item.startDate) >= startOfDay(new Date()))
-              .map((item) => {
+          <div 
+            className="flex-1 space-y-4 max-w-4xl mx-auto w-full pb-10 touch-pan-y"
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+          >
+            {(() => {
+              const items = [...data.holidays, ...data.events].sort((a, b) => new Date(a.date || a.startDate).getTime() - new Date(b.date || b.startDate).getTime())
+                .filter(item => new Date(item.date || item.startDate) >= startOfDay(new Date()));
+
+              if (items.length === 0) {
+                return (
+                  <div className="flex flex-col items-center justify-center py-32 text-center bg-white dark:bg-[#121214] border border-[#d3cec6] dark:border-[#27272a] rounded-2xl shadow-sm mt-4">
+                    <div className="h-20 w-20 rounded-full bg-[#fcfaf8] dark:bg-[#1a1a1e] border border-dashed border-[#d3cec6] dark:border-[#27272a] flex items-center justify-center mb-6">
+                      <CalendarIcon className="h-8 w-8 text-[#d3cec6] dark:text-[#3f3f46]" />
+                    </div>
+                    <h3 className="text-xl font-bold text-[#111111] dark:text-[#f4f4f5] mb-2">No upcoming events</h3>
+                    <p className="text-sm text-[#626260] dark:text-[#a1a1aa] max-w-[300px]">You're all caught up! There are no upcoming holidays or company events scheduled at this time.</p>
+                  </div>
+                );
+              }
+
+              return items.map((item) => {
                 const type = item.date ? 'holiday' : 'event';
                 return (
                   <Card key={item.id} onClick={() => handleShowDetails(item, type)} className="border-[#d3cec6] dark:border-[#27272a] shadow-none hover:border-blue-500 transition-all cursor-pointer overflow-hidden group rounded-2xl">
@@ -544,8 +599,8 @@ export default function EssCalendarPage() {
                                 {type === 'holiday' ? 'Public Holiday' : 'Company Event'}
                               </Badge>
                               {!item.date && (
-                                <span className="text-xs font-bold text-[#7b7b78] flex items-center gap-1.5 uppercase">
-                                  <Clock className="h-3 w-3" /> {format(new Date(item.startDate), 'hh:mm a')}
+                                <span className="text-xs font-bold text-[#7b7b78] flex items-center gap-1.5 uppercase whitespace-nowrap">
+                                  <Clock className="h-3 w-3" /> {format(new Date(item.startDate), 'h:mm a')}
                                 </span>
                               )}
                               {item.location && <span className="text-xs font-bold text-[#7b7b78] flex items-center gap-1.5 uppercase truncate max-w-[200px]"><MapPin className="h-3 w-3" /> {item.location}</span>}
@@ -557,7 +612,8 @@ export default function EssCalendarPage() {
                     </CardContent>
                   </Card>
                 );
-              })}
+              });
+            })()}
           </div>
         )}
       </div>
@@ -644,3 +700,4 @@ export default function EssCalendarPage() {
     </div>
   );
 }
+

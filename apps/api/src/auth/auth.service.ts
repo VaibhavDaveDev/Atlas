@@ -7,6 +7,7 @@ import { ActivityLogService } from "../common/services/activity-log.service";
 import { RedisService } from "../common/services/redis.service";
 import { EmailQueueService } from "../common/queues/email/email.queue";
 import { CustomLoggerService } from "../common/services/custom-logger.service";
+import { AuditTrailService } from "../logs/audit-trail.service";
 import AppError from "../common/errors/app.error";
 import * as bcrypt from "bcryptjs";
 import config from "../common/config/app.config";
@@ -29,6 +30,7 @@ export class AuthService {
     private readonly redisService: RedisService,
     private readonly emailQueueService: EmailQueueService,
     private readonly customLogger: CustomLoggerService,
+    private readonly auditTrailService: AuditTrailService,
   ) {}
 
   async create(
@@ -886,6 +888,7 @@ export class AuthService {
       }
 
       // NON-CRITICAL: DB operations (fire-and-forget with detailed logging)
+      const refreshTokenTTLSec = this.parseExpiryToSeconds(AUTH_CONFIG.TOKEN_EXPIRY.REFRESH);
       void Promise.allSettled([
         security
           ? this.prismaService.authSecurity.update({
@@ -903,6 +906,19 @@ export class AuthService {
           userAgent,
           device,
           success: true,
+        }),
+        // Track session in auth_sessions so admin dashboard can see active sessions
+        this.prismaService.authSession.upsert({
+          where: { token: jti },
+          update: { expiresAt: new Date(Date.now() + refreshTokenTTLSec * 1000), ipAddress: ip, userAgent },
+          create: {
+            id: jti,
+            token: jti,
+            userId: user.id,
+            ipAddress: ip,
+            userAgent,
+            expiresAt: new Date(Date.now() + refreshTokenTTLSec * 1000),
+          },
         }),
       ]).then((results) => {
         results.forEach((result) => {
@@ -1112,6 +1128,8 @@ export class AuthService {
       await Promise.all([
         this.redisService.del(refreshTokenKey),
         this.removeUserSession(userId, jti),
+        // Remove session from auth_sessions so admin dashboard reflects logout
+        this.prismaService.authSession.deleteMany({ where: { token: jti } }).catch(() => {/* non-critical */}),
       ]);
     }
 
@@ -1204,6 +1222,8 @@ export class AuthService {
         return this.redisService.del(tokenKey);
       }),
       this.redisService.del(userSessionsKey),
+      // Also purge auth_sessions rows so admin dashboard stays in sync
+      this.prismaService.authSession.deleteMany({ where: { userId } }).catch(() => {/* non-critical */}),
     ]);
   }
 
@@ -1469,7 +1489,7 @@ export class AuthService {
       department: member.department,
     });
 
-    return {
+    const result = {
       accessToken,
       workspace: {
         workspaceId: member.workspace.id,
@@ -1482,6 +1502,18 @@ export class AuthService {
         memberCount: member.workspace._count.members,
       },
     };
+
+    // Fire-and-forget audit log — workspace access is an auth event excluded from the global interceptor
+    void this.auditTrailService.log({
+      workspaceId: member.workspace.id,
+      userId: member.user.id,
+      action: 'WORKSPACE_ACCESSED',
+      entity: 'Workspace',
+      entityId: member.workspace.id,
+      details: { role: member.role.name, subdomain: member.workspace.subdomain },
+    }).catch(() => {/* non-critical */});
+
+    return result;
   }
 
   async getCurrentUser(req: any) {

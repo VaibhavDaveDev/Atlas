@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense, useRef } from 'react';
+import { useState, Suspense, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { Eye, EyeOff, ArrowLeft, Loader2, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Logo } from '@/components/common/Logo';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { authClient } from '@/lib/auth-client';
+import { API_BASE } from '@/lib/auth';
 import { TurnstileWidget, TurnstileWidgetHandle } from '@/components/common/TurnstileWidget';
 
 function LoginForm() {
@@ -21,8 +22,11 @@ function LoginForm() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSsoMode, setIsSsoMode] = useState(false);
+  const [isCheckingSso, setIsCheckingSso] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string>('');
   const turnstileRef = useRef<TurnstileWidgetHandle>(null);
+
+  // SSO mode is toggled manually or handled via other means if needed.
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -173,6 +177,11 @@ function LoginForm() {
                 autoFocus
                 className="bg-transparent border-[#d3cec6] dark:border-[#27272a] focus-visible:ring-[#111111] dark:focus-visible:ring-[#f4f4f5]"
               />
+              {isCheckingSso && (
+                <p className="text-[10px] text-[#7b7b78] dark:text-[#a1a1aa] flex items-center gap-1 mt-1">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Checking for SSO…
+                </p>
+              )}
             </div>
 
             {/* Password */}

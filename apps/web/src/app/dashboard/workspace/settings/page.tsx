@@ -26,6 +26,13 @@ import {
   DialogDescription,
   DialogFooter 
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from 'sonner';
 import { tokenStorage, API_BASE } from '@/lib/auth';
 import { workspaceApi } from '@/lib/workspace';
@@ -96,12 +103,20 @@ export default function WorkspaceSettingsPage() {
     if (!selectedCountry) return;
     setIsSavingRegion(true);
     try {
-      await workspaceApi.updateSettings({
+      const result = await workspaceApi.updateSettings({
         countryCode: selectedCountry,
         weekendHolidays: weekendHolidays
       });
+      
+      // Update local state with the saved values
+      if (result.data?.settings) {
+        setSelectedCountry(result.data.settings.countryCode || selectedCountry);
+        setWeekendHolidays(result.data.settings.weekendHolidays || weekendHolidays);
+      }
+      
       toast.success('Regional settings updated successfully');
     } catch (err: any) {
+      console.error('Failed to update settings:', err);
       toast.error(err.message || 'Failed to update settings');
     } finally {
       setIsSavingRegion(false);
@@ -118,9 +133,7 @@ export default function WorkspaceSettingsPage() {
       if (!workspace?.workspaceId) return;
       // Check if user is already a member
       const checkRes = await fetch(`${API_BASE}/workspaces/${workspace.workspaceId}/members/check?email=${email}`, {
-        headers: {
-          Authorization: `Bearer ${tokenStorage.getAccessToken()}`,
-        },
+        credentials: 'include',
       });
       const checkData = await checkRes.json();
 
@@ -145,8 +158,8 @@ export default function WorkspaceSettingsPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${tokenStorage.getAccessToken()}`,
         },
+        credentials: 'include',
         body: JSON.stringify({ email, roleName: role }),
       });
 
@@ -205,23 +218,16 @@ export default function WorkspaceSettingsPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="role" className="text-xs font-bold uppercase tracking-wider text-[#7b7b78] dark:text-[#71717a]">Workspace Role</Label>
-                    <div className="relative">
-                      <select
-                        id="role"
-                        className="flex h-10 w-full rounded-md border border-[#d3cec6] dark:border-[#27272a] bg-transparent px-3 py-1 text-sm transition-all focus:outline-none focus:ring-1 focus:ring-[#111111] dark:focus:ring-[#f4f4f5] appearance-none"
-                        value={role}
-                        onChange={(e) => setRole(e.target.value)}
-                      >
+                    <Select value={role} onValueChange={setRole}>
+                      <SelectTrigger id="role" className="bg-transparent border-[#d3cec6] dark:border-[#27272a] focus:ring-[#111111] dark:focus:ring-[#f4f4f5]">
+                        <SelectValue placeholder="Select role" />
+                      </SelectTrigger>
+                      <SelectContent>
                         {roles.map(r => (
-                          <option key={r.id} value={r.name}>{r.name}</option>
+                          <SelectItem key={r.id} value={r.name}>{r.name}</SelectItem>
                         ))}
-                      </select>
-                      <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-[#7b7b78] dark:text-[#71717a]">
-                        <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20">
-                          <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                        </svg>
-                      </div>
-                    </div>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
@@ -268,31 +274,22 @@ export default function WorkspaceSettingsPage() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label className="text-xs font-bold uppercase tracking-wider text-[#7b7b78] dark:text-[#71717a]">Workspace Region (for Holidays)</Label>
-                    <div className="relative">
-                      {isRegionLoading ? (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground p-2 border rounded-md border-dashed">
-                          <Loader2 className="h-4 w-4 animate-spin" /> Loading countries...
-                        </div>
-                      ) : (
-                        <select
-                          className="flex h-11 w-full rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-transparent px-3 py-1 text-sm transition-all focus:outline-none focus:ring-1 focus:ring-[#111111] dark:focus:ring-[#f4f4f5] appearance-none"
-                          value={selectedCountry}
-                          onChange={(e) => setSelectedCountry(e.target.value)}
-                        >
-                          <option value="">Select a country...</option>
+                    {isRegionLoading ? (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground p-2 border rounded-md border-dashed">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Loading countries...
+                      </div>
+                    ) : (
+                      <Select value={selectedCountry} onValueChange={setSelectedCountry}>
+                        <SelectTrigger className="flex h-11 w-full rounded-xl border border-[#d3cec6] dark:border-[#27272a] bg-transparent px-3 py-1 text-sm transition-all focus:ring-1 focus:ring-[#111111] dark:focus:ring-[#f4f4f5]">
+                          <SelectValue placeholder="Select a country..." />
+                        </SelectTrigger>
+                        <SelectContent>
                           {countries.map(c => (
-                            <option key={c.key} value={c.key}>{c.value}</option>
+                            <SelectItem key={c.key} value={c.key}>{c.value}</SelectItem>
                           ))}
-                        </select>
-                      )}
-                      {!isRegionLoading && (
-                        <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-[#7b7b78] dark:text-[#71717a]">
-                          <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20">
-                            <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                          </svg>
-                        </div>
-                      )}
-                    </div>
+                        </SelectContent>
+                      </Select>
+                    )}
                     <p className="text-[10px] text-muted-foreground mt-1">This will automatically sync public holidays to the workspace calendar.</p>
                   </div>
                 </div>

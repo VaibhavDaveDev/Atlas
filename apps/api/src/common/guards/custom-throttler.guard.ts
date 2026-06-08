@@ -79,6 +79,12 @@ export class CustomThrottlerGuard extends ThrottlerGuard {
       return true;
     }
 
+    // Skip throttling for Better Auth endpoints - Better Auth has its own rate limiting
+    // and our throttler can interfere with legitimate login attempts
+    if (path.includes("/api/v1/auth/") || path.startsWith("/auth/")) {
+      return true;
+    }
+
     // Check if route has @SkipThrottle decorator
     return super.shouldSkip(context);
   }

@@ -40,13 +40,11 @@ function AuthCallbackContent() {
         // the TransformInterceptor still wraps everything in { data: ... }
         const payload = responseData.data || responseData;
 
-        if (!payload.accessToken || !payload.user) {
+        if (!payload.user) {
           throw new Error('Invalid response from server. Please try again.');
         }
 
-        // Store new tokens atomically
-        authApi.tokenStorage.setAccessToken(payload.accessToken);
-        authApi.tokenStorage.setRefreshToken(payload.refreshToken);
+        // Store user data
         authApi.tokenStorage.setUser(payload.user);
 
         // Validate redirectUrl to prevent Open Redirect vulnerability

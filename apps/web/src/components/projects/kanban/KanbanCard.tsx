@@ -76,9 +76,7 @@ export function KanbanCard({ task, isGlobal }: KanbanCardProps) {
       setIsUpdating(true);
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/project/tasks/${task.id}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${tokenStorage.getAccessToken()}`
-        }
+        credentials: 'include'
       });
       if (!res.ok) throw new Error('Failed to delete');
       toast.success('Task deleted successfully');
@@ -98,8 +96,8 @@ export function KanbanCard({ task, isGlobal }: KanbanCardProps) {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${tokenStorage.getAccessToken()}`
         },
+        credentials: 'include',
         body: JSON.stringify({ status: newStatus })
       });
       if (!res.ok) throw new Error('Failed to move');

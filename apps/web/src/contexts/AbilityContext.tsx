@@ -24,10 +24,8 @@ export const AbilityProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     const updateAbility = async () => {
       const { can, build } = new AbilityBuilder<AppAbility>(createPrismaAbility);
-      
-      const token = tokenStorage.getAccessToken();
-      const workspaceId = workspace?.workspaceId;
 
+      const workspaceId = workspace?.workspaceId;
       if (!user) {
         setAbility(build());
         return;
@@ -38,7 +36,6 @@ export const AbilityProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
         const response = await fetch(`${API_URL}/api/v1/auth/permissions`, {
           headers: {
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
             ...(workspaceId ? { 'x-workspace-id': workspaceId } : {}),
           },
           credentials: 'include',

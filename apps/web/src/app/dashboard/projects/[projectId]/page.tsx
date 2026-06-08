@@ -258,7 +258,7 @@ export default function ProjectOverviewPage() {
               <CardContent>
                 <div className="text-2xl font-bold font-mono tracking-tighter">{teamSize}</div>
                 <div className="flex -space-x-2 mt-2">
-                  {avatarInitials.length > 0 ? avatarInitials.map((initials, i) => (
+                  {avatarInitials.length > 0 ? avatarInitials.map((initials: string, i: number) => (
                     <div key={i} className="h-6 w-6 rounded-full border-2 border-white dark:border-[#09090b] bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-[8px] font-bold">
                       {initials.toUpperCase() || 'U'}
                     </div>

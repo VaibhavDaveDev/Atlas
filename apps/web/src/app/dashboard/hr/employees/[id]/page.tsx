@@ -12,6 +12,15 @@ import { format } from 'date-fns';
 import Link from 'next/link';
 import { tokenStorage } from '@/lib/auth';
 
+const getAuthHeaders = () => {
+  const workspace = tokenStorage.getWorkspace();
+  const workspaceId = (workspace as any)?.workspaceId || (workspace as any)?.id;
+  return {
+    'Content-Type': 'application/json',
+    ...(workspaceId ? { 'x-workspace-id': workspaceId } : {}),
+  };
+};
+
 export default function EmployeeDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -25,7 +34,8 @@ export default function EmployeeDetailPage() {
         const [empRes, tasksRes] = await Promise.all([
           getEmployeeById(params.id as string),
           fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/hr/employees/${params.id}/tasks`, {
-            headers: { Authorization: `Bearer ${tokenStorage.getAccessToken()}` }
+            credentials: 'include',
+            headers: getAuthHeaders(),
           }).then(res => res.json())
         ]);
         setEmployee(empRes.data);

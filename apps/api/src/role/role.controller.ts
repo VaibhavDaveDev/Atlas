@@ -12,7 +12,7 @@ import {
 import {
   ApiTags,
   ApiOperation,
-  ApiBearerAuth,
+  ApiCookieAuth,
   ApiParam,
 } from "@nestjs/swagger";
 import { RoleService } from "./role.service";
@@ -31,7 +31,7 @@ import type { Request } from "express";
 @ApiTags("roles")
 @Controller("workspaces/:workspaceId/roles")
 @UseGuards(AuthGuard, WorkspaceGuard, RolesGuard, PermissionGuard)
-@ApiBearerAuth("JWT-auth")
+@ApiCookieAuth("better-auth-cookie")
 export class RoleController {
   constructor(private readonly roleService: RoleService) {}
 

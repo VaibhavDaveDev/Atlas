@@ -58,9 +58,9 @@ function VerifyEmailForm() {
     setIsLoading(true);
     const toastId = toast.loading('Verifying your email...');
     try {
-      const { data, error } = await authClient.emailOTP.verifyEmail({
+      const { data, error } = await authClient.emailOtp.verifyEmail({
         email,
-        code: fullCode,
+        otp: fullCode,
       });
 
       if (error) {

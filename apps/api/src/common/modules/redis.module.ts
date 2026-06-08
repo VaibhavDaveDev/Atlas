@@ -56,10 +56,11 @@ const createRedisClient = (
     // Connection-level retries (retryStrategy) still work for reconnection.
     maxRetriesPerRequest: null,
 
-    // Don't block startup if Redis is unavailable.
+    // Don't block startup if Redis is unavailable - use lazy connect
     lazyConnect: true,
 
-    enableReadyCheck: false,
+    // Enable ready check to prevent health check failures on startup
+    enableReadyCheck: true,
     connectTimeout: 10000,
     commandTimeout: 3000,
     retryStrategy,

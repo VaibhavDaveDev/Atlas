@@ -1,23 +1,25 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../common/services/prisma.service";
+import Holidays from "date-holidays";
 
 @Injectable()
 export class HolidayService {
   private readonly logger = new Logger(HolidayService.name);
-  private readonly baseUrl = "https://date.nager.at/api/v3";
+  private readonly hd = new Holidays();
 
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Fetches the list of all supported countries from Nager.Date API
+   * Fetches the list of all supported countries from date-holidays
    */
   async getAvailableCountries(): Promise<any[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/AvailableCountries`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch countries: ${response.statusText}`);
-      }
-      return await response.json();
+      const countries = this.hd.getCountries();
+      // Map to the format the frontend expects: { countryCode: "AD", name: "Andorra" }
+      return Object.keys(countries).map((code) => ({
+        countryCode: code,
+        name: countries[code],
+      }));
     } catch (error) {
       this.logger.error("Error fetching available countries", error);
       throw error;
@@ -44,20 +46,19 @@ export class HolidayService {
   ): Promise<void> {
     try {
       this.logger.log(`Syncing holidays for ${countryCode} in ${year}`);
-      const response = await fetch(
-        `${this.baseUrl}/PublicHolidays/${year}/${countryCode}`,
-      );
+      
+      this.hd.init(countryCode);
+      const holidays = this.hd.getHolidays(year);
 
-      if (!response.ok) {
+      if (!holidays || holidays.length === 0) {
         this.logger.warn(
-          `Could not fetch holidays for ${countryCode} in ${year}: ${response.statusText}`,
+          `Could not find any holidays for ${countryCode} in ${year}`,
         );
         return;
       }
 
-      const holidays = await response.json();
-
       for (const holiday of holidays) {
+        // date-holidays returns a date string like "2024-01-01 00:00:00"
         const holidayDate = new Date(holiday.date);
 
         await this.prisma.holiday.upsert({
@@ -69,15 +70,13 @@ export class HolidayService {
           },
           update: {
             name: holiday.name,
-            description:
-              holiday.localName !== holiday.name ? holiday.localName : null,
+            description: holiday.type || null,
           },
           create: {
             workspaceId,
             name: holiday.name,
             date: holidayDate,
-            description:
-              holiday.localName !== holiday.name ? holiday.localName : null,
+            description: holiday.type || null,
           },
         });
       }

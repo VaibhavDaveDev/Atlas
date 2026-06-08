@@ -19,12 +19,21 @@ export interface WorkspaceMember {
   joinedAt: string;
 }
 
+const getAuthHeaders = (workspaceId?: string) => {
+  const workspace = tokenStorage.getWorkspace();
+  const wid = workspaceId || (workspace as any)?.workspaceId || (workspace as any)?.id;
+
+  return {
+    'Content-Type': 'application/json',
+    ...(wid ? { 'x-workspace-id': wid } : {}),
+  };
+};
+
 export const workspaceApi = {
   getMembers: async (workspaceId: string): Promise<WorkspaceMember[]> => {
     const res = await fetch(`${API_URL}/api/v1/workspaces/${workspaceId}/members`, {
-      headers: {
-        'Authorization': `Bearer ${tokenStorage.getAccessToken()}`,
-      },
+      credentials: 'include',
+      headers: getAuthHeaders(workspaceId),
     });
     if (!res.ok) throw new Error('Failed to fetch workspace members');
     const json = await res.json();
@@ -34,10 +43,8 @@ export const workspaceApi = {
   updateMemberRole: async (workspaceId: string, userId: string, roleName: string): Promise<any> => {
     const res = await fetch(`${API_URL}/api/v1/workspaces/${workspaceId}/members/${userId}/role`, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${tokenStorage.getAccessToken()}`,
-      },
+      headers: getAuthHeaders(workspaceId),
+      credentials: 'include',
       body: JSON.stringify({ role: roleName }),
     });
     const json = await res.json();
@@ -48,9 +55,8 @@ export const workspaceApi = {
   removeMember: async (workspaceId: string, userId: string): Promise<any> => {
     const res = await fetch(`${API_URL}/api/v1/workspaces/${workspaceId}/members/${userId}`, {
       method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${tokenStorage.getAccessToken()}`,
-      },
+      credentials: 'include',
+      headers: getAuthHeaders(workspaceId),
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.message || 'Failed to remove member');
@@ -59,9 +65,8 @@ export const workspaceApi = {
 
   getInvites: async (workspaceId: string): Promise<any[]> => {
     const res = await fetch(`${API_URL}/api/v1/workspaces/${workspaceId}/invites`, {
-      headers: {
-        'Authorization': `Bearer ${tokenStorage.getAccessToken()}`,
-      },
+      credentials: 'include',
+      headers: getAuthHeaders(workspaceId),
     });
     if (!res.ok) throw new Error('Failed to fetch workspace invites');
     const json = await res.json();
@@ -71,9 +76,8 @@ export const workspaceApi = {
   cancelInvite: async (workspaceId: string, inviteId: string): Promise<any> => {
     const res = await fetch(`${API_URL}/api/v1/workspaces/${workspaceId}/invites/${inviteId}`, {
       method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${tokenStorage.getAccessToken()}`,
-      },
+      credentials: 'include',
+      headers: getAuthHeaders(workspaceId),
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.message || 'Failed to cancel invite');
@@ -82,9 +86,8 @@ export const workspaceApi = {
 
   getWorkspace: async (workspaceId: string): Promise<any> => {
     const res = await fetch(`${API_URL}/api/v1/workspaces/${workspaceId}`, {
-      headers: {
-        'Authorization': `Bearer ${tokenStorage.getAccessToken()}`,
-      },
+      credentials: 'include',
+      headers: getAuthHeaders(workspaceId),
     });
     if (!res.ok) throw new Error('Failed to fetch workspace');
     return await res.json();
@@ -92,9 +95,7 @@ export const workspaceApi = {
 
   getMyWorkspaces: async (): Promise<any> => {
     const res = await fetch(`${API_URL}/api/v1/workspaces/my`, {
-      headers: {
-        'Authorization': `Bearer ${tokenStorage.getAccessToken()}`,
-      },
+      credentials: 'include',
     });
     if (!res.ok) throw new Error('Failed to fetch workspaces');
     return await res.json();
@@ -103,10 +104,8 @@ export const workspaceApi = {
   updateWorkspace: async (workspaceId: string, data: { name?: string, settings?: any }): Promise<any> => {
     const res = await fetch(`${API_URL}/api/v1/workspaces/${workspaceId}`, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${tokenStorage.getAccessToken()}`,
-      },
+      headers: getAuthHeaders(workspaceId),
+      credentials: 'include',
       body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error('Failed to update workspace');
@@ -116,9 +115,8 @@ export const workspaceApi = {
   getRoles: async (): Promise<any[]> => {
     const workspaceId = tokenStorage.getWorkspace()?.workspaceId;
     const res = await fetch(`${API_URL}/api/v1/workspaces/${workspaceId}/roles`, {
-      headers: {
-        'Authorization': `Bearer ${tokenStorage.getAccessToken()}`,
-      },
+      credentials: 'include',
+      headers: getAuthHeaders(workspaceId),
     });
     if (!res.ok) throw new Error('Failed to fetch roles');
     const json = await res.json();
@@ -126,23 +124,25 @@ export const workspaceApi = {
   },
 
   getAvailableCountries: async (): Promise<any[]> => {
-    const res = await fetch('https://date.nager.at/api/v3/AvailableCountries');
+    const res = await fetch(`${API_URL}/api/v1/calendar/countries`, {
+      credentials: 'include',
+      headers: getAuthHeaders(),
+    });
     if (!res.ok) throw new Error('Failed to fetch countries');
-    return await res.json();
+    const json = await res.json();
+    // TransformInterceptor wraps responses as { success, data: [...] }
+    return json.data ?? json;
   },
 
   updateSettings: async (settings: any): Promise<any> => {
     const workspaceId = tokenStorage.getWorkspace()?.workspaceId;
     const res = await fetch(`${API_URL}/api/v1/workspaces/${workspaceId}/settings`, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${tokenStorage.getAccessToken()}`,
-      },
+      headers: getAuthHeaders(workspaceId),
+      credentials: 'include',
       body: JSON.stringify(settings),
     });
     if (!res.ok) throw new Error('Failed to update settings');
     return await res.json();
   },
 };
-

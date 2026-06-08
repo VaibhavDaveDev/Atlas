@@ -14,7 +14,7 @@ import {
 import {
   ApiTags,
   ApiOperation,
-  ApiBearerAuth,
+  ApiCookieAuth,
   ApiBody,
   ApiParam,
 } from "@nestjs/swagger";
@@ -36,7 +36,7 @@ export class WorkspaceController {
   // ─────────────────────────────────────────────
 
   @UseGuards(AuthGuard)
-  @ApiBearerAuth("JWT-auth")
+  @ApiCookieAuth("better-auth-cookie")
   @Get("invites/pending")
   @ApiOperation({
     summary: "Get pending invites for the current user (by email)",
@@ -47,7 +47,7 @@ export class WorkspaceController {
   }
 
   @UseGuards(AuthGuard)
-  @ApiBearerAuth("JWT-auth")
+  @ApiCookieAuth("better-auth-cookie")
   @Post("invites/:token/accept")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Accept a workspace invite by token" })
@@ -58,7 +58,7 @@ export class WorkspaceController {
   }
 
   @UseGuards(AuthGuard)
-  @ApiBearerAuth("JWT-auth")
+  @ApiCookieAuth("better-auth-cookie")
   @Post("setup")
   @ApiOperation({ summary: "Setup a new workspace" })
   @ApiBody({
@@ -90,7 +90,7 @@ export class WorkspaceController {
   // ─────────────────────────────────────────────
 
   @UseGuards(AuthGuard)
-  @ApiBearerAuth("JWT-auth")
+  @ApiCookieAuth("better-auth-cookie")
   @Get("platform/all")
   @ApiOperation({ summary: "List all workspaces — Platform Owner only" })
   async listAllWorkspaces(@Req() req: Request) {
@@ -104,7 +104,7 @@ export class WorkspaceController {
   }
 
   @UseGuards(AuthGuard)
-  @ApiBearerAuth("JWT-auth")
+  @ApiCookieAuth("better-auth-cookie")
   @Post("platform/create")
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
@@ -158,7 +158,7 @@ export class WorkspaceController {
   // ─────────────────────────────────────────────
 
   @UseGuards(AuthGuard, WorkspaceGuard, RolesGuard, PermissionGuard)
-  @ApiBearerAuth("JWT-auth")
+  @ApiCookieAuth("better-auth-cookie")
   @Get(":workspaceId")
   @RequirePermission({ resource: "workspace", action: "read", scope: "all" })
   @ApiOperation({ summary: "Get workspace details and settings" })
@@ -168,7 +168,43 @@ export class WorkspaceController {
   }
 
   @UseGuards(AuthGuard, WorkspaceGuard, RolesGuard, PermissionGuard)
-  @ApiBearerAuth("JWT-auth")
+  @ApiCookieAuth("better-auth-cookie")
+  @Get(":workspaceId/settings")
+  @RequirePermission({ resource: "workspace", action: "read", scope: "all" })
+  @ApiOperation({ summary: "Get workspace settings" })
+  @ApiParam({ name: "workspaceId", description: "Workspace ID" })
+  async getWorkspaceSettings(@Param("workspaceId") workspaceId: string): Promise<any> {
+    const workspace = await this.workspaceService.getWorkspace(workspaceId);
+    return workspace.settings || {};
+  }
+
+  @UseGuards(AuthGuard, WorkspaceGuard, RolesGuard, PermissionGuard)
+  @ApiCookieAuth("better-auth-cookie")
+  @Patch(":workspaceId/settings")
+  @RequirePermission({ resource: "workspace", action: "update", scope: "all" })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Update workspace settings" })
+  @ApiParam({ name: "workspaceId", description: "Workspace ID" })
+  @ApiBody({
+    schema: {
+      example: {
+        baseCurrency: "INR",
+        dateFormat: "DD/MM/YYYY",
+        timeFormat: "HH:mm",
+        fiscalYearStart: "04-01",
+        region: "india",
+      },
+    },
+  })
+  async updateWorkspaceSettings(
+    @Param("workspaceId") workspaceId: string,
+    @Body() body: Record<string, any>,
+  ): Promise<any> {
+    return await this.workspaceService.updateWorkspace(workspaceId, { settings: body });
+  }
+
+  @UseGuards(AuthGuard, WorkspaceGuard, RolesGuard, PermissionGuard)
+  @ApiCookieAuth("better-auth-cookie")
   @Patch(":workspaceId")
   @RequirePermission({ resource: "workspace", action: "update", scope: "all" })
   @HttpCode(HttpStatus.OK)
@@ -195,7 +231,7 @@ export class WorkspaceController {
   }
 
   @UseGuards(AuthGuard, WorkspaceGuard, RolesGuard, PermissionGuard)
-  @ApiBearerAuth("JWT-auth")
+  @ApiCookieAuth("better-auth-cookie")
   @Post(":workspaceId/audit/enable")
   @RequirePermission({ resource: "workspace", action: "update", scope: "all" })
   @HttpCode(HttpStatus.OK)
@@ -210,7 +246,7 @@ export class WorkspaceController {
   }
 
   @UseGuards(AuthGuard, WorkspaceGuard, RolesGuard, PermissionGuard)
-  @ApiBearerAuth("JWT-auth")
+  @ApiCookieAuth("better-auth-cookie")
   @Patch(":workspaceId/mfa-policy")
   @RequirePermission({ resource: "workspace", action: "update", scope: "all" })
   @HttpCode(HttpStatus.OK)
@@ -241,7 +277,7 @@ export class WorkspaceController {
   // ─────────────────────────────────────────────
 
   @UseGuards(AuthGuard, WorkspaceGuard, RolesGuard, PermissionGuard)
-  @ApiBearerAuth("JWT-auth")
+  @ApiCookieAuth("better-auth-cookie")
   @Get(":workspaceId/sso-providers")
   @RequirePermission({ resource: "workspace", action: "read", scope: "all" })
   @ApiOperation({ summary: "List SSO providers for a workspace" })
@@ -250,7 +286,7 @@ export class WorkspaceController {
   }
 
   @UseGuards(AuthGuard, WorkspaceGuard, RolesGuard, PermissionGuard)
-  @ApiBearerAuth("JWT-auth")
+  @ApiCookieAuth("better-auth-cookie")
   @Get(":workspaceId/sessions")
   @RequirePermission({ resource: "workspace", action: "read", scope: "all" })
   @ApiOperation({ summary: "List active sessions for all workspace members" })
@@ -259,7 +295,37 @@ export class WorkspaceController {
   }
 
   @UseGuards(AuthGuard, WorkspaceGuard, RolesGuard, PermissionGuard)
-  @ApiBearerAuth("JWT-auth")
+  @ApiCookieAuth("better-auth-cookie")
+  @Delete(":workspaceId/sessions/:sessionToken")
+  @RequirePermission({ resource: "workspace", action: "manage", scope: "all" })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Admin: revoke a single workspace member session" })
+  @ApiParam({ name: "workspaceId", description: "Workspace ID" })
+  @ApiParam({ name: "sessionToken", description: "Session token to revoke" })
+  async revokeWorkspaceSession(
+    @Param("workspaceId") workspaceId: string,
+    @Param("sessionToken") sessionToken: string,
+  ) {
+    return await this.workspaceService.revokeWorkspaceSession(workspaceId, sessionToken);
+  }
+
+  @UseGuards(AuthGuard, WorkspaceGuard, RolesGuard, PermissionGuard)
+  @ApiCookieAuth("better-auth-cookie")
+  @Delete(":workspaceId/sessions")
+  @RequirePermission({ resource: "workspace", action: "manage", scope: "all" })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Admin: revoke all workspace sessions except caller's" })
+  @ApiParam({ name: "workspaceId", description: "Workspace ID" })
+  async revokeAllWorkspaceSessions(
+    @Param("workspaceId") workspaceId: string,
+    @Req() req: Request,
+  ) {
+    const currentUser = (req as any).user;
+    return await this.workspaceService.revokeAllWorkspaceSessions(workspaceId, currentUser.userId);
+  }
+
+  @UseGuards(AuthGuard, WorkspaceGuard, RolesGuard, PermissionGuard)
+  @ApiCookieAuth("better-auth-cookie")
   @Post(":workspaceId/sso-providers")
   @RequirePermission({ resource: "workspace", action: "update", scope: "all" })
   @ApiOperation({ summary: "Add a new SSO provider to a workspace" })
@@ -278,7 +344,7 @@ export class WorkspaceController {
   }
 
   @UseGuards(AuthGuard, WorkspaceGuard, RolesGuard, PermissionGuard)
-  @ApiBearerAuth("JWT-auth")
+  @ApiCookieAuth("better-auth-cookie")
   @Delete(":workspaceId/sso-providers/:providerId")
   @RequirePermission({ resource: "workspace", action: "update", scope: "all" })
   @ApiOperation({ summary: "Remove an SSO provider" })
@@ -297,7 +363,7 @@ export class WorkspaceController {
   // ─────────────────────────────────────────────
 
   @UseGuards(AuthGuard, WorkspaceGuard, RolesGuard, PermissionGuard)
-  @ApiBearerAuth("JWT-auth")
+  @ApiCookieAuth("better-auth-cookie")
   @Get(":workspaceId/members")
   @RequirePermission({ resource: "workspace", action: "read", scope: "all" })
   @ApiOperation({ summary: "List all active members of a workspace" })
@@ -307,7 +373,7 @@ export class WorkspaceController {
   }
 
   @UseGuards(AuthGuard, WorkspaceGuard, RolesGuard, PermissionGuard)
-  @ApiBearerAuth("JWT-auth")
+  @ApiCookieAuth("better-auth-cookie")
   @Get(":workspaceId/members/check/:email")
   @RequirePermission({ resource: "workspace", action: "read", scope: "all" })
   @ApiOperation({ summary: "Check if a user is already a member by email" })
@@ -328,7 +394,7 @@ export class WorkspaceController {
   }
 
   @UseGuards(AuthGuard, WorkspaceGuard, RolesGuard, PermissionGuard)
-  @ApiBearerAuth("JWT-auth")
+  @ApiCookieAuth("better-auth-cookie")
   @Patch(":workspaceId/members/:userId/role")
   @RequirePermission({ resource: "workspace", action: "manage", scope: "all" })
   @HttpCode(HttpStatus.OK)
@@ -352,7 +418,7 @@ export class WorkspaceController {
   }
 
   @UseGuards(AuthGuard, WorkspaceGuard, RolesGuard, PermissionGuard)
-  @ApiBearerAuth("JWT-auth")
+  @ApiCookieAuth("better-auth-cookie")
   @Delete(":workspaceId/members/:userId")
   @RequirePermission({ resource: "workspace", action: "manage", scope: "all" })
   @HttpCode(HttpStatus.OK)
@@ -377,7 +443,7 @@ export class WorkspaceController {
   // ─────────────────────────────────────────────
 
   @UseGuards(AuthGuard, WorkspaceGuard, RolesGuard, PermissionGuard)
-  @ApiBearerAuth("JWT-auth")
+  @ApiCookieAuth("better-auth-cookie")
   @Post(":workspaceId/invites")
   @RequirePermission({ resource: "workspace", action: "manage", scope: "all" })
   @ApiOperation({
@@ -402,7 +468,7 @@ export class WorkspaceController {
   }
 
   @UseGuards(AuthGuard, WorkspaceGuard, RolesGuard, PermissionGuard)
-  @ApiBearerAuth("JWT-auth")
+  @ApiCookieAuth("better-auth-cookie")
   @Get(":workspaceId/invites")
   @RequirePermission({ resource: "workspace", action: "read", scope: "all" })
   @ApiOperation({
@@ -414,7 +480,7 @@ export class WorkspaceController {
   }
 
   @UseGuards(AuthGuard, WorkspaceGuard, RolesGuard, PermissionGuard)
-  @ApiBearerAuth("JWT-auth")
+  @ApiCookieAuth("better-auth-cookie")
   @Delete(":workspaceId/invites/:inviteId")
   @RequirePermission({ resource: "workspace", action: "manage", scope: "all" })
   @ApiOperation({

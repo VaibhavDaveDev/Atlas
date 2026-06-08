@@ -10,7 +10,7 @@ import {
   UseGuards,
   Req,
 } from "@nestjs/common";
-import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
+import { ApiTags, ApiOperation, ApiCookieAuth } from "@nestjs/swagger";
 import { ProjectsService } from "./projects.service";
 import { CreateProjectDto } from "./dto/create-project.dto";
 import { UpdateProjectDto } from "./dto/update-project.dto";
@@ -30,7 +30,7 @@ import type { Request } from "express";
 @ApiTags("project-management")
 @Controller("project/projects")
 @UseGuards(AuthGuard, WorkspaceGuard, RolesGuard, PermissionGuard, ProjectRoleGuard)
-@ApiBearerAuth("JWT-auth")
+@ApiCookieAuth("better-auth-cookie")
 export class ProjectsController {
   constructor(private readonly projectsService: ProjectsService) {}
 

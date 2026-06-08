@@ -13,7 +13,7 @@ import {
 import {
   ApiTags,
   ApiOperation,
-  ApiBearerAuth,
+  ApiCookieAuth,
   ApiQuery,
 } from "@nestjs/swagger";
 import { TasksService } from "./tasks.service";
@@ -32,7 +32,7 @@ import type { Request } from "express";
 @ApiTags("project-management")
 @Controller("project/tasks")
 @UseGuards(AuthGuard, WorkspaceGuard, RolesGuard, PermissionGuard, ProjectRoleGuard)
-@ApiBearerAuth("JWT-auth")
+@ApiCookieAuth("better-auth-cookie")
 export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 

@@ -1,24 +1,25 @@
 import { betterAuth } from "better-auth";
-import { bearer } from "better-auth/plugins/bearer";
+import { testUtils } from "better-auth/plugins";
 
 const auth = betterAuth({
-    database: {
-        provider: "postgresql",
-        url: "postgresql://postgres:postgres@localhost:5432/atlas_db?schema=public"
-    },
-    plugins: [bearer()]
+  database: {
+    dialect: "sqlite",
+    provider: "sqlite",
+    url: ":memory:" 
+  },
+  plugins: [testUtils()]
 });
 
-async function main() {
-    try {
-        const headers = {
-            cookie: "better-auth.session_token=test1234",
-            authorization: "Bearer test1234"
-        };
-        const session = await auth.api.getSession({ headers: headers as any });
-        console.log("Session:", session);
-    } catch (e) {
-        console.error("Error:", e);
-    }
+async function run() {
+  try {
+    const ctx = await auth.$context;
+    const { session, token, headers, cookies } = await ctx.test.login({ userId: "test-user-id" });
+    console.log("Token:", token);
+    console.log("Headers:", Object.fromEntries(headers.entries()));
+    console.log("Cookies:", cookies);
+  } catch (err) {
+    console.error(err);
+  }
 }
-main();
+
+run();

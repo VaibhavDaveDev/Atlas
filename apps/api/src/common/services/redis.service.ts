@@ -27,12 +27,17 @@ export class RedisService implements OnModuleInit {
    */
   async onModuleInit(): Promise<void> {
     try {
+      // Try to connect lazily - if it fails, log but don't crash the app
+      if (this.client.status !== "ready") {
+        await this.client.connect();
+      }
       await this.ping();
       this.logger.info("Redis health check passed", {
         context: "RedisService",
       });
     } catch (error) {
-      this.logger.error("Redis health check failed", {
+      // Log warning instead of error - app should work without Redis (degraded mode)
+      this.logger.warn("Redis health check failed - running in degraded mode (no caching)", {
         context: "RedisService",
         error: error instanceof Error ? error.message : String(error),
       });

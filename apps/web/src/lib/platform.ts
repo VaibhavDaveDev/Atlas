@@ -1,12 +1,20 @@
 import { tokenStorage, API_BASE } from './auth';
 
+const getAuthHeaders = () => {
+  const workspace = tokenStorage.getWorkspace();
+  const workspaceId = (workspace as any)?.workspaceId || (workspace as any)?.id;
+
+  return {
+    'Content-Type': 'application/json',
+    ...(workspaceId ? { 'x-workspace-id': workspaceId } : {}),
+  };
+};
+
 async function platformFetch(path: string, options: RequestInit = {}) {
-  const token = tokenStorage.getAccessToken();
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...getAuthHeaders(),
       ...(options.headers || {}),
     },
     credentials: 'include',

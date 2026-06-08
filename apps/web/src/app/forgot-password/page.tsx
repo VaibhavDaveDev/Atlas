@@ -23,7 +23,7 @@ export default function ForgotPasswordPage() {
     setIsLoading(true);
     const toastId = toast.loading('Sending reset code...');
     try {
-      const { data, error } = await authClient.emailOTP.sendVerificationOtp(
+      const { data, error } = await authClient.emailOtp.sendVerificationOtp(
         {
           email,
           type: 'forget-password',
