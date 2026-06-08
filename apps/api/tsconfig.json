@@ -15,7 +15,6 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "baseUrl": "./",
-    "incremental": true,
     "skipLibCheck": true,
     "strictNullChecks": true,
     "forceConsistentCasingInFileNames": true,
@@ -24,6 +23,14 @@
     "noFallthroughCasesInSwitch": false,
     "types": ["vitest/globals"]
   },
+  "include": ["src/**/*"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "test",
+    "test-better-auth-session.ts",
+    "vitest.config.ts"
+  ],
   "watchOptions": {
     // Use native file system events for files and directories
     "watchFile": "priorityPollingInterval",

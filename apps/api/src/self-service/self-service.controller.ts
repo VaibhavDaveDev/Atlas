@@ -8,7 +8,7 @@ import {
   UseGuards,
   Param,
 } from "@nestjs/common";
-import { ApiOperation, ApiTags, ApiBearerAuth } from "@nestjs/swagger";
+import { ApiOperation, ApiTags, ApiCookieAuth } from "@nestjs/swagger";
 import { SelfServiceService } from "./self-service.service";
 import { AuthGuard } from "../common/guards/auth.guard";
 import { WorkspaceGuard } from "../auth/guards/workspace.guard";
@@ -18,7 +18,7 @@ import { RequirePermission } from "../auth/decorators/require-permission.decorat
 import type { Request } from "express";
 
 @ApiTags("Self Service")
-@ApiBearerAuth("JWT-auth")
+@ApiCookieAuth("better-auth-cookie")
 @Controller("self-service")
 @UseGuards(AuthGuard, WorkspaceGuard, RolesGuard, PermissionGuard)
 export class SelfServiceController {

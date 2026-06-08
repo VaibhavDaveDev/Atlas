@@ -2,7 +2,7 @@ import { Controller, Get, Query, UseGuards } from "@nestjs/common";
 import {
   ApiTags,
   ApiOperation,
-  ApiBearerAuth,
+  ApiCookieAuth,
   ApiQuery,
 } from "@nestjs/swagger";
 import { ExchangeRateService } from "./exchange-rates.service";
@@ -12,7 +12,7 @@ import { WorkspaceGuard } from "../../auth/guards/workspace.guard";
 @ApiTags("finance-exchange-rates")
 @Controller("finance/exchange-rates")
 @UseGuards(AuthGuard, WorkspaceGuard)
-@ApiBearerAuth("JWT-auth")
+@ApiCookieAuth("better-auth-cookie")
 export class ExchangeRatesController {
   constructor(private readonly exchangeRateService: ExchangeRateService) {}
 

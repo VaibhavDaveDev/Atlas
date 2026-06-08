@@ -14,17 +14,16 @@ export function setupSwagger(app: INestApplication): void {
       "",
     )
     .setLicense("MIT", "https://opensource.org/licenses/MIT")
-    // Add JWT Bearer authentication globally
-    .addBearerAuth(
+    // Add Better Auth session cookie authentication
+    .addCookieAuth(
+      "better-auth.session_token",
       {
-        type: "http",
-        scheme: "bearer",
-        bearerFormat: "JWT",
-        name: "JWT",
-        description: "Enter JWT access token",
-        in: "header",
+        type: "apiKey",
+        in: "cookie",
+        name: "better-auth.session_token",
+        description: "Better Auth session cookie (automatically sent by browser)",
       },
-      "JWT-auth", // This is the security name
+      "better-auth-cookie", // This is the security name
     )
     // Add common tags for organization
     .addTag("auth", "Authentication and authorization endpoints")

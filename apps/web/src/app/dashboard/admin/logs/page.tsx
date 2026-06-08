@@ -30,7 +30,6 @@ export default function AdminLogsPage() {
   
   const [activityLogs, setActivityLogs] = useState<any[]>([]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
-  const [systemLogs, setSystemLogs] = useState<any[]>([]);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -57,14 +56,15 @@ export default function AdminLogsPage() {
         endpoint = `/api/v1/logs/activity/${workspace.workspaceId}${query}`;
       } else if (activeTab === 'audit') {
         endpoint = `/api/v1/logs/audit/${workspace.workspaceId}${query}`;
-      } else {
-        endpoint = '/api/v1/logs/system';
       }
       
+      const token = tokenStorage.getBetterAuthToken();
       const res = await fetch(`${API_URL}${endpoint}`, {
         headers: {
-          'Authorization': `Bearer ${tokenStorage.getAccessToken()}`,
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          'x-workspace-id': workspace.workspaceId,
         },
+        credentials: 'include',
       });
 
       if (!res.ok) throw new Error('Failed to fetch logs');
@@ -74,8 +74,6 @@ export default function AdminLogsPage() {
         setActivityLogs(data.logs || []);
       } else if (activeTab === 'audit') {
         setAuditLogs(data.logs || []);
-      } else {
-        setSystemLogs(data.logs || []);
       }
     } catch (error) {
       toast.error('Failed to load logs');
@@ -94,9 +92,7 @@ export default function AdminLogsPage() {
     log.action?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredSystemLogs = systemLogs.filter(log => 
-    log.message?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+
 
   return (
     <AppShell>
@@ -119,9 +115,6 @@ export default function AdminLogsPage() {
             </TabsTrigger>
             <TabsTrigger value="audit" className="px-6 flex items-center gap-2">
               <History className="h-4 w-4" /> Audit Trail (Immutable)
-            </TabsTrigger>
-            <TabsTrigger value="system" className="px-6 flex items-center gap-2">
-              <Server className="h-4 w-4" /> System Logs
             </TabsTrigger>
           </TabsList>
 
@@ -282,44 +275,7 @@ export default function AdminLogsPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="system" className="mt-4">
-            <Card className="bg-slate-950 text-slate-50 border-slate-800 shadow-xl">
-              <CardHeader className="border-b border-slate-800 pb-3">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <Terminal className="h-4 w-4 text-emerald-500" /> Application Logs (Console)
-                    </CardTitle>
-                    <CardDescription className="text-slate-400">Streaming recent server output for debugging.</CardDescription>
-                  </div>
-                  <Badge variant="outline" className="border-emerald-500/30 text-emerald-500 bg-emerald-500/5 text-[10px] animate-pulse">
-                    LIVE VIEW
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                <ScrollArea className="h-[500px] w-full">
-                  <div className="p-4 font-mono text-xs space-y-1">
-                    {isLoading && systemLogs.length === 0 ? (
-                      <div className="text-slate-500 italic">Loading application logs...</div>
-                    ) : filteredSystemLogs.length === 0 ? (
-                      <div className="text-slate-500 italic">No system logs available.</div>
-                    ) : (
-                      filteredSystemLogs.map((log, i) => (
-                        <div key={i} className="flex gap-4 hover:bg-slate-900/50 py-1 px-2 rounded group">
-                          <span className="text-slate-500 shrink-0">{new Date(log.timestamp).toLocaleTimeString()}</span>
-                          <span className="text-blue-400 shrink-0 uppercase w-12">{log.labels?.level || 'INFO'}</span>
-                          <span className={`${log.message.includes('error') || log.message.includes('Error') ? 'text-red-400' : 'text-slate-300'} break-all`}>
-                            {log.message}
-                          </span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </TabsContent>
+
         </Tabs>
 
         <div className="flex items-center gap-2 p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">

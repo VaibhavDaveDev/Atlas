@@ -16,7 +16,7 @@
  * @ApiPaginatedResponseDecorator(UserEntity)
  *
  * 4. For authenticated endpoints, add:
- * @ApiBearerAuth('JWT-auth')
+ * @ApiCookieAuth("better-auth-cookie")
  */
 
 // Response decorators

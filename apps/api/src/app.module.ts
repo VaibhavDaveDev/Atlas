@@ -22,6 +22,7 @@ import { LoggerModule } from "./common/modules/logger.module";
 import { LogsModule } from "./logs/logs.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { AuditInterceptor } from "./common/interceptors/audit.interceptor";
+import { CalendarModule } from "./calendar/calendar.module";
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { AuditInterceptor } from "./common/interceptors/audit.interceptor";
     RoleModule,
     SelfServiceModule,
     NotificationsModule,
+    CalendarModule,
     // JobModule, // Removed - not needed for ERP
   ],
 
@@ -64,4 +66,4 @@ import { AuditInterceptor } from "./common/interceptors/audit.interceptor";
     },
   ],
 })
-export class AppModule {}
+export class AppModule { }

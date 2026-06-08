@@ -1,10 +1,5 @@
 import { tokenStorage, API_URL } from './auth';
 
-const getHeaders = () => ({
-  'Content-Type': 'application/json',
-  Authorization: `Bearer ${tokenStorage.getAccessToken()}`,
-});
-
 export interface Role {
   id: string;
   workspaceId: string;
@@ -26,10 +21,21 @@ export interface Permission {
   description: string | null;
 }
 
+const getAuthHeaders = (workspaceId?: string) => {
+  const workspace = tokenStorage.getWorkspace();
+  const wid = workspaceId || (workspace as any)?.workspaceId || (workspace as any)?.id;
+
+  return {
+    'Content-Type': 'application/json',
+    ...(wid ? { 'x-workspace-id': wid } : {}),
+  };
+};
+
 export const roleApi = {
   getRoles: async (workspaceId: string): Promise<Role[]> => {
     const res = await fetch(`${API_URL}/api/v1/workspaces/${workspaceId}/roles`, {
-      headers: getHeaders(),
+      credentials: 'include',
+      headers: getAuthHeaders(workspaceId),
     });
     if (!res.ok) throw new Error('Failed to fetch roles');
     const json = await res.json();
@@ -39,7 +45,8 @@ export const roleApi = {
   createRole: async (workspaceId: string, data: { name: string; description?: string }): Promise<Role> => {
     const res = await fetch(`${API_URL}/api/v1/workspaces/${workspaceId}/roles`, {
       method: 'POST',
-      headers: getHeaders(),
+      headers: getAuthHeaders(workspaceId),
+      credentials: 'include',
       body: JSON.stringify(data),
     });
     const json = await res.json();
@@ -51,7 +58,8 @@ export const roleApi = {
 
   getRole: async (workspaceId: string, roleId: string): Promise<Role & { permissions: { permission: Permission }[] }> => {
     const res = await fetch(`${API_URL}/api/v1/workspaces/${workspaceId}/roles/${roleId}`, {
-      headers: getHeaders(),
+      credentials: 'include',
+      headers: getAuthHeaders(workspaceId),
     });
     if (!res.ok) throw new Error('Failed to fetch role details');
     const json = await res.json();
@@ -61,7 +69,8 @@ export const roleApi = {
   deleteRole: async (workspaceId: string, roleId: string): Promise<void> => {
     const res = await fetch(`${API_URL}/api/v1/workspaces/${workspaceId}/roles/${roleId}`, {
       method: 'DELETE',
-      headers: getHeaders(),
+      credentials: 'include',
+      headers: getAuthHeaders(workspaceId),
     });
     if (!res.ok) {
       const err = await res.json();
@@ -71,7 +80,8 @@ export const roleApi = {
 
   getAllPermissions: async (workspaceId: string): Promise<Permission[]> => {
     const res = await fetch(`${API_URL}/api/v1/workspaces/${workspaceId}/roles/permissions/all`, {
-      headers: getHeaders(),
+      credentials: 'include',
+      headers: getAuthHeaders(workspaceId),
     });
     if (!res.ok) throw new Error('Failed to fetch permissions');
     const json = await res.json();
@@ -81,7 +91,8 @@ export const roleApi = {
   updateRolePermissions: async (workspaceId: string, roleId: string, permissionIds: string[]): Promise<void> => {
     const res = await fetch(`${API_URL}/api/v1/workspaces/${workspaceId}/roles/${roleId}/permissions`, {
       method: 'PATCH',
-      headers: getHeaders(),
+      headers: getAuthHeaders(workspaceId),
+      credentials: 'include',
       body: JSON.stringify({ permissionIds }),
     });
     if (!res.ok) {

@@ -328,6 +328,7 @@ model AuthTwoFactor {
   id          String @id @default(uuid(7))
   secret      String
   backupCodes String
+  verified    Boolean? @default(false)
   userId      String
   user        AuthUser @relation(fields: [userId], references: [id], onDelete: Cascade)
 

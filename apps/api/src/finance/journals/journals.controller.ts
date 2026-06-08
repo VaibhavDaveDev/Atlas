@@ -8,7 +8,7 @@ import {
   UseGuards,
   Req,
 } from "@nestjs/common";
-import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
+import { ApiTags, ApiOperation, ApiCookieAuth } from "@nestjs/swagger";
 import { JournalsService } from "./journals.service";
 import { CreateJournalEntryDto } from "./dto/create-journal-entry.dto";
 import { AuthGuard } from "../../common/guards/auth.guard";
@@ -21,7 +21,7 @@ import type { Request } from "express";
 @ApiTags("finance-journals")
 @Controller("finance/journals")
 @UseGuards(AuthGuard, WorkspaceGuard, RolesGuard, PermissionGuard)
-@ApiBearerAuth("JWT-auth")
+@ApiCookieAuth("better-auth-cookie")
 export class JournalsController {
   constructor(private readonly journalsService: JournalsService) {}
 

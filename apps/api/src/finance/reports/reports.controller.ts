@@ -1,5 +1,5 @@
 import { Controller, Get, UseGuards, Req, Query } from "@nestjs/common";
-import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
+import { ApiTags, ApiOperation, ApiCookieAuth } from "@nestjs/swagger";
 import { ReportsService } from "./reports.service";
 import { AuthGuard } from "../../common/guards/auth.guard";
 import { WorkspaceGuard } from "../../auth/guards/workspace.guard";
@@ -11,7 +11,7 @@ import type { Request } from "express";
 @ApiTags("finance-reports")
 @Controller("finance/reports")
 @UseGuards(AuthGuard, WorkspaceGuard, RolesGuard, PermissionGuard)
-@ApiBearerAuth("JWT-auth")
+@ApiCookieAuth("better-auth-cookie")
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 

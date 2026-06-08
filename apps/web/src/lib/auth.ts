@@ -13,6 +13,36 @@ export const getApiURL = () => {
 export const API_URL = getApiURL();
 export const API_BASE = `${API_URL}/api/v1`;
 
+/**
+ * MFA-aware fetch wrapper.
+ * Intercepts 401 responses with MFA error bodies and redirects the user
+ * to the appropriate flow instead of showing a generic "unauthorized" error.
+ */
+export async function apiFetch(input: RequestInfo, init?: RequestInit): Promise<Response> {
+  const response = await fetch(input, init);
+
+  if (response.status === 401 && typeof window !== 'undefined') {
+    // Clone so we can read the body and still return the original response
+    const cloned = response.clone();
+    try {
+      const body = await cloned.json();
+      if (body?.message === 'MFA_SETUP_REQUIRED') {
+        window.location.href = '/dashboard/settings?reason=mfa_setup_required';
+        // Return a never-resolving promise to stop execution while redirect happens
+        return new Promise(() => {});
+      }
+      if (body?.message === 'MFA_VERIFICATION_REQUIRED') {
+        window.location.href = '/auth/mfa-challenge';
+        return new Promise(() => {});
+      }
+    } catch {
+      // Not JSON or no body — fall through and return original response
+    }
+  }
+
+  return response;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -53,40 +83,15 @@ export interface SelectWorkspaceResponse {
 import { authClient } from './auth-client';
 
 /**
- * Refresh access token
- * Compatibility function for legacy services, now using Better Auth session
- */
-export async function refreshToken(refreshToken?: string) {
-  const { data: session, error } = await authClient.getSession();
-  
-  if (error) {
-    throw new Error(error.message || 'Failed to refresh session');
-  }
-
-  return {
-    data: {
-      accessToken: 'session-managed-by-better-auth',
-      user: session?.user,
-      expiresIn: 3600
-    }
-  };
-}
-
-/**
  * Select workspace
  */
 export async function selectWorkspace(
   workspaceId: string,
 ): Promise<SelectWorkspaceResponse> {
-  // Use the Better Auth session token stored during login (same pattern as
-  // all other authenticated calls — the AuthGuard bearer plugin validates it).
-  const token = tokenStorage.getAccessToken();
-
   const response = await fetch(`${API_BASE}/legacy-auth/select-workspace`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify({ workspaceId }),
     credentials: 'include',
@@ -103,11 +108,8 @@ export async function selectWorkspace(
 /**
  * Get current user
  */
-export async function getCurrentUser(accessToken: string) {
+export async function getCurrentUser() {
   const response = await fetch(`${API_BASE}/legacy-auth/me`, {
-    headers: {
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-    },
     credentials: 'include',
   });
 
@@ -122,12 +124,7 @@ export async function getCurrentUser(accessToken: string) {
  * Get pending workspace invites for the logged-in user
  */
 export async function getPendingInvites() {
-  const token = tokenStorage.getAccessToken();
-
   const response = await fetch(`${API_BASE}/workspaces/invites/pending`, {
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
     credentials: 'include',
   });
 
@@ -142,33 +139,32 @@ export async function getPendingInvites() {
  * Get the current user's workspaces (re-fetch from server)
  */
 export async function getMyWorkspaces(): Promise<{ data: Workspace[] }> {
-  const token = tokenStorage.getAccessToken();
+  console.log('[getMyWorkspaces] Fetching workspaces from:', `${API_BASE}/legacy-auth/workspaces`);
+  console.log('[getMyWorkspaces] Document.cookie:', document.cookie);
   
   const response = await fetch(`${API_BASE}/legacy-auth/workspaces`, {
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
     // Better Auth handles sessions via cookies in the browser
     credentials: 'include',
   });
 
+  console.log('[getMyWorkspaces] Response status:', response.status);
+
   if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    console.error('[getMyWorkspaces] Error response:', errorBody);
     throw new Error('Failed to fetch workspaces');
   }
 
-  return response.json();
+  const result = await response.json();
+  console.log('[getMyWorkspaces] Success, workspaces count:', result.data?.length);
+  return result;
 }
 
 /**
  * Check if a user is already a member of a workspace
  */
 export async function checkWorkspaceMember(workspaceId: string, email: string) {
-  const token = tokenStorage.getAccessToken();
-
   const response = await fetch(`${API_BASE}/workspaces/${workspaceId}/members/check/${email}`, {
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
     credentials: 'include',
   });
 
@@ -183,13 +179,8 @@ export async function checkWorkspaceMember(workspaceId: string, email: string) {
  * Accept a workspace invite
  */
 export async function acceptInvite(inviteToken: string) {
-  const token = tokenStorage.getAccessToken();
-
   const response = await fetch(`${API_BASE}/workspaces/invites/${inviteToken}/accept`, {
     method: 'POST',
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
     credentials: 'include',
   });
 
@@ -211,21 +202,13 @@ export interface AuthResponse<T = any> {
 }
 
 /**
- * Token storage utilities
+ * Token and workspace storage management
+ * Refactored to only handle workspace and user state as Better Auth
+ * manages sessions via secure cookies.
  */
 
 export const tokenStorage = {
-  getAccessToken: () => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('accessToken');
-  },
-  
-  setAccessToken: (token: string) => {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem('accessToken', token);
-  },
-
-  getBetterAuthToken: () => {
+  getBetterAuthToken: (): string | null => {
     if (typeof window === 'undefined') return null;
     return localStorage.getItem('betterAuthToken');
   },
@@ -234,17 +217,7 @@ export const tokenStorage = {
     if (typeof window === 'undefined') return;
     localStorage.setItem('betterAuthToken', token);
   },
-  
-  getRefreshToken: () => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('refreshToken');
-  },
-  
-  setRefreshToken: (token: string) => {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem('refreshToken', token);
-  },
-  
+
   getUser: (): User | null => {
     if (typeof window === 'undefined') return null;
     try {
@@ -287,9 +260,7 @@ export const tokenStorage = {
   
   clear: () => {
     if (typeof window === 'undefined') return;
-    localStorage.removeItem('accessToken');
     localStorage.removeItem('betterAuthToken');
-    localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
     localStorage.removeItem('workspace');
     localStorage.removeItem('workspaces');

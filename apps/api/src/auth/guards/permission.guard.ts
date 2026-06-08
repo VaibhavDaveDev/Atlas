@@ -46,6 +46,9 @@ export class PermissionGuard implements CanActivate {
       return true;
     }
 
+    console.log("PermissionGuard checking fine-grained permissions. User:", JSON.stringify(user));
+    console.log("Requirement:", JSON.stringify(requirement));
+
     const { resource, action, scope } = requirement;
     const workspaceId = user.workspaceId;
 

@@ -11,10 +11,11 @@ import { EmailService } from "../common/services/email.service";
 import { RedisService } from "../common/services/redis.service";
 import { QueueModule } from "../common/modules";
 import { AuthGuard } from "../common/guards/auth.guard";
+import { LogsModule } from "../logs/logs.module";
 
 @Global()
 @Module({
-  imports: [QueueModule],
+  imports: [QueueModule, LogsModule],
   controllers: [LegacyAuthController, BetterAuthController],
   providers: [
     AuthService,

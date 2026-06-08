@@ -12,6 +12,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { getEmployees } from '@/lib/hr';
 
+const getAuthHeaders = () => {
+  const workspace = tokenStorage.getWorkspace();
+  const workspaceId = (workspace as any)?.workspaceId || (workspace as any)?.id;
+  return {
+    'Content-Type': 'application/json',
+    ...(workspaceId ? { 'x-workspace-id': workspaceId } : {}),
+  };
+};
+
 export default function PerformanceDashboard() {
   const [activeTab, setActiveTab] = useState('cycles');
   const [cycles, setCycles] = useState<any[]>([]);
@@ -50,22 +59,28 @@ export default function PerformanceDashboard() {
     setIsLoading(true);
     try {
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      const headers = {
-        Authorization: `Bearer ${tokenStorage.getAccessToken()}`,
-      };
 
       if (activeTab === 'cycles') {
-        const res = await fetch(`${baseUrl}/api/v1/hr/performance/cycles`, { headers });
+        const res = await fetch(`${baseUrl}/api/v1/hr/performance/cycles`, { 
+          credentials: 'include',
+          headers: getAuthHeaders(),
+        });
         const json = await res.json();
         const data = json.data || json;
         setCycles(Array.isArray(data) ? data : []);
       } else if (activeTab === 'goals') {
-        const res = await fetch(`${baseUrl}/api/v1/hr/performance/goals`, { headers });
+        const res = await fetch(`${baseUrl}/api/v1/hr/performance/goals`, { 
+          credentials: 'include',
+          headers: getAuthHeaders(),
+        });
         const json = await res.json();
         const data = json.data || json;
         setGoals(Array.isArray(data) ? data : []);
       } else if (activeTab === 'appraisals') {
-        const res = await fetch(`${baseUrl}/api/v1/hr/performance/appraisals`, { headers });
+        const res = await fetch(`${baseUrl}/api/v1/hr/performance/appraisals`, { 
+          credentials: 'include',
+          headers: getAuthHeaders(),
+        });
         const json = await res.json();
         const data = json.data || json;
         setAppraisals(Array.isArray(data) ? data : []);
@@ -246,7 +261,8 @@ export default function PerformanceDashboard() {
         const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
         await fetch(`${baseUrl}/api/v1/hr/performance/cycles`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenStorage.getAccessToken()}` },
+          headers: getAuthHeaders(),
+          credentials: 'include',
           body: JSON.stringify(formData),
         });
         setIsCreatingCycle(false);
@@ -287,7 +303,8 @@ export default function PerformanceDashboard() {
         const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
         await fetch(`${baseUrl}/api/v1/hr/performance/goals`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenStorage.getAccessToken()}` },
+          headers: getAuthHeaders(),
+          credentials: 'include',
           body: JSON.stringify(formData),
         });
         setIsCreatingGoal(false);
@@ -332,7 +349,8 @@ export default function PerformanceDashboard() {
         const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
         await fetch(`${baseUrl}/api/v1/hr/performance/appraisals`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenStorage.getAccessToken()}` },
+          headers: getAuthHeaders(),
+          credentials: 'include',
           body: JSON.stringify(formData),
         });
         setIsCreatingAppraisal(false);
@@ -373,7 +391,8 @@ export default function PerformanceDashboard() {
       const fetchDepts = async () => {
         const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
         const res = await fetch(`${baseUrl}/api/v1/hr/departments`, {
-          headers: { Authorization: `Bearer ${tokenStorage.getAccessToken()}` }
+          credentials: 'include',
+          headers: getAuthHeaders(),
         });
         const json = await res.json();
         setDepartments(json.data || json);
@@ -388,7 +407,8 @@ export default function PerformanceDashboard() {
         const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
         const res = await fetch(`${baseUrl}/api/v1/hr/performance/appraisals/batch`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenStorage.getAccessToken()}` },
+          headers: getAuthHeaders(),
+          credentials: 'include',
           body: JSON.stringify(formData),
         });
         const result = await res.json();

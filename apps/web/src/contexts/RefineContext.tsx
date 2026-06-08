@@ -16,11 +16,6 @@ const axiosInstance = axios.create({
 
 axiosInstance.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('accessToken');
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-
     const workspaceRaw = localStorage.getItem('workspace');
     if (workspaceRaw && workspaceRaw !== 'undefined' && config.headers) {
       try {

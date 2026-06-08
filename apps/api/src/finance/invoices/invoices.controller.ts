@@ -9,7 +9,7 @@ import {
   Req,
   Patch,
 } from "@nestjs/common";
-import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
+import { ApiTags, ApiOperation, ApiCookieAuth } from "@nestjs/swagger";
 import { InvoicesService } from "./invoices.service";
 import { CreateInvoiceDto } from "./dto/create-invoice.dto";
 import { AuthGuard } from "../../common/guards/auth.guard";
@@ -22,7 +22,7 @@ import type { Request } from "express";
 @ApiTags("finance-invoices")
 @Controller("finance/invoices")
 @UseGuards(AuthGuard, WorkspaceGuard, RolesGuard, PermissionGuard)
-@ApiBearerAuth("JWT-auth")
+@ApiCookieAuth("better-auth-cookie")
 export class InvoicesController {
   constructor(private readonly invoicesService: InvoicesService) {}
 

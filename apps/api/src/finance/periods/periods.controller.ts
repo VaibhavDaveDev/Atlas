@@ -1,9 +1,9 @@
 import { Controller, Get, Post, Body, UseGuards, Req } from "@nestjs/common";
-import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
+import { ApiTags, ApiOperation, ApiCookieAuth } from "@nestjs/swagger";
 import { PeriodsService } from "./periods.service";
 
 @ApiTags("Finance / Periods")
-@ApiBearerAuth()
+@ApiCookieAuth("better-auth-cookie")
 @Controller("finance/periods")
 export class PeriodsController {
   constructor(private readonly periodsService: PeriodsService) {}

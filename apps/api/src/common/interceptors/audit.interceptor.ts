@@ -38,7 +38,7 @@ export class AuditInterceptor implements NestInterceptor {
             this.auditTrailService.log({
               workspaceId: user.workspaceId,
               userId: user.userId,
-              action: method,
+              action: this.deriveAction(method, url),
               entity: this.extractEntity(url),
               entityId: this.extractEntityId(url, data),
               details: {
@@ -59,6 +59,60 @@ export class AuditInterceptor implements NestInterceptor {
         }
       }),
     );
+  }
+
+  /**
+   * Derive a meaningful, semantic action name from the HTTP method + URL path.
+   * e.g. DELETE /api/v1/workspaces/:id/sessions/:token → SESSION_REVOKED
+   */
+  private deriveAction(method: string, url: string): string {
+    const path = url.split('?')[0]; // strip query params
+    const segments = path.split('/').filter(Boolean);
+
+    const ACTION_MAP: Array<{ method: string; pattern: RegExp; action: string }> = [
+      // Sessions
+      { method: 'DELETE', pattern: /\/sessions\/[^/]+$/, action: 'SESSION_REVOKED' },
+      { method: 'DELETE', pattern: /\/sessions$/, action: 'ALL_SESSIONS_REVOKED' },
+      // Members
+      { method: 'PATCH',  pattern: /\/members\/[^/]+\/role$/, action: 'MEMBER_ROLE_CHANGED' },
+      { method: 'DELETE', pattern: /\/members\/[^/]+$/, action: 'MEMBER_REMOVED' },
+      { method: 'POST',   pattern: /\/invites$/, action: 'MEMBER_INVITED' },
+      { method: 'POST',   pattern: /\/invites\/[^/]+\/accept$/, action: 'INVITE_ACCEPTED' },
+      { method: 'DELETE', pattern: /\/invites\/[^/]+$/, action: 'INVITE_CANCELLED' },
+      // SSO
+      { method: 'POST',   pattern: /\/sso-providers$/, action: 'SSO_PROVIDER_ADDED' },
+      { method: 'DELETE', pattern: /\/sso-providers\/[^/]+$/, action: 'SSO_PROVIDER_REMOVED' },
+      // Workspace settings
+      { method: 'PATCH',  pattern: /\/mfa-policy$/, action: 'MFA_POLICY_UPDATED' },
+      { method: 'POST',   pattern: /\/audit\/enable$/, action: 'AUDIT_TRAIL_ENABLED' },
+      { method: 'PATCH',  pattern: /\/workspaces\/[^/]+$/, action: 'WORKSPACE_UPDATED' },
+      // Roles
+      { method: 'POST',   pattern: /\/roles$/, action: 'ROLE_CREATED' },
+      { method: 'PATCH',  pattern: /\/roles\/[^/]+$/, action: 'ROLE_UPDATED' },
+      { method: 'DELETE', pattern: /\/roles\/[^/]+$/, action: 'ROLE_DELETED' },
+      // Finance
+      { method: 'POST',   pattern: /\/finance\//, action: 'FINANCE_RECORD_CREATED' },
+      { method: 'PATCH',  pattern: /\/finance\//, action: 'FINANCE_RECORD_UPDATED' },
+      { method: 'DELETE', pattern: /\/finance\//, action: 'FINANCE_RECORD_DELETED' },
+      // HR
+      { method: 'POST',   pattern: /\/hr\//, action: 'HR_RECORD_CREATED' },
+      { method: 'PATCH',  pattern: /\/hr\//, action: 'HR_RECORD_UPDATED' },
+      { method: 'DELETE', pattern: /\/hr\//, action: 'HR_RECORD_DELETED' },
+      // Project
+      { method: 'POST',   pattern: /\/project\//, action: 'PROJECT_RECORD_CREATED' },
+      { method: 'PATCH',  pattern: /\/project\//, action: 'PROJECT_RECORD_UPDATED' },
+      { method: 'DELETE', pattern: /\/project\//, action: 'PROJECT_RECORD_DELETED' },
+    ];
+
+    for (const { method: m, pattern, action } of ACTION_MAP) {
+      if (method === m && pattern.test(path)) {
+        return action;
+      }
+    }
+
+    // Fallback to METHOD_ENTITY pattern
+    const entity = segments[3]?.toUpperCase().replace(/-/g, '_') || 'RESOURCE';
+    return `${method}_${entity}`;
   }
 
   private extractEntity(url: string): string {

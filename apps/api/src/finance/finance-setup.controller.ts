@@ -1,5 +1,5 @@
 import { Controller, Post, Body, UseGuards, Req } from "@nestjs/common";
-import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
+import { ApiTags, ApiOperation, ApiCookieAuth } from "@nestjs/swagger";
 import { AccountsService } from "./accounts/accounts.service";
 import { PrismaService } from "../common/services/prisma.service";
 import { AuthGuard } from "../common/guards/auth.guard";
@@ -10,7 +10,7 @@ import type { Request } from "express";
 @ApiTags("finance-setup")
 @Controller("finance/setup")
 @UseGuards(AuthGuard, WorkspaceGuard, RolesGuard)
-@ApiBearerAuth("JWT-auth")
+@ApiCookieAuth("better-auth-cookie")
 export class FinanceSetupController {
   constructor(
     private readonly accountsService: AccountsService,

@@ -78,6 +78,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
       });
     }
 
+    // 4. Make throttler errors user-friendly
+    if (error === 'ThrottlerException') {
+      message = 'Too many requests. Please wait a moment and try again.';
+      if (request.url.includes('/auth/')) {
+        message = 'Too many login attempts. Please wait 15 minutes and try again.';
+      }
+    }
+
     response.status(statusCode).json({
       success: false,
       statusCode,

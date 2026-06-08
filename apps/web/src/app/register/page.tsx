@@ -68,6 +68,7 @@ function RegisterContent() {
         email,
         password,
         name,
+        // @ts-expect-error - Custom user field
         username, // Additional field
         turnstileToken, // Include turnstile token directly
       });

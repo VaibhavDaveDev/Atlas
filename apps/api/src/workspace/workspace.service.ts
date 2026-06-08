@@ -6,6 +6,7 @@ import {
   Logger,
 } from "@nestjs/common";
 import { PrismaService } from "../common/services/prisma.service";
+import { RedisService } from "../common/services/redis.service";
 import { EmailQueueService } from "../common/queues/email/email.queue";
 import { BetterAuthService } from "../auth/services/better-auth.service";
 import { randomBytes } from "crypto";
@@ -17,6 +18,7 @@ export class WorkspaceService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly redis: RedisService,
     private readonly emailQueueService: EmailQueueService,
     private readonly betterAuth: BetterAuthService,
   ) {}
@@ -61,6 +63,8 @@ export class WorkspaceService {
         timeFormat?: string;
         fiscalYearStart?: string;
         customSettings?: Record<string, any>;
+        countryCode?: string;
+        weekendHolidays?: number[];
       };
     },
   ): Promise<any> {
@@ -83,6 +87,8 @@ export class WorkspaceService {
         timeFormat,
         fiscalYearStart,
         customSettings,
+        countryCode,
+        weekendHolidays,
       } = data.settings;
       const settingsData: Record<string, any> = {};
       if (baseCurrency !== undefined) settingsData.baseCurrency = baseCurrency;
@@ -92,6 +98,8 @@ export class WorkspaceService {
         settingsData.fiscalYearStart = fiscalYearStart;
       if (customSettings !== undefined)
         settingsData.customSettings = customSettings;
+      if (countryCode !== undefined) settingsData.countryCode = countryCode;
+      if (weekendHolidays !== undefined) settingsData.weekendHolidays = weekendHolidays;
 
       const existing = await this.prisma.workspaceSettings.findUnique({
         where: { workspaceId },
@@ -241,7 +249,7 @@ export class WorkspaceService {
     return this.prisma.authSsoProvider.create({
       data: {
         organizationId: orgId,
-        providerId: data.protocol.toLowerCase() + "-" + Date.now(),
+        providerId: `${data.protocol.toLowerCase()}-${data.domain.replace(/\./g, '-')}`,
         issuer: data.issuer,
         domain: data.domain,
         metadata: data.name ? JSON.stringify({ name: data.name }) : null,
@@ -788,39 +796,136 @@ export class WorkspaceService {
    * List all active sessions for members of a workspace
    */
   async listWorkspaceSessions(workspaceId: string) {
-    const sessions = await this.prisma.authSession.findMany({
-      where: {
-        user: {
-          workspaces: {
-            some: {
-              workspaceId,
-              isActive: true,
-            },
-          },
-        },
-      },
-      include: {
+    // Step 1: Get all active workspace member user IDs
+    const members = await this.prisma.workspaceMember.findMany({
+      where: { workspaceId, isActive: true },
+      select: {
+        userId: true,
         user: {
           select: {
             id: true,
             email: true,
             username: true,
             image: true,
+            profile: {
+              select: { firstName: true, lastName: true, avatarUrl: true },
+            },
           },
         },
       },
-      orderBy: { updatedAt: "desc" },
     });
 
-    return sessions.map((s) => ({
-      id: s.id,
-      token: s.token,
-      expiresAt: s.expiresAt,
-      ipAddress: s.ipAddress,
-      userAgent: s.userAgent,
-      createdAt: s.createdAt,
-      updatedAt: s.updatedAt,
-      user: s.user,
-    }));
+    if (members.length === 0) {
+      this.logger.debug(`listWorkspaceSessions: no active members found for workspace ${workspaceId}`);
+      return [];
+    }
+
+    const userIds = members.map((m) => m.userId);
+    const userMap = new Map(members.map((m) => [m.userId, m.user]));
+
+    this.logger.debug(`listWorkspaceSessions: found ${members.length} members, fetching sessions...`);
+
+    // Step 2: Get all non-expired sessions for those users
+    const sessions = await this.prisma.authSession.findMany({
+      where: {
+        userId: { in: userIds },
+        expiresAt: { gt: new Date() },
+      },
+      take: 100,
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    this.logger.debug(`listWorkspaceSessions: found ${sessions.length} active sessions`);
+
+    return sessions.map((s) => {
+      const user = userMap.get(s.userId);
+      return {
+        id: s.id,
+        token: s.token,
+        expiresAt: s.expiresAt,
+        ipAddress: s.ipAddress,
+        userAgent: s.userAgent,
+        createdAt: s.createdAt,
+        updatedAt: s.updatedAt,
+        user: user
+          ? {
+              id: user.id,
+              email: user.email,
+              username: user.username,
+              image: user.profile?.avatarUrl ?? user.image,
+              name: user.profile
+                ? `${user.profile.firstName ?? ''} ${user.profile.lastName ?? ''}`.trim() || user.email
+                : user.email,
+            }
+          : null,
+      };
+    });
+  }
+
+  /**
+   * Admin: revoke a single session by token — only if it belongs to a workspace member
+   */
+  async revokeWorkspaceSession(workspaceId: string, sessionToken: string) {
+    const session = await this.prisma.authSession.findFirst({
+      where: {
+        token: sessionToken,
+        user: {
+          workspaces: { some: { workspaceId, isActive: true } },
+        },
+      },
+      include: { user: { select: { email: true } } },
+    });
+
+    if (!session) {
+      throw new NotFoundException('Session not found in this workspace');
+    }
+
+    // Delete session using Prisma - this deletes it from the database
+    await this.prisma.authSession.delete({ where: { id: session.id } });
+
+    // IMPORTANT: Also delete the session token from Redis (Better Auth's secondary storage)
+    // This ensures the session is invalidated immediately across all instances
+    const redisKey = `session:${sessionToken}`;
+    await this.redis.del(redisKey);
+
+    this.logger.log(`Revoked session for ${session.user.email}`);
+
+    return { success: true };
+  }
+
+  /**
+   * Admin: revoke ALL sessions for workspace members, except the caller's own sessions
+   */
+  async revokeAllWorkspaceSessions(workspaceId: string, excludeUserId: string) {
+    // Get all sessions that will be deleted to clean up Redis
+    const sessionsToDelete = await this.prisma.authSession.findMany({
+      where: {
+        userId: { not: excludeUserId },
+        user: {
+          workspaces: { some: { workspaceId, isActive: true } },
+        },
+      },
+      select: { token: true },
+    });
+
+    // Delete from database
+    const result = await this.prisma.authSession.deleteMany({
+      where: {
+        userId: { not: excludeUserId },
+        user: {
+          workspaces: { some: { workspaceId, isActive: true } },
+        },
+      },
+    });
+
+    // Clean up Redis cache for each deleted session
+    const redisPromises = sessionsToDelete.map(session => 
+      this.redis.del(`session:${session.token}`)
+    );
+    await Promise.all(redisPromises);
+
+    this.logger.log(`Revoked ${result.count} sessions in workspace ${workspaceId}`);
+
+    return { success: true };
   }
 }

@@ -54,7 +54,7 @@ export default function RootLayout({
     <html lang="en" className={inter.variable} suppressHydrationWarning>
       <body className="antialiased min-h-screen bg-background font-sans">
         <NextTopLoader
-          color="#9333ea"
+          color="#5e6ad2"
           initialPosition={0.08}
           crawlSpeed={200}
           height={3}
@@ -62,7 +62,7 @@ export default function RootLayout({
           showSpinner={false}
           easing="ease"
           speed={200}
-          shadow="0 0 10px #9333ea,0 0 5px #9333ea"
+          shadow="0 0 10px #5e6ad2,0 0 5px #5e6ad2"
         />
         <ThemeProvider
           attribute="class"

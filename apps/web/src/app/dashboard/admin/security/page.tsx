@@ -42,6 +42,13 @@ import {
   DialogTitle,
   DialogTrigger 
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from 'sonner';
 import { authClient } from '@/lib/auth-client';
 import { tokenStorage } from '@/lib/auth';
@@ -54,6 +61,7 @@ export default function AdminSecurityPage() {
   const [isMfaEnforced, setIsMfaEnforced] = useState(false);
   const [activeSessions, setActiveSessions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isTestingSso, setIsTestingSso] = useState(false);
   const [isVerifyingChain, setIsVerifyingChain] = useState(false);
   const [isRecomputingChain, setIsRecomputingChain] = useState(false);
   const [ssoProviders, setSsoProviders] = useState<any[]>([]);
@@ -69,8 +77,9 @@ export default function AdminSecurityPage() {
     if (!workspace) return;
     try {
       const res = await fetch(`${API_URL}/api/v1/workspaces/${workspace.workspaceId}/sso-providers`, {
+        credentials: 'include',
         headers: {
-          'Authorization': `Bearer ${tokenStorage.getAccessToken()}`,
+          'x-workspace-id': workspace.workspaceId,
         },
       });
       
@@ -120,8 +129,9 @@ export default function AdminSecurityPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${tokenStorage.getAccessToken()}`,
+          'x-workspace-id': workspace.workspaceId,
         },
+        credentials: 'include',
         body: JSON.stringify(newSsoProvider),
       });
 
@@ -143,6 +153,40 @@ export default function AdminSecurityPage() {
     }
   };
 
+  const handleTestSsoConfig = async () => {
+    const issuerUrl = newSsoProvider.metadataUrl;
+    if (!issuerUrl) {
+      toast.error('Please enter an issuer / metadata URL first.');
+      return;
+    }
+
+    setIsTestingSso(true);
+    try {
+      // Route through backend to avoid CORS restrictions on identity provider endpoints
+      const res = await fetch(`${API_URL}/api/v1/legacy-auth/sso/test-config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ protocol: newSsoProvider.protocol, metadataUrl: issuerUrl }),
+      });
+      const result = await res.json();
+      if (!result.ok) {
+        toast.error(`Test failed: ${result.error}`);
+      } else if (newSsoProvider.protocol === 'OIDC') {
+        toast.success(`OIDC valid ✓  Issuer: ${result.issuer}`, { duration: 6000 });
+      } else {
+        toast.success(
+          result.entityId ? `SAML valid ✓  EntityID: ${result.entityId}` : 'SAML metadata URL is reachable.',
+          { duration: 6000 },
+        );
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Configuration test failed';
+      toast.error(`Test failed: ${message}`);
+    } finally {
+      setIsTestingSso(false);
+    }
+  };
+
   const handleRemoveSsoProvider = async (providerId: string) => {
     if (!workspace) return;
     if (!confirm('Are you sure you want to remove this SSO provider?')) return;
@@ -150,8 +194,9 @@ export default function AdminSecurityPage() {
     try {
       const res = await fetch(`${API_URL}/api/v1/workspaces/${workspace.workspaceId}/sso-providers/${providerId}`, {
         method: 'DELETE',
+        credentials: 'include',
         headers: {
-          'Authorization': `Bearer ${tokenStorage.getAccessToken()}`,
+          'x-workspace-id': workspace.workspaceId,
         },
       });
 
@@ -172,8 +217,9 @@ export default function AdminSecurityPage() {
     try {
       const res = await fetch(`${API_URL}/api/v1/logs/audit/${workspace.workspaceId}/recompute`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
-          'Authorization': `Bearer ${tokenStorage.getAccessToken()}`,
+          'x-workspace-id': workspace.workspaceId,
         },
       });
 
@@ -200,16 +246,26 @@ export default function AdminSecurityPage() {
   }, [workspace]);
 
   const loadSessions = async () => {
-    if (!workspace) return;
+    if (!workspace) {
+      console.log('[loadSessions] No workspace available');
+      return;
+    }
     try {
+      console.log('[loadSessions] Fetching sessions for workspace:', workspace.workspaceId);
+      console.log('[loadSessions] Document.cookie:', document.cookie);
+      
       const res = await fetch(`${API_URL}/api/v1/workspaces/${workspace.workspaceId}/sessions`, {
+        credentials: 'include',
         headers: {
-          'Authorization': `Bearer ${tokenStorage.getAccessToken()}`,
+          'x-workspace-id': workspace.workspaceId,
         },
       });
       
+      console.log('[loadSessions] Response status:', res.status);
+      
       if (!res.ok) {
-        console.error('Failed to load sessions, status:', res.status);
+        const errorBody = await res.json().catch(() => ({}));
+        console.error('[loadSessions] Failed to load sessions:', errorBody);
         setActiveSessions([]);
         return;
       }
@@ -235,8 +291,9 @@ export default function AdminSecurityPage() {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${tokenStorage.getAccessToken()}`,
+          'x-workspace-id': workspace.workspaceId,
         },
+        credentials: 'include',
         body: JSON.stringify({ mfaEnforced: isMfaEnforced }),
       });
 
@@ -257,8 +314,9 @@ export default function AdminSecurityPage() {
     try {
       const res = await fetch(`${API_URL}/api/v1/workspaces/${workspace.workspaceId}/audit/enable`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
-          'Authorization': `Bearer ${tokenStorage.getAccessToken()}`,
+          'x-workspace-id': workspace.workspaceId,
         },
       });
 
@@ -278,8 +336,9 @@ export default function AdminSecurityPage() {
     setIsVerifyingChain(true);
     try {
       const res = await fetch(`${API_URL}/api/v1/logs/audit/${workspace.workspaceId}/verify`, {
+        credentials: 'include',
         headers: {
-          'Authorization': `Bearer ${tokenStorage.getAccessToken()}`,
+          'x-workspace-id': workspace.workspaceId,
         },
       });
 
@@ -303,8 +362,16 @@ export default function AdminSecurityPage() {
   };
 
   const handleRevokeSession = async (token: string) => {
+    if (!workspace) return;
     try {
-      await authClient.revokeSession({ token });
+      const res = await fetch(`${API_URL}/api/v1/workspaces/${workspace.workspaceId}/sessions/${encodeURIComponent(token)}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: {
+          'x-workspace-id': workspace.workspaceId,
+        },
+      });
+      if (!res.ok) throw new Error('Failed to revoke');
       toast.success('Session revoked successfully');
       loadSessions();
     } catch (error) {
@@ -313,8 +380,16 @@ export default function AdminSecurityPage() {
   };
 
   const handleRevokeAllSessions = async () => {
+    if (!workspace) return;
     try {
-      await authClient.revokeOtherSessions();
+      const res = await fetch(`${API_URL}/api/v1/workspaces/${workspace.workspaceId}/sessions`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: {
+          'x-workspace-id': workspace.workspaceId,
+        },
+      });
+      if (!res.ok) throw new Error('Failed to revoke');
       toast.success('All other sessions revoked successfully');
       loadSessions();
     } catch (error) {
@@ -493,14 +568,18 @@ export default function AdminSecurityPage() {
                     </div>
                     <div className="space-y-2">
                       <Label>Protocol</Label>
-                      <select 
-                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                        value={newSsoProvider.protocol}
-                        onChange={(e) => setNewSsoProvider({...newSsoProvider, protocol: e.target.value as any})}
+                      <Select 
+                        value={newSsoProvider.protocol} 
+                        onValueChange={(value) => setNewSsoProvider({...newSsoProvider, protocol: value as any})}
                       >
-                        <option value="OIDC">OIDC (OpenID Connect) - Modern, recommended</option>
-                        <option value="SAML">SAML 2.0 - Enterprise standard</option>
-                      </select>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select protocol" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="OIDC">OIDC (OpenID Connect) - Modern, recommended</SelectItem>
+                          <SelectItem value="SAML">SAML 2.0 - Enterprise standard</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="space-y-2">
                       <Label>
@@ -531,6 +610,15 @@ export default function AdminSecurityPage() {
                     </div>
                   </div>
                   <DialogFooter>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleTestSsoConfig}
+                      disabled={isTestingSso || !newSsoProvider.metadataUrl}
+                    >
+                      {isTestingSso ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                      Test Configuration
+                    </Button>
                     <Button onClick={handleAddSsoProvider} disabled={isLoading || !newSsoProvider.name || !newSsoProvider.domain || !newSsoProvider.metadataUrl}>
                       {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                       Save Configuration
@@ -599,11 +687,17 @@ export default function AdminSecurityPage() {
                 </CardTitle>
                 <CardDescription>
                   Monitor and revoke active sessions to protect compromised accounts.
+                  {activeSessions.length > 0 && <span className="ml-1 font-medium text-foreground">{activeSessions.length} active session{activeSessions.length !== 1 ? 's' : ''}</span>}
                 </CardDescription>
               </div>
-              <Button variant="destructive" size="sm" className="w-full sm:w-auto" onClick={handleRevokeAllSessions} disabled={activeSessions.length <= 1}>
-                <LogOut className="h-4 w-4 mr-2" /> Revoke All Other Sessions
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={loadSessions}>
+                  <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+                </Button>
+                <Button variant="destructive" size="sm" className="w-full sm:w-auto" onClick={handleRevokeAllSessions} disabled={activeSessions.length <= 1}>
+                  <LogOut className="h-4 w-4 mr-2" /> Revoke All Other Sessions
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="p-0 overflow-x-auto">
@@ -620,49 +714,60 @@ export default function AdminSecurityPage() {
               <TableBody>
                 {activeSessions.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                      No active sessions found.
+                    <TableCell colSpan={5} className="h-32 text-center">
+                      <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                        <Lock className="h-8 w-8 opacity-20" />
+                        <p className="text-sm font-medium">No active sessions found</p>
+                        <p className="text-xs max-w-xs">
+                          Sessions appear here when workspace members are signed in. If you expect to see sessions, try clicking Refresh.
+                        </p>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  activeSessions.map((session) => (
-                    <TableRow key={session.id}>
-                      <TableCell className="pl-6 font-medium">
-                        <div className="flex flex-col">
-                          <span className="text-sm">{session.user?.username || session.user?.email}</span>
-                          <span className="text-[10px] text-muted-foreground truncate max-w-[200px]">
-                            {session.userAgent.split('(')[0] || 'Unknown Browser'}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <Badge variant="outline" className="text-[10px] font-mono">{session.ipAddress || '127.0.0.1'}</Badge>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {new Date(session.updatedAt).toLocaleTimeString()}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20 text-[10px]">
-                          CURRENT
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right pr-6">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => handleRevokeSession(session.token)}
-                        >
-                          <LogOut className="h-4 w-4 mr-2" /> Revoke
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  activeSessions.map((session) => {
+                    const isCurrentSession = session.user?.id === user?.id;
+                    return (
+                      <TableRow key={session.id}>
+                        <TableCell className="pl-6 font-medium">
+                          <div className="flex flex-col">
+                            <span className="text-sm">{session.user?.name || session.user?.username || session.user?.email || 'Unknown user'}</span>
+                            <span className="text-[10px] text-muted-foreground">{session.user?.email}</span>
+                            <span className="text-[10px] text-muted-foreground truncate max-w-[200px]">
+                              {session.userAgent?.split('(')[0] || 'Unknown Browser'}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Badge variant="outline" className="text-[10px] font-mono">{session.ipAddress || '127.0.0.1'}</Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {new Date(session.updatedAt).toLocaleTimeString()}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={isCurrentSession ? "bg-green-500/10 text-green-600 border-green-500/20 text-[10px]" : "bg-blue-500/10 text-blue-600 border-blue-500/20 text-[10px]"}>
+                            {isCurrentSession ? 'CURRENT' : 'ACTIVE'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right pr-6">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            disabled={isCurrentSession}
+                            onClick={() => handleRevokeSession(session.token)}
+                          >
+                            <LogOut className="h-4 w-4 mr-2" /> Revoke
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>

@@ -57,27 +57,20 @@ export class WorkspaceGuard implements CanActivate {
     }
 
     // Check for MFA enforcement
-    // We only enforce if the workspace policy is active AND the user is not already verified via MFA
-    // Better Auth 'session' object (if present) tells us if the current session is MFA-verified.
+    // Query DB directly — betterAuthSession is never set on the NestJS request pipeline.
     if (membership.workspace.mfaEnforced) {
-      const session = (request as any).betterAuthSession;
+      // Check if user has 2FA configured — query DB (reliable source of truth).
+      // Note: session-level twoFactorVerified is not in the current AuthSession schema.
+      // When a future migration adds that column, restore the session check below.
+      const authUser = await this.prismaService.authUser.findUnique({
+        where: { id: user.userId },
+        select: { twoFactorEnabled: true },
+      });
 
-      // If the user has 2FA enabled but the session is not MFA-verified, 
-      // Better Auth would usually handle the challenge, but we double-check here.
-      // If the user hasn't even SET UP 2FA, they must be forced to setup page.
-      const isMfaVerified = session?.session?.authFlags?.includes('mfa') || false;
-      const hasTwoFactorEnabled = (session?.user as any)?.twoFactorEnabled || false;
-
-      if (!hasTwoFactorEnabled) {
-        // User has not set up 2FA yet, but it's required.
-        // We throw a specific error that the frontend can catch to redirect to /settings/2fa
+      if (!authUser?.twoFactorEnabled) {
+        // User has not set up 2FA yet, but it's required by this workspace.
+        // Frontend catches this error code to redirect to /settings/2fa
         throw new UnauthorizedException("MFA_SETUP_REQUIRED");
-      }
-
-      if (!isMfaVerified) {
-        // User HAS enabled it, but this specific session isn't verified.
-        // Better Auth should have handled this during sign-in, but this is a safety net.
-        throw new UnauthorizedException("MFA_VERIFICATION_REQUIRED");
       }
     }
 
@@ -87,6 +80,5 @@ export class WorkspaceGuard implements CanActivate {
     request.user.department = membership.department;
 
     return true;
-    }
-    }
-
+  }
+}

@@ -9,6 +9,7 @@ import {
   admin,
   magicLink,
   emailOTP,
+  testUtils,
 } from "better-auth/plugins";
 import { sso } from "@better-auth/sso";
 import { PrismaService } from "../../common/services/prisma.service";
@@ -20,6 +21,9 @@ import { turnstilePlugin } from "../plugins/turnstile.plugin";
 
 /** OTP / magic-link cool-down window in seconds (5 min = same as OTP TTL) */
 const OTP_COOLDOWN_SECONDS = 300;
+
+/** Maximum concurrent sessions per user */
+const MAX_SESSIONS_PER_USER = parseInt(process.env.MAX_SESSIONS_PER_USER || '3', 10);
 
 @Injectable()
 export class BetterAuthService {
@@ -63,7 +67,12 @@ export class BetterAuthService {
 
     const prismaProxy = new Proxy(this.prisma, {
       get(target: any, prop: string) {
-        return MODEL_MAP[prop] ? target[MODEL_MAP[prop]] : target[prop];
+        const mapped = MODEL_MAP[prop];
+        if (mapped) {
+          logger.debug(`[Prisma Proxy] Mapping ${prop} -> ${mapped}`);
+          return target[mapped];
+        }
+        return target[prop];
       },
     });
 
@@ -71,6 +80,7 @@ export class BetterAuthService {
     const queue = this.emailQueue;
     const redisService = this.redis;
     const logger = this.logger;
+    const prismaService = this.prisma;
 
     this.auth = betterAuth({
       database: prismaAdapter(prismaProxy, {
@@ -188,6 +198,8 @@ export class BetterAuthService {
             }
           },
         }),
+
+        testUtils(),
       ],
       secondaryStorage: {
         get: async (key) => {
@@ -245,6 +257,13 @@ export class BetterAuthService {
       session: {
         expiresIn: 60 * 60 * 24 * 7, // 7 days
         updateAge: 60 * 60 * 24, // 24 hours
+        // Store sessions in database (by default Better Auth only uses JWT cookies)
+        storeSessionInDatabase: true,
+        // Disable cookie cache so session revocation takes effect immediately
+        // (with cache enabled, revoked sessions remain valid until cache expires)
+        cookieCache: {
+          enabled: false,
+        },
       },
       hooks: {
         before: async (context: any) => {
@@ -282,6 +301,61 @@ export class BetterAuthService {
           // Set cooldown key — expires when the OTP does
           await redisService.set(cooldownKey, Date.now(), OTP_COOLDOWN_SECONDS);
           return undefined;
+        },
+        after: async (context: any) => {
+          // ─── Session Limit Enforcement ────────────────────────────────────
+          // Limit each user to a maximum of 3 concurrent sessions.
+          // When a 4th session is created, the oldest session is automatically
+          // deleted from both database and Redis cache.
+          const isAuthPath = context.path === "/sign-in/email" || 
+                             context.path === "/sign-up/email" ||
+                             context.path === "/sign-in/social" ||
+                             context.path === "/magic-link/verify";
+
+          if (!isAuthPath) return {};
+
+          try {
+            // In better-auth after hooks, the response payload is typically in context.context.returned
+            const returned = context.context?.returned;
+            if (!returned || returned instanceof Error) return {};
+
+            // Extract user ID. Typical successful auth returns { session: { userId: "..." }, user: { id: "..." } }
+            const userId = returned?.session?.userId || returned?.user?.id;
+            if (!userId) return {};
+
+            // Get all active sessions for this user, ordered by creation time (oldest first)
+            const userSessions = await prismaService.authSession.findMany({
+              where: { userId },
+              orderBy: { createdAt: 'asc' },
+              select: { id: true, token: true, createdAt: true },
+            });
+
+            // If user has more than MAX_SESSIONS_PER_USER, delete the oldest ones
+            if (userSessions.length > MAX_SESSIONS_PER_USER) {
+              const sessionsToDelete = userSessions.slice(0, userSessions.length - MAX_SESSIONS_PER_USER);
+              
+              logger.log(`User ${userId} exceeded session limit (${userSessions.length}/${MAX_SESSIONS_PER_USER}). Deleting ${sessionsToDelete.length} oldest session(s).`);
+
+              // Delete from database
+              await prismaService.authSession.deleteMany({
+                where: {
+                  id: { in: sessionsToDelete.map(s => s.id) },
+                },
+              });
+
+              // Clean up Redis cache for deleted sessions
+              await Promise.all(
+                sessionsToDelete.map(s => redisService.del(`session:${s.token}`))
+              );
+
+              logger.log(`Cleaned up ${sessionsToDelete.length} old session(s) for user ${userId}`);
+            }
+          } catch (err) {
+            logger.error('Failed to enforce session limit', err);
+            // Don't throw - allow the sign-in to succeed even if cleanup fails
+          }
+          
+          return {};
         },
       },
       events: {
