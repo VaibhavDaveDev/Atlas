@@ -1,11 +1,12 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  output: 'export',
   reactStrictMode: true,
   transpilePackages: ['@atlas/ui', '@atlas/utils', '@atlas/types'],
   
   images: {
-    // Local /public images don't need domains — this just ensures PNGs work
+    unoptimized: true, // Required for static export
     formats: ['image/webp'],
   },
 

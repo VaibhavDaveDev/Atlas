@@ -11,6 +11,8 @@
     "format": "turbo run format",
     "test": "turbo run test",
     "clean": "turbo run clean && rm -rf node_modules .turbo",
+    "clean:dist": "rm -rf apps/api/dist apps/web/.next apps/web/.worker-next apps/web/out",
+    "prebuild": "pnpm run clean:dist",
     "setup": "pnpm --filter @atlas/database run build",
     "dev:api": "pnpm run setup && pnpm --filter @atlas/api run dev",
     "dev:web": "pnpm --filter @atlas/web run dev",

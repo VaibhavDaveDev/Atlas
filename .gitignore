@@ -40,6 +40,7 @@ next-env.d.ts
 .idea
 *.swp
 *.swo
+.kiro
 *~
 
 # OS
@@ -84,3 +85,6 @@ apps/api/test-better-auth-session.d.ts
 apps/api/vitest.config.js
 apps/api/vitest.config.js.map
 apps/api/vitest.config.d.ts
+
+# Understand-anything
+.understand-anything

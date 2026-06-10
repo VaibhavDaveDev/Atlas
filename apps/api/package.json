@@ -6,6 +6,8 @@
   "license": "MIT",
   "scripts": {
     "build": "nest build",
+    "clean": "rm -rf dist",
+    "prebuild": "pnpm run clean",
     "dev": "nest start --watch --preserveWatchOutput",
     "start": "nest start",
     "start:prod": "node dist/main",
