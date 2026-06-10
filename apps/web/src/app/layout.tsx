@@ -6,6 +6,7 @@ import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { Toaster } from 'sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { Analytics } from '@vercel/analytics/next';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -35,6 +36,9 @@ export const metadata: Metadata = {
     title: 'Atlas ERP — Enterprise Cloud Suite',
     description: 'AI-powered Cloud ERP Suite for modern businesses.',
     type: 'website',
+  },
+  verification: {
+    google: 'E4M2yFZRO6dOA1N8HOC9WJFipUVZUaOK9mpnBbTK4Tc',
   },
 };
 
@@ -74,6 +78,7 @@ export default function RootLayout({
             <AuthProvider>{children}</AuthProvider>
           </TooltipProvider>
           <Toaster position="bottom-right" richColors closeButton />
+          <Analytics />
         </ThemeProvider>
       </body>
     </html>
