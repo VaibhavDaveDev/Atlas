@@ -1,12 +1,10 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  output: 'export',
   reactStrictMode: true,
   transpilePackages: ['@atlas/ui', '@atlas/utils', '@atlas/types'],
   
   images: {
-    unoptimized: true, // Required for static export
     formats: ['image/webp'],
   },
 
