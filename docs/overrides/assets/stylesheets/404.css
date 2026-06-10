@@ -1,0 +1,38 @@
+/* Custom styles for 404 page */
+.md-content__inner[data-md-component="404"] {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Card grid for 404 page */
+.grid.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+
+.grid.cards > div {
+  padding: 1.5rem;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.grid.cards > div:hover {
+  border-color: var(--md-accent-fg-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.grid.cards .lg.middle {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 768px) {
+  .grid.cards {
+    grid-template-columns: 1fr;
+  }
+}

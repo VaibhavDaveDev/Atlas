@@ -1,0 +1,275 @@
+site_name: Atlas ERP Documentation
+site_description: Complete developer documentation for Atlas ERP - cloud ERP suite
+site_author: Atlas Team
+site_url: https://docs-atlas.vercel.app
+repo_url: https://github.com/VaibhavDaveDev/Atlas
+repo_name: VaibhavDaveDev/Atlas
+edit_uri: edit/main/docs/
+ 
+theme:
+  name: material
+  logo: assets/logo.png
+  favicon: assets/favicon.ico
+  custom_dir: docs/overrides
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: cyan
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: cyan
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.path
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - content.tooltips
+    - toc.follow
+    - toc.integrate
+  font:
+    text: Inter
+    code: JetBrains Mono
+  icon:
+    repo: fontawesome/brands/github
+    edit: material/pencil
+    view: material/eye
+ 
+plugins:
+  - search:
+      separator: '[\s\-,:!=\[\]()"/]+|(?!\b)(?=[A-Z][a-z])|\.(?!\d)|&[lg]t;'
+      lang:
+        - en
+  - tags  # Removed tags_file option (deprecated)
+  - git-revision-date-localized:
+      enable_creation_date: true
+      type: timeago
+      enable_git_follow: false  # Fixes git follow warnings
+  - minify:
+      minify_html: true
+      minify_js: true
+      minify_css: true
+      htmlmin_opts:
+        remove_comments: true
+  - mermaid2
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      permalink_title: Anchor link to this section
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+      auto_title: true
+      linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets:
+      auto_append:
+        - includes/abbreviations.md
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:mermaid2.fence_mermaid_custom
+  - pymdownx.tabbed:
+      alternate_style: true
+      combine_header_slug: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.tasklist:
+      custom_checkbox: true
+      clickable_checkbox: true
+  - pymdownx.tilde
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - getting-started/index.md
+    - Prerequisites: getting-started/prerequisites.md
+    - Installation: getting-started/installation.md
+    - Environment Variables: getting-started/environment-variables.md
+    - Running Locally: getting-started/running-locally.md
+    - Deployment: getting-started/deployment.md
+    - Troubleshooting: getting-started/troubleshooting.md
+  - Architecture:
+    - architecture/index.md
+    - Overview: architecture/overview.md
+    - Tech Stack: architecture/tech-stack.md
+    - System Diagram: architecture/system-diagram.md
+    - Monorepo Structure: architecture/monorepo-structure.md
+    - Multi-Tenancy: architecture/multi-tenancy.md
+    - Request Lifecycle: architecture/request-lifecycle.md
+    - Background Jobs: architecture/background-jobs.md
+    - Authentication: architecture/authentication.md
+    - Observability: architecture/observability.md
+  - Backend:
+    - backend/index.md
+    - Project Structure: backend/project-structure.md
+    - Modules:
+      - backend/modules/index.md
+      - Auth Module: backend/modules/auth.md
+      - HR Module: backend/modules/hr.md
+      - Finance Module: backend/modules/finance.md
+      - Project Module: backend/modules/project.md
+    - Guards & Middleware: backend/guards-and-middleware.md
+    - Error Handling: backend/error-handling.md
+    - Testing: backend/testing.md
+  - Frontend:
+    - frontend/index.md
+    - Project Structure: frontend/project-structure.md
+    - Routing: frontend/routing.md
+    - State Management: frontend/state-management.md
+    - Internationalization: frontend/internationalization.md
+    - Styling: frontend/styling.md
+    - Testing: frontend/testing.md
+  - Database:
+    - database/index.md
+    - Schema: database/schema.md
+    - Migrations: database/migrations.md
+    - Prisma Guide: database/prisma-guide.md
+    - Seeding: database/seeding.md
+    - Multi-Tenancy: database/multi-tenancy.md
+  - API Reference:
+    - api/index.md
+    - Authentication: api/authentication.md
+    - Authorization: api/authorization.md
+    - REST Endpoints: api/rest-endpoints.md
+    - GraphQL Schema: api/graphql-schema.md
+    - Rate Limiting: api/rate-limiting.md
+    - Error Responses: api/error-responses.md
+  - Integrations:
+    - integrations/index.md
+    - Better Auth: integrations/better-auth.md
+    - Google OAuth: integrations/google-oauth.md
+    - Brevo Email: integrations/brevo-email.md
+    - Cloudflare Turnstile: integrations/cloudflare-turnstile.md
+    - Gravatar: integrations/gravatar.md
+    - Redis Cache: integrations/redis-cache.md
+  - Deployment:
+    - deployment/index.md
+    - Vercel: deployment/vercel.md
+    - Cloudflare Pages: deployment/cloudflare-pages.md
+    - Render: deployment/render.md
+    - Neon Database: deployment/neon-database.md
+    - Upstash Redis: deployment/upstash-redis.md
+    - Environment Variables: deployment/environment-variables.md
+    - CI/CD: deployment/ci-cd.md
+    - Monitoring: deployment/monitoring.md
+  - ERP Modules:
+    - modules/index.md
+    - HR: modules/hr.md
+    - Finance: modules/finance.md
+    - Projects: modules/projects.md
+    - Employee Self-Service (ESS): modules/ess.md
+    - Platform Admin: modules/platform-admin.md
+  - Development:
+    - development/index.md
+    - Code Style: development/code-style.md
+    - Git Workflow: development/git-workflow.md
+    - Adding a Module: development/adding-a-module.md
+    - Adding an Endpoint: development/adding-an-api-endpoint.md
+    - Database Migrations: development/database-migrations.md
+    - Testing Guide: development/testing-guide.md
+    - Debugging: development/debugging.md
+  - Contributing:
+    - contributing/index.md
+    - How to Contribute: contributing/how-to-contribute.md
+    - Code of Conduct: contributing/code-of-conduct.md
+    - Pull Request Guidelines: contributing/pull-request-guidelines.md
+    - Release Process: contributing/release-process.md
+  - Reference:
+    - reference/index.md
+    - Package.json Scripts: reference/package-json-scripts.md
+    - Turborepo Config: reference/turborepo-config.md
+    - Environment Variables: reference/environment-variables-reference.md
+    - Troubleshooting: reference/troubleshooting-guide.md
+  - License: license.md
+
+extra_css:
+  - overrides/assets/stylesheets/404.css
+
+extra:
+  version:
+    provider: mike
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/VaibhavDaveDev/Atlas
+      name: GitHub Repository
+    - icon: fontawesome/solid/globe
+      link: https://atlas-cloud-erp.vercel.app
+      name: Live Demo
+  
+  analytics:
+    provider: google
+    property: G-XXXXXXXXXX
+    feedback:
+      title: Was this page helpful?
+      ratings:
+        - icon: material/emoticon-happy-outline
+          name: This page was helpful
+          data: 1
+          note: >-
+            Thanks for your feedback!
+        - icon: material/emoticon-sad-outline
+          name: This page could be improved
+          data: 0
+          note: >-
+            Thanks for your feedback! Help us improve by
+            <a href="https://github.com/VaibhavDaveDev/Atlas/issues/new" target="_blank">opening an issue</a>.
+  
+  consent:
+    title: Cookie consent
+    description: >-
+      We use cookies to recognize your repeated visits and preferences, as well
+      as to measure the effectiveness of our documentation and whether users
+      find what they're searching for. With your consent, you're helping us to
+      make our documentation better.
+
+copyright: >
+  Copyright &copy; 2026 Atlas Team |
+  <a href="#__consent">Change cookie settings</a> |
+  Licensed under <a href="https://www.gnu.org/licenses/agpl-3.0.en.html" target="_blank">AGPLv3</a>
