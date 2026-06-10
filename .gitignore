@@ -73,6 +73,7 @@ seed.ts.prod
 # Notes or Docs
 DEPLOYMENT_GUIDE.md
 Project_SRS.md
+docs-summary.json
 
 # Graphify
 graphify-out
@@ -88,3 +89,7 @@ apps/api/vitest.config.d.ts
 
 # Understand-anything
 .understand-anything
+
+scripts/kg-analysis.json
+scripts/analyze-kg.js
+scripts/extract-docs-data.js

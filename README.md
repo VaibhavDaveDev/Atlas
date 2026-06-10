@@ -24,7 +24,7 @@
   </p>
 
   <p align="center">
-    <a href="https://atlas-cloud-dusky.vercel.app">Live Demo</a> •
+    <a href="https://atlas-cloud-erp.vercel.app">Live Demo</a> •
     <a href="#getting-started">Getting Started</a> •
     <a href="#documentation">Documentation</a> •
     <a href="https://github.com/VaibhavDaveDev/Atlas/issues">Report Bug</a> •
@@ -266,8 +266,8 @@ Atlas ERP consists of several integrated modules:
 |---------|-----------|---------------------|
 | **Vercel** | Frontend (Next.js) | Yes |
 | **Render/Railway** | Backend (NestJS) | Yes |
-| **Neon** | PostgreSQL | Yes (10 GB) |
-| **Upstash** | Redis | Yes (10k commands/day) |
+| **Neon** | PostgreSQL | Yes |
+| **Upstash** | Redis | Yes |
 
 ### Quick Deploy
 
@@ -327,7 +327,7 @@ See the [LICENSE](LICENSE) file for full details.
 <div align="center">
   <p>Built by the Vaibhav Dave</p>
   <p>
-    <a href="https://atlas-cloud-dusky.vercel.app">Website</a> •
+    <a href="https://atlas-cloud-erp.vercel.app">Website</a> •
     <a href="https://github.com/VaibhavDaveDev/Atlas">GitHub</a> •
     <a href="https://github.com/VaibhavDaveDev/Atlas/issues">Issues</a>
   </p>

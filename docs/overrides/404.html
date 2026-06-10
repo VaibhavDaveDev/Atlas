@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="md-content" data-md-component="content">
+  <article class="md-content__inner md-typeset">
+    
+    <div style="text-align: center; padding: 3rem 1rem;">
+      <div style="font-size: 6rem; margin-bottom: 1rem;">🔍</div>
+      <h1>404 - Page Not Found</h1>
+      <p style="font-size: 1.2rem; color: var(--md-default-fg-color--light); margin-bottom: 2rem;">
+        The page you're looking for doesn't exist or may have been moved.
+      </p>
+    </div>
+
+    <div class="grid cards" markdown>
+
+    -   :house:{ .lg .middle } __Start from the Beginning__
+
+        ---
+
+        Visit our [home page]({{ config.site_url }}) to explore the documentation from the start.
+
+        [:octicons-arrow-right-24: Go to Home]({{ config.site_url }})
+
+    -   :books:{ .lg .middle } __Browse Documentation__
+
+        ---
+
+        Explore our comprehensive documentation sections:
+
+        - [Getting Started]({{ config.site_url }}/getting-started/)
+        - [Architecture]({{ config.site_url }}/architecture/)
+        - [API Reference]({{ config.site_url }}/api/)
+        - [ERP Modules]({{ config.site_url }}/modules/)
+
+    -   :mag:{ .lg .middle } __Try Searching__
+
+        ---
+
+        Use the search bar at the top of this page to find specific topics, modules, or guides.
+
+        Press <kbd>/</kbd> or <kbd>S</kbd> to focus the search
+
+    -   :bug:{ .lg .middle } __Report an Issue__
+
+        ---
+
+        Found a broken link? Help us improve by reporting it.
+
+        [:octicons-issue-opened-24: Open an Issue]({{ config.repo_url }}/issues/new)
+
+    </div>
+
+    <hr style="margin: 3rem 0;">
+
+    <div class="admonition tip" style="margin-top: 2rem;">
+      <p class="admonition-title">Quick Links</p>
+      <ul>
+        <li><a href="{{ config.site_url }}/getting-started/installation/">Installation Guide</a> - Get Atlas ERP up and running</li>
+        <li><a href="{{ config.site_url }}/development/adding-a-module/">Adding a Module</a> - Extend Atlas with custom modules</li>
+        <li><a href="{{ config.site_url }}/deployment/">Deployment Options</a> - Deploy to production</li>
+        <li><a href="{{ config.site_url }}/api/rest-endpoints/">API Documentation</a> - REST endpoint reference</li>
+        <li><a href="{{ config.site_url }}/reference/troubleshooting-guide/">Troubleshooting</a> - Common issues and solutions</li>
+      </ul>
+    </div>
+
+    <div style="text-align: center; margin-top: 3rem; padding: 2rem; background: var(--md-code-bg-color); border-radius: 0.5rem;">
+      <p style="margin: 0; color: var(--md-default-fg-color--light);">
+        <em>Still can't find what you're looking for?</em><br>
+        Check out our <a href="{{ config.repo_url }}">GitHub repository</a> or 
+        <a href="{{ config.repo_url }}/discussions">start a discussion</a>.
+      </p>
+    </div>
+
+  </article>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+  // Log 404 for analytics if available
+  if (typeof gtag !== 'undefined') {
+    gtag('event', 'page_not_found', {
+      'page_location': window.location.href,
+      'page_path': window.location.pathname
+    });
+  }
+  
+  // Show helpful suggestion based on URL
+  document.addEventListener('DOMContentLoaded', function() {
+    const path = window.location.pathname;
+    const searchParams = new URLSearchParams(window.location.search);
+    
+    // If there's a clear typo or pattern, suggest correction
+    if (path.includes('/doc/') && !path.includes('/docs/')) {
+      console.log('Possible typo detected in URL');
+    }
+  });
+</script>
+{% endblock %}
