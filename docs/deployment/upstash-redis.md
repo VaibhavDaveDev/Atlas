@@ -1,3 +1,15 @@
+---
+title: Setting up Upstash Redis
+description: Configure serverless Redis for Atlas ERP caching and job queues using Upstash with TLS/SSL connection
+tags:
+  - deployment
+  - redis
+  - upstash
+  - serverless
+  - caching
+  - queues
+---
+
 # Setting up Upstash Redis
 
 [Upstash](https://upstash.com/) provides Serverless Redis with per-request pricing, which is ideal for the caching and queueing needs of Atlas ERP.

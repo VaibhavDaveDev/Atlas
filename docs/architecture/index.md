@@ -1,3 +1,13 @@
+---
+title: Architecture Documentation
+description: Atlas ERP architecture documentation covering system design, technical decisions, multi-tenancy, and cloud-native patterns
+tags:
+  - architecture
+  - overview
+  - system-design
+  - documentation
+---
+
 # Architecture
 
 Welcome to the Atlas ERP Architecture documentation. This section covers the core system design, technical decisions, and patterns used throughout the application.

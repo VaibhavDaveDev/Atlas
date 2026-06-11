@@ -228,6 +228,7 @@ nav:
     - Environment Variables: reference/environment-variables-reference.md
     - Troubleshooting: reference/troubleshooting-guide.md
     - Glossary: reference/glossary.md
+    - Tags: reference/tags.md
   - License: license.md
 
 extra_css:

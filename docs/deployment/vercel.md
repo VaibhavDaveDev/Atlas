@@ -1,3 +1,14 @@
+---
+title: Deploying to Vercel
+description: Step-by-step guide to deploy Atlas ERP Next.js frontend to Vercel with custom domains and environment configuration
+tags:
+  - deployment
+  - vercel
+  - nextjs
+  - frontend
+  - hosting
+---
+
 # Deploying to Vercel
 
 [Vercel](https://vercel.com) is the creators of Next.js and provides the best out-of-the-box experience for deploying the Atlas ERP frontend (`apps/web`).

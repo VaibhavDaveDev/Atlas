@@ -1,3 +1,15 @@
+---
+title: Deploying to Cloudflare Pages
+description: Deploy Atlas ERP Next.js frontend to Cloudflare Pages with edge caching, environment configuration, and custom domains
+tags:
+  - deployment
+  - cloudflare
+  - nextjs
+  - frontend
+  - hosting
+  - edge
+---
+
 # Deploying to Cloudflare Pages
 
 [Cloudflare Pages](https://pages.cloudflare.com/) is an excellent alternative to Vercel for deploying the Next.js frontend, offering fast edge caching and a generous free tier.

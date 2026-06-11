@@ -1,3 +1,15 @@
+---
+title: Deploying to Render
+description: Deploy Atlas ERP NestJS backend API to Render using Docker, including environment configuration and database migrations
+tags:
+  - deployment
+  - render
+  - nestjs
+  - backend
+  - docker
+  - hosting
+---
+
 # Deploying to Render
 
 [Render](https://render.com) is an excellent Platform-as-a-Service (PaaS) for deploying the NestJS Backend (`apps/api`). It supports Docker and native Node.js environments.

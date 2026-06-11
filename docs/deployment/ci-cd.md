@@ -1,3 +1,15 @@
+---
+title: CI/CD Pipeline
+description: Automated continuous integration and deployment for Atlas ERP using GitHub Actions, including linting, testing, and deployment workflows
+tags:
+  - deployment
+  - ci-cd
+  - github-actions
+  - automation
+  - testing
+  - continuous-integration
+---
+
 # CI/CD Pipeline
 
 Atlas ERP uses GitHub Actions to automate linting, testing, and deployment.

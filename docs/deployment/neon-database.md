@@ -1,3 +1,15 @@
+---
+title: Setting up Neon Database
+description: Configure serverless PostgreSQL database for Atlas ERP using Neon, including connection strings, schema migrations, and database branching
+tags:
+  - deployment
+  - database
+  - neon
+  - postgresql
+  - serverless
+  - migrations
+---
+
 # Setting up Neon Database
 
 [Neon](https://neon.tech) is a serverless Postgres platform that separates storage and compute. It offers branching, auto-scaling, and a generous free tier, making it perfect for Atlas ERP.

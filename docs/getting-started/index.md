@@ -1,3 +1,13 @@
+---
+title: Getting Started with Atlas ERP
+description: Complete guide to set up Atlas ERP locally including prerequisites, installation, environment configuration, and deployment
+tags:
+  - getting-started
+  - setup
+  - installation
+  - quick-start
+---
+
 # Getting Started with Atlas ERP
 
 Welcome to the Atlas ERP Getting Started guide! This section will walk you through the process of setting up Atlas ERP on your local machine for development or evaluation purposes.

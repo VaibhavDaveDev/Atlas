@@ -1,3 +1,16 @@
+---
+title: Production Monitoring
+description: Monitor Atlas ERP in production using Grafana, Loki, Sentry, and APM tools for error tracking and performance monitoring
+tags:
+  - deployment
+  - monitoring
+  - observability
+  - grafana
+  - loki
+  - sentry
+  - apm
+---
+
 # Production Monitoring
 
 Monitoring your Atlas ERP instance is critical for detecting issues before users notice them.

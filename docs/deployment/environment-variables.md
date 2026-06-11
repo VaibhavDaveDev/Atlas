@@ -1,3 +1,14 @@
+---
+title: Environment Variables in Production
+description: Secure management of production environment variables for Atlas ERP backend and frontend, including secrets rotation
+tags:
+  - deployment
+  - configuration
+  - environment-variables
+  - security
+  - secrets
+---
+
 # Environment Variables in Production
 
 Managing secrets securely is a critical part of deploying Atlas ERP. 

@@ -1,3 +1,14 @@
+---
+title: Third-Party Integrations
+description: Configure and use third-party services including Better Auth, Google OAuth, Brevo Email, Cloudflare Turnstile, and Redis
+tags:
+  - integrations
+  - third-party
+  - authentication
+  - email
+  - oauth
+---
+
 # Integrations
 
 Atlas ERP leverages several powerful third-party services to provide enterprise-grade features without reinventing the wheel. This section covers how to configure and use these integrations.
