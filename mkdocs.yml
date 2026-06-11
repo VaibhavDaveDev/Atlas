@@ -60,7 +60,7 @@ plugins:
       separator: '[\s\-,:!=\[\]()"/]+|(?!\b)(?=[A-Z][a-z])|\.(?!\d)|&[lg]t;'
       lang:
         - en
-  - tags  # Removed tags_file option (deprecated)
+  # - tags  # Disabled until needed
   - git-revision-date-localized:
       enable_creation_date: true
       type: timeago
