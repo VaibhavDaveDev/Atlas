@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Bell, Search, LogOut, User, ChevronDown, Menu } from 'lucide-react';
+import { Bell, Search, LogOut, User, ChevronDown, Menu, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +35,24 @@ export function Topbar({ setMobileOpen }: { setMobileOpen?: React.Dispatch<React
 
       {/* Right — notifications + user menu */}
       <div className="flex items-center gap-1">
+        {/* Documentation Link */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-[#626260] dark:text-[#a1a1aa] hover:text-[#111111] dark:hover:text-[#f4f4f5] hover:bg-[#e8e4dc] dark:hover:bg-[#18181b] rounded-lg"
+          asChild
+        >
+          <a 
+            href="https://atlas-erp-docs.pages.dev" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            aria-label="Documentation"
+            title="View Documentation"
+          >
+            <BookOpen className="h-4 w-4" />
+          </a>
+        </Button>
+
         <NotificationCenter />
 
         {/* User dropdown */}
@@ -71,6 +89,17 @@ export function Topbar({ setMobileOpen }: { setMobileOpen?: React.Dispatch<React
               </>
             )}
             <div className="p-1">
+              <DropdownMenuItem asChild>
+                <a 
+                  href="https://atlas-erp-docs.pages.dev" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="flex w-full items-center cursor-pointer rounded-lg px-2 py-1.5 text-xs font-medium text-[#111111] dark:text-[#f4f4f5] focus:bg-[#f5f1ec] dark:focus:bg-[#1c1c1f]"
+                >
+                  <BookOpen className="mr-2.5 h-3.5 w-3.5 text-[#7b7b78] dark:text-[#71717a]" />
+                  Documentation
+                </a>
+              </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/dashboard/settings" className="flex w-full items-center cursor-pointer rounded-lg px-2 py-1.5 text-xs font-medium text-[#111111] dark:text-[#f4f4f5] focus:bg-[#f5f1ec] dark:focus:bg-[#1c1c1f]">
                   <User className="mr-2.5 h-3.5 w-3.5 text-[#7b7b78] dark:text-[#71717a]" />

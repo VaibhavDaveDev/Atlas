@@ -68,11 +68,19 @@ export default function HomePage() {
           </Link>
 
           {/* Nav actions */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <a 
+              href="https://atlas-erp-docs.pages.dev" 
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden sm:inline-block text-sm font-semibold text-[#626260] dark:text-[#a1a1aa] hover:text-[#111111] dark:hover:text-[#f4f4f5] transition-colors"
+            >
+              Docs
+            </a>
             <ThemeToggle />
             <Link 
               href="/login" 
-              className="text-sm font-semibold text-[#626260] dark:text-[#a1a1aa] hover:text-[#111111] dark:hover:text-[#f4f4f5] transition-colors"
+              className="hidden sm:inline-block text-sm font-semibold text-[#626260] dark:text-[#a1a1aa] hover:text-[#111111] dark:hover:text-[#f4f4f5] transition-colors"
             >
               Sign In
             </Link>
@@ -279,6 +287,14 @@ export default function HomePage() {
             <span>© 2026 Atlas Inc. All rights reserved.</span>
           </div>
           <div className="flex flex-wrap justify-center gap-x-8 gap-y-4">
+            <a 
+              href="https://atlas-erp-docs.pages.dev" 
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-[#4f46e5] dark:hover:text-[#818cf8] transition-colors"
+            >
+              Documentation
+            </a>
             <a href="mailto:workspace.atlas@protonmail.com" className="hover:text-[#4f46e5] dark:hover:text-[#818cf8] transition-colors">
               Contact
             </a>

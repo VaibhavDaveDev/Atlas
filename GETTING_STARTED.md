@@ -1,10 +1,16 @@
 # Getting Started with Atlas ERP
 
+> 📚 **Complete Documentation:** For the most up-to-date and comprehensive guides, visit our [official documentation](https://atlas-erp-docs.pages.dev)
+
+This guide will help you set up Atlas ERP on your local machine for development.
+
 ## Prerequisites Installation
 
 Logo and related assets can be found in Atlas\apps\web\src\app\favicon 
 ### 1. Install Node.js (if not already installed)
 Download and install Node.js 222 LTS from: https://nodejs.org/
+
+> 📖 **Detailed Prerequisites:** See our [Prerequisites Guide](https://atlas-erp-docs.pages.dev/getting-started/prerequisites/) for complete system requirements.
 
 Verify installation:
 ```bash
@@ -183,6 +189,8 @@ For detailed API usage, refer to the [Gravatar REST API Documentation](https://d
 
 ## Project Setup
 
+> 📖 **Complete Installation Guide:** For detailed instructions with troubleshooting, see [Installation Documentation](https://atlas-erp-docs.pages.dev/getting-started/installation/)
+
 ### Step 1: Navigate to Project Directory
 
 **IMPORTANT:** All commands must be run from the ROOT project directory!
@@ -234,6 +242,8 @@ Done in Xs
 **⚠️ If you see "node_modules missing" error, you MUST run `pnpm install` first!**
 
 ### Step 2: Set Up Environment Variables
+
+> 📖 **Environment Configuration:** For complete environment variable reference, see [Environment Variables Guide](https://atlas-erp-docs.pages.dev/getting-started/environment-variables/)
 
 #### 2.1 Root Environment
 ```bash
@@ -529,6 +539,8 @@ Opens http://localhost:5555 - you can browse and edit database records.
 
 ## Common Issues & Solutions
 
+> 📖 **Troubleshooting Guide:** For more solutions, see [Troubleshooting Documentation](https://atlas-erp-docs.pages.dev/getting-started/troubleshooting/)
+
 ### Issue 1: "pnpm: command not found"
 **Solution:** Install pnpm globally:
 ```bash
@@ -786,10 +798,14 @@ Once all checkboxes are complete, you're ready to start development!
 
 ## Getting Help
 
+> 📚 **Documentation Hub:** Visit [https://atlas-erp-docs.pages.dev](https://atlas-erp-docs.pages.dev) for comprehensive guides
+
 - **Documentation:** Check `README.md`, `SETUP.md`, `PERMISSIONS.md`
+- **Online Docs:** [https://atlas-erp-docs.pages.dev](https://atlas-erp-docs.pages.dev)
 - **API Docs:** http://localhost:3001/api/docs (when running)
 - **Database GUI:** `pnpm db:studio`
 - **Logs:** Check terminal output for errors
+- **Issues:** [GitHub Issues](https://github.com/VaibhavDaveDev/Atlas/issues)
 
 ---
 

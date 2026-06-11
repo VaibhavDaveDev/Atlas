@@ -25,12 +25,25 @@
 
   <p align="center">
     <a href="https://atlas-cloud-erp.vercel.app">Live Demo</a> •
+    <a href="https://atlas-erp-docs.pages.dev">📚 Documentation</a> •
     <a href="#getting-started">Getting Started</a> •
-    <a href="#documentation">Documentation</a> •
     <a href="https://github.com/VaibhavDaveDev/Atlas/issues">Report Bug</a> •
     <a href="https://github.com/VaibhavDaveDev/Atlas/issues">Request Feature</a>
   </p>
 </div>
+
+---
+
+## 📚 Documentation
+
+**[View Complete Documentation →](https://atlas-erp-docs.pages.dev)**
+
+Our comprehensive documentation covers:
+- **[Getting Started](https://atlas-erp-docs.pages.dev/getting-started/)** - Installation and setup guides
+- **[Architecture](https://atlas-erp-docs.pages.dev/architecture/)** - System design and technical decisions
+- **[API Reference](https://atlas-erp-docs.pages.dev/api/)** - REST and GraphQL API documentation
+- **[Deployment](https://atlas-erp-docs.pages.dev/deployment/)** - Production deployment guides
+- **[Development](https://atlas-erp-docs.pages.dev/development/)** - Contributing and development workflow
 
 ---
 
@@ -170,6 +183,8 @@ The application will be available at:
 - **Frontend:** http://localhost:3000
 - **Backend API:** http://localhost:3001
 
+> 💡 **Tip:** For detailed setup instructions, troubleshooting, and environment configuration, see our [complete installation guide](https://atlas-erp-docs.pages.dev/getting-started/installation/).
+
 ### Configuration
 
 #### Backend (`apps/api/.env`)
@@ -207,6 +222,8 @@ NEXT_PUBLIC_API_URL="http://localhost:3001"
 ```
 
 See `.env.example` files for complete configuration options.
+
+> 📖 **Full configuration guide:** [Environment Variables Reference](https://atlas-erp-docs.pages.dev/reference/environment-variables-reference/)
 
 ---
 
@@ -256,6 +273,8 @@ Atlas ERP consists of several integrated modules:
 | **Projects** | In Development | Project management, task tracking, time logging |
 | **AI/ML** | Planned | Forecasting, anomaly detection, predictive analytics |
 
+> 📖 **Learn more:** [ERP Modules Documentation](https://atlas-erp-docs.pages.dev/modules/)
+
 ---
 
 ## Deployment
@@ -268,6 +287,8 @@ Atlas ERP consists of several integrated modules:
 | **Render/Railway** | Backend (NestJS) | Yes |
 | **Neon** | PostgreSQL | Yes |
 | **Upstash** | Redis | Yes |
+
+> 📖 **Detailed deployment guides:** [Deployment Documentation](https://atlas-erp-docs.pages.dev/deployment/)
 
 ### Quick Deploy
 
@@ -312,6 +333,8 @@ Please ensure:
 - Commit messages are clear and descriptive
 - Documentation is updated as needed
 
+> 📖 **Contributing Guide:** [How to Contribute](https://atlas-erp-docs.pages.dev/contributing/)
+
 ---
 
 ## License
@@ -325,9 +348,10 @@ See the [LICENSE](LICENSE) file for full details.
 ---
 
 <div align="center">
-  <p>Built by the Vaibhav Dave</p>
+  <p>Built by Vaibhav Dave</p>
   <p>
     <a href="https://atlas-cloud-erp.vercel.app">Website</a> •
+    <a href="https://atlas-erp-docs.pages.dev">Documentation</a> •
     <a href="https://github.com/VaibhavDaveDev/Atlas">GitHub</a> •
     <a href="https://github.com/VaibhavDaveDev/Atlas/issues">Issues</a>
   </p>

@@ -1,7 +1,7 @@
 site_name: Atlas ERP Documentation
 site_description: Complete developer documentation for Atlas ERP - cloud ERP suite
 site_author: Atlas Team
-site_url: https://docs-atlas.vercel.app
+site_url: https://atlas-erp-docs.pages.dev
 repo_url: https://github.com/VaibhavDaveDev/Atlas
 repo_name: VaibhavDaveDev/Atlas
 edit_uri: edit/main/docs/

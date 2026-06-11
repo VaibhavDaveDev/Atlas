@@ -3,6 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "description": "AI-Powered Cloud ERP Suite",
+  "homepage": "https://atlas-erp-docs.pages.dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/VaibhavDaveDev/Atlas"
+  },
+  "bugs": {
+    "url": "https://github.com/VaibhavDaveDev/Atlas/issues"
+  },
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
