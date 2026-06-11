@@ -1,3 +1,16 @@
+---
+title: Backend Architecture
+description: NestJS backend API architecture for Atlas ERP, including modular design, dependency injection, DTOs, and Prisma ORM integration
+tags:
+  - backend
+  - nestjs
+  - api
+  - architecture
+  - modules
+  - prisma
+  - typescript
+---
+
 # Backend Architecture
 
 The backend of Atlas ERP is a monolithic REST/GraphQL API built with **NestJS 11**. It is responsible for handling all business logic, database interactions, authentication, and background job processing.

@@ -60,7 +60,7 @@ plugins:
       separator: '[\s\-,:!=\[\]()"/]+|(?!\b)(?=[A-Z][a-z])|\.(?!\d)|&[lg]t;'
       lang:
         - en
-  # - tags  # Disabled until needed
+  - tags
   - git-revision-date-localized:
       enable_creation_date: true
       type: timeago
@@ -227,6 +227,7 @@ nav:
     - Turborepo Config: reference/turborepo-config.md
     - Environment Variables: reference/environment-variables-reference.md
     - Troubleshooting: reference/troubleshooting-guide.md
+    - Glossary: reference/glossary.md
   - License: license.md
 
 extra_css:
@@ -268,6 +269,14 @@ extra:
       as to measure the effectiveness of our documentation and whether users
       find what they're searching for. With your consent, you're helping us to
       make our documentation better.
+    actions:
+      - accept
+      - reject
+      - manage
+    cookies:
+      analytics:
+        name: Google Analytics
+        checked: true
 
 copyright: >
   Copyright &copy; 2026 Atlas Team |

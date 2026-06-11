@@ -1,3 +1,15 @@
+---
+title: API Reference
+description: Complete REST and GraphQL API documentation for Atlas ERP, including authentication, endpoints, rate limiting, and error handling
+tags:
+  - api
+  - rest
+  - graphql
+  - authentication
+  - endpoints
+  - reference
+---
+
 # API Reference
 
 Welcome to the Atlas ERP API Reference. The backend exposes a comprehensive, RESTful API (built with NestJS) that powers the frontend application and can be used for third-party integrations.

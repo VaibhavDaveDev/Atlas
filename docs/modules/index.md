@@ -1,3 +1,16 @@
+---
+title: ERP Modules Overview
+description: Overview of Atlas ERP business modules including HR, Finance, Projects, Employee Self-Service (ESS), and Platform Administration
+tags:
+  - modules
+  - erp
+  - hr
+  - finance
+  - projects
+  - ess
+  - features
+---
+
 # ERP Modules
 
 Atlas ERP is composed of several business-domain modules. Each module provides specific functionality while seamlessly integrating with the others.

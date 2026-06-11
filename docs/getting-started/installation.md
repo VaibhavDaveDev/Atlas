@@ -1,3 +1,14 @@
+---
+title: Installation Guide
+description: Step-by-step guide to install Atlas ERP on your local machine, including dependencies, database setup, and running development servers
+tags:
+  - getting-started
+  - installation
+  - setup
+  - development
+  - local-setup
+---
+
 # Installation
 
 Follow these steps to install and set up Atlas ERP on your local machine.

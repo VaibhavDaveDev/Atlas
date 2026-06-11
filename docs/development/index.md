@@ -1,3 +1,16 @@
+---
+title: Development Guide
+description: Developer guide for Atlas ERP including code style, git workflow, adding modules and endpoints, database migrations, and testing
+tags:
+  - development
+  - guide
+  - coding
+  - best-practices
+  - workflow
+  - testing
+  - debugging
+---
+
 # Development Guide
 
 Welcome to the Development section. These guides are meant for software engineers who are actively writing code for Atlas ERP.

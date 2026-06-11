@@ -1,3 +1,17 @@
+---
+title: Prerequisites
+description: Required software and services needed before installing Atlas ERP including Node.js, pnpm, PostgreSQL, Redis, and third-party service accounts
+tags:
+  - getting-started
+  - prerequisites
+  - setup
+  - requirements
+  - installation
+  - node
+  - postgresql
+  - redis
+---
+
 # Prerequisites
 
 Before installing Atlas ERP, ensure you have the following installed on your system.

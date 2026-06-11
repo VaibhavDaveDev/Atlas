@@ -43,7 +43,7 @@ model Project {
 It is critical that Tenant A cannot access Tenant B's data. This is enforced at the API layer.
 
 ### 1. The Workspace Context
-When a user logs in, they select an active workspace. The backend issues a JWT that includes the `workspaceId`. 
+When a user logs in, they select an active workspace. The backend manages this context either through Better Auth's Organization plugin or by issuing a workspace-specific JWT (legacy flow). 
 
 ### 2. The Workspace Guard
 Every API endpoint that deals with tenant-specific data is protected by the `WorkspaceGuard`.

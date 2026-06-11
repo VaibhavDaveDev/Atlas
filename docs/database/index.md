@@ -1,3 +1,16 @@
+---
+title: Database Architecture
+description: Atlas ERP database architecture using PostgreSQL and Prisma ORM, including schema design, migrations, multi-tenancy, and data seeding
+tags:
+  - database
+  - postgresql
+  - prisma
+  - schema
+  - migrations
+  - multi-tenancy
+  - orm
+---
+
 # Database Architecture
 
 Atlas ERP uses **PostgreSQL** as its primary relational database, managed via the **Prisma ORM**.

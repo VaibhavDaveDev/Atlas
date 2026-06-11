@@ -1,3 +1,17 @@
+---
+title: Deployment Guide
+description: Deploy Atlas ERP to production using Vercel, Render, Neon Database, and Upstash Redis. Complete guide for frontend, backend, database, and cache deployment
+tags:
+  - deployment
+  - production
+  - vercel
+  - render
+  - neon
+  - upstash
+  - hosting
+  - ci-cd
+---
+
 # Deployment
 
 Atlas ERP uses a modern, decoupled architecture (Next.js frontend + NestJS backend), which gives you maximum flexibility when choosing where to deploy.

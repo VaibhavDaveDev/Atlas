@@ -1,3 +1,14 @@
+---
+title: Contributing to Atlas ERP
+description: Guide for contributing to Atlas ERP including how to report bugs, submit fixes, propose features, and follow our pull request guidelines
+tags:
+  - contributing
+  - community
+  - pull-request
+  - code-of-conduct
+  - open-source
+---
+
 # Contributing to Atlas ERP
 
 We love your input! We want to make contributing to Atlas ERP as easy and transparent as possible, whether it's:
