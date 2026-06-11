@@ -1,3 +1,15 @@
+---
+title: Architecture Overview
+description: Understanding Atlas ERP's multi-tenant, cloud-native architecture, including monorepo structure, API-first design, and asynchronous processing
+tags:
+  - architecture
+  - design
+  - multi-tenant
+  - cloud-native
+  - system-design
+  - monorepo
+---
+
 # Architecture Overview
 
 Atlas ERP is designed as a modern, cloud-native Enterprise Resource Planning system. It leverages a multi-tier architecture to ensure scalability, security, and developer productivity.
@@ -16,8 +28,8 @@ The backend is a standalone NestJS application that exposes a robust REST (and G
 ### 4. Asynchronous Processing
 Heavy operations (such as sending emails, generating reports, or processing payroll) are offloaded to background queues using BullMQ and Redis, keeping the main HTTP request-response cycle fast.
 
-### 5. Stateless Authentication
-Authentication relies on stateless JWTs and Better Auth, allowing the backend to scale horizontally without sticky sessions. Redis is used for token blacklisting and rate limiting.
+### 5. Authentication & Session Management
+Authentication relies on Better Auth with stateful sessions. Sessions are stored in the PostgreSQL database and actively cached in Redis to maintain fast validation times and manage session limits, rate limits, and OTP cooldowns.
 
 ## High-Level Components
 

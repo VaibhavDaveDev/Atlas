@@ -2,15 +2,29 @@
 
 Atlas ERP uses [BullMQ](https://docs.bullmq.io/) backed by Redis for handling asynchronous background jobs. This architecture prevents heavy, time-consuming operations from blocking the main API threads, ensuring the system remains responsive.
 
-## Queue Architecture
+## BullMQ Job Processing
 
 ```mermaid
-graph LR
-    API[NestJS API (Producers)] -->|Add Job| Redis[(Redis)]
-    Redis -->|Pop Job| Worker1[BullMQ Worker (Email)]
-    Redis -->|Pop Job| Worker2[BullMQ Worker (Reports)]
-    Worker1 -->|Status| Redis
-    Worker2 -->|Status| Redis
+sequenceDiagram
+    participant API as NestJS API (Producer)
+    participant Redis as Redis Queue
+    participant Worker as BullMQ Worker (Consumer)
+    participant DB as Postgres
+    
+    API->>Redis: Job.add('process', data)
+    Redis-->>API: Return Job ID
+    
+    Note over Worker,Redis: Worker polls for jobs
+    Redis->>Worker: Pop Job
+    
+    Worker->>Worker: Execute process()
+    Worker->>DB: Update application state
+    
+    alt Success
+        Worker->>Redis: Mark Job as Completed
+    else Failure
+        Worker->>Redis: Mark Job as Failed (retry rules apply)
+    end
 ```
 
 ## Use Cases for Background Jobs

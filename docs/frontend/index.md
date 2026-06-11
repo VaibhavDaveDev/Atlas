@@ -1,3 +1,16 @@
+---
+title: Frontend Architecture
+description: Next.js 15 frontend architecture using React 19, App Router, TailwindCSS, and Zustand for building a responsive ERP interface
+tags:
+  - frontend
+  - nextjs
+  - react
+  - tailwindcss
+  - zustand
+  - ui
+  - app-router
+---
+
 # Frontend Architecture
 
 The frontend of Atlas ERP is built using **Next.js 15** with the **App Router**, leveraging **React 19** capabilities. It provides a fast, responsive, and highly interactive user interface designed with TailwindCSS and shadcn/ui.

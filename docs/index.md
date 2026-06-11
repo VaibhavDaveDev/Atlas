@@ -1,3 +1,14 @@
+---
+title: Atlas ERP Documentation
+description: Complete developer documentation for Atlas ERP - a multi-tenant cloud ERP suite built with Next.js, NestJS, and Prisma ORM
+tags:
+  - home
+  - overview
+  - getting-started
+  - erp
+  - multi-tenant
+---
+
 # Atlas ERP Documentation
 
 Welcome to the official documentation for **Atlas ERP** — a multi-tenant cloud ERP suite built for modern businesses.
@@ -10,6 +21,49 @@ Atlas ERP is an open-source, cloud-native Enterprise Resource Planning system th
 - **Modular Architecture** — HR, Payroll, Finance, Projects
 - **Modern Stack** — Built with Next.js 15, NestJS 11, and Prisma ORM
 - **Developer-First** — Full API access, comprehensive documentation
+
+## ⚡ Quick Reference
+
+<div class="grid cards" markdown>
+
+-   :material-console:{ .lg .middle } __Common Commands__
+
+    ---
+
+    ```bash
+    # Install dependencies
+    pnpm install
+    
+    # Start development servers
+    pnpm dev
+    
+    # Run database migrations
+    pnpm db:migrate
+    
+    # Seed database
+    pnpm db:seed
+    
+    # Build for production
+    pnpm build
+    
+    # Run tests
+    pnpm test
+    ```
+    
+    [:octicons-arrow-right-24: All Commands](reference/package-json-scripts.md)
+
+-   :material-book-open-variant:{ .lg .middle } __Quick Links__
+
+    ---
+
+    - [Installation Guide](getting-started/installation.md)
+    - [Environment Setup](getting-started/environment-variables.md)
+    - [API Authentication](api/authentication.md)
+    - [Database Schema](database/schema.md)
+    - [Troubleshooting](reference/troubleshooting-guide.md)
+    - [Glossary](reference/glossary.md)
+
+</div>
 
 ## 📚 Quick Navigation
 

@@ -5,32 +5,46 @@ Atlas ERP uses [Better Auth](https://better-auth.com/) as its core authenticatio
 ## Core Concepts
 
 Better Auth provides a comprehensive set of features out-of-the-box:
-- **Stateless Tokens (JWT):** For fast, scalable API authorization.
-- **Session Management:** Stored in Redis (or PostgreSQL) to allow forced logouts and device management.
+- **Stateful Sessions:** Stored in PostgreSQL via Prisma with `storeSessionInDatabase: true`.
+- **Secondary Storage Caching:** Integrated with Redis to accelerate session validation and manage OTP cooldowns.
 - **OAuth Providers:** Easy integration with Google, Microsoft, GitHub, etc.
-- **Two-Factor Authentication (2FA):** Support for TOTP.
-- **Magic Links:** Passwordless login options.
+- **Two-Factor Authentication (2FA):** Support for TOTP via authenticator apps.
+- **Magic Links & Email OTP:** Passwordless login options and email verification workflows.
 
 ## Authentication Flow
 
 ```mermaid
 sequenceDiagram
-    participant Client as Frontend Browser
-    participant API as NestJS API (Auth Module)
+    participant User
+    participant Frontend as Next.js Web
+    participant API as NestJS API
+    participant Auth as Better Auth Service
     participant Redis as Redis Cache
     participant DB as PostgreSQL
-
-    Client->>API: POST /api/v1/auth/login
-    API->>DB: Verify credentials
-    API->>API: Generate Better Auth Session
-    API->>Redis: Store Session Data
-    API-->>Client: Set HttpOnly Cookies (Access/Refresh)
     
-    Note over Client,API: Subsequent Requests
-    Client->>API: GET /api/v1/projects (with Cookies)
-    API->>Redis: Validate Session
-    API->>API: Attach User to Request Context
-    API-->>Client: Return Data
+    User->>Frontend: Enter credentials
+    Frontend->>API: POST /api/v1/auth/sign-in/email
+    API->>Auth: Pass request to nodeHandler
+    Auth->>DB: Verify user credentials
+    DB-->>Auth: User matched
+    
+    Auth->>DB: Create AuthSession record
+    Auth->>Redis: Cache session in secondary storage
+    
+    Auth-->>API: Return session context
+    API-->>Frontend: Set HttpOnly Cookie (better-auth.session_token)
+    Frontend-->>User: Redirect to /dashboard
+    
+    Note over Frontend,API: Subsequent Authenticated Request
+    
+    Frontend->>API: GET /api/v1/projects (with Cookie)
+    API->>Auth: AuthGuard calls validateSession()
+    Auth->>Redis: Check session cache
+    Redis-->>Auth: Session valid
+    Auth-->>API: Attach user to Request context
+    API->>DB: Process request
+    DB-->>API: Return application data
+    API-->>Frontend: 200 OK with Data
 ```
 
 ## Integrating with NestJS

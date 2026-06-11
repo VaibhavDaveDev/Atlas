@@ -6,7 +6,7 @@ The Auth module is the core security perimeter of Atlas ERP. It handles user reg
 ## Responsibilities
 - User Registration and Email Verification
 - Login (Email/Password, OAuth, Magic Links)
-- Session Management (issuing and invalidating JWTs/Cookies)
+- Session Management (stateful sessions via Better Auth, caching in Redis)
 - Password Reset flows
 - Providing the custom `AuthGuard` and `WorkspaceGuard`
 - CAPTCHA validation via Cloudflare Turnstile
