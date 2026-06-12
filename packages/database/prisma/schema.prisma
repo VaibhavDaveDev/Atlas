@@ -243,7 +243,7 @@ enum TicketStatus {
 model AuthUser {
   id            String      @id @default(uuid(7))
   email         String      @unique
-  password      String
+  password      String?
   username      String?     @unique
   name          String?
   image         String?
