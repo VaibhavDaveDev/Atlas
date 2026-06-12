@@ -116,6 +116,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         console.error('[AuthContext] login error:', error);
         
+        // If email is not verified, redirect to verify-email page
+        if (error.code === 'EMAIL_NOT_VERIFIED' || error.message?.toLowerCase().includes('not verified')) {
+          router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+          return;
+        }
+
         // Provide user-friendly error messages
         let errorMessage = error.message || 'Login failed';
         
