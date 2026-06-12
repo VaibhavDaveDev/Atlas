@@ -122,7 +122,8 @@ export class EmailService {
         error instanceof Error ? error.stack : undefined,
         "EmailService",
       );
-      throw AppError.badRequest("Email sending failed, something went wrong!");
+      const errMsg = error instanceof Error ? error.message : String(error);
+      throw AppError.badRequest(`Email sending failed: ${errMsg}`);
     }
   }
 
