@@ -120,6 +120,7 @@ export class BetterAuthService {
       },
       emailAndPassword: {
         enabled: true,
+        requireEmailVerification: true,
         password: {
           hash: async (password) => {
             return await bcrypt.hash(password, 10);
