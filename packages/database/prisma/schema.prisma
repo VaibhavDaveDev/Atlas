@@ -248,6 +248,7 @@ model AuthUser {
   name          String?
   image         String?
   globalRole    GlobalRole  @default(USER)
+  isSuperAdmin  Boolean     @default(false)
   verified      Boolean     @default(false)
   emailVerified Boolean     @default(false)
   twoFactorEnabled Boolean  @default(false)
@@ -255,7 +256,13 @@ model AuthUser {
   tokenVersion  Int         @default(0)
   provider      String      @default("local")
   providerId    String?
-  
+
+  // Better Auth admin() plugin fields
+  role          String      @default("user")
+  banned        Boolean     @default(false)
+  banReason     String?
+  banExpires    DateTime?
+
   deletedAt     DateTime?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
