@@ -14,6 +14,11 @@ import { EmailProcessor } from "../queues/email/email.processor";
         port: parseInt(process.env.REDIS_PORT || "6379", 10),
         password: process.env.REDIS_PASSWORD,
         db: parseInt(process.env.REDIS_DB || "0", 10),
+        tls:
+          process.env.REDIS_HOST?.includes("upstash.io") ||
+          process.env.REDIS_TLS === "true"
+            ? { rejectUnauthorized: false }
+            : undefined,
       },
       prefix: `${config.redis_cache_key_prefix}:bull`,
     }),
