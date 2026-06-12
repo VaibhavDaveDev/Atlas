@@ -6,10 +6,15 @@ interface AppConfig {
   redis_cache_key_prefix: string;
   node_env: string;
   port: number;
-  // Brevo transactional email
-  brevo_api_key: string;
+  // Email provider switcher: "brevo" | "gmail" (default: "brevo")
+  email_provider: "brevo" | "gmail";
   email_from: string;
   email_from_name: string;
+  // Brevo transactional email
+  brevo_api_key: string;
+  // Gmail SMTP
+  gmail_user: string;
+  gmail_app_password: string;
   // Google OAuth
   google_client_id: string;
   google_client_secret: string;
@@ -27,10 +32,15 @@ const config: AppConfig = {
   redis_cache_key_prefix: process.env.REDIS_CACHE_KEY_PREFIX || "app",
   node_env: process.env.NODE_ENV || "development",
   port: parseInt(process.env.PORT || "5000", 10),
-  // Brevo — replaces Mailtrap/nodemailer SMTP
-  brevo_api_key: process.env.BREVO_API_KEY || "",
+  // Email provider: "gmail" uses nodemailer SMTP, "brevo" uses Brevo API (default)
+  email_provider: (process.env.EMAIL_PROVIDER as "brevo" | "gmail") || "brevo",
   email_from: process.env.EMAIL_FROM || "noreply@atlas-erp.com",
   email_from_name: process.env.EMAIL_FROM_NAME || "Atlas ERP",
+  // Brevo
+  brevo_api_key: process.env.BREVO_API_KEY || "",
+  // Gmail SMTP (needs an App Password, not your regular Gmail password)
+  gmail_user: process.env.GMAIL_USER || "",
+  gmail_app_password: process.env.GMAIL_APP_PASSWORD || "",
   // Google OAuth
   google_client_id: process.env.GOOGLE_CLIENT_ID || "",
   google_client_secret: process.env.GOOGLE_CLIENT_SECRET || "",

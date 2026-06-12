@@ -1,5 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { BrevoClient } from "@getbrevo/brevo";
+import * as nodemailer from "nodemailer";
+import { Transporter } from "nodemailer";
 import { promises as fs } from "fs";
 import * as path from "path";
 import config from "../config/app.config";
@@ -16,65 +18,107 @@ export interface EmailOptions {
 
 @Injectable()
 export class EmailService {
-  private readonly brevo: BrevoClient;
+  private readonly brevo: BrevoClient | null = null;
+  private readonly gmailTransporter: Transporter | null = null;
 
   constructor(private readonly customLogger: CustomLoggerService) {
-    if (!config.brevo_api_key) {
-      if (config.node_env === "production") {
-        throw new Error("Invalid email config: missing BREVO_API_KEY");
+    const provider = config.email_provider;
+
+    if (provider === "gmail") {
+      // ── Gmail SMTP via nodemailer ──────────────────────────────────────────
+      // Requires a Google "App Password" (not your normal Gmail password).
+      // Enable at: https://myaccount.google.com/apppasswords
+      if (!config.gmail_user || !config.gmail_app_password) {
+        if (config.node_env === "production") {
+          throw new Error(
+            "Invalid email config: EMAIL_PROVIDER=gmail but GMAIL_USER or GMAIL_APP_PASSWORD is missing.",
+          );
+        } else {
+          this.customLogger.warn(
+            "Gmail SMTP credentials missing. Email service will run in mock mode.",
+            "EmailService",
+          );
+        }
       } else {
-        this.customLogger.warn(
-          "BREVO_API_KEY is missing. Email service will run in mock mode (logging to console).",
+        this.gmailTransporter = nodemailer.createTransport({
+          service: "gmail",
+          auth: {
+            user: config.gmail_user,
+            pass: config.gmail_app_password,
+          },
+        });
+        this.customLogger.log(
+          `Email provider: Gmail SMTP (${config.gmail_user})`,
           "EmailService",
         );
       }
-    }
-
-    if (config.brevo_api_key) {
-      this.brevo = new BrevoClient({
-        apiKey: config.brevo_api_key,
-        maxRetries: 3,
-        timeoutInSeconds: 30,
-      });
+    } else {
+      // ── Brevo transactional API (default) ─────────────────────────────────
+      if (!config.brevo_api_key) {
+        if (config.node_env === "production") {
+          throw new Error(
+            "Invalid email config: EMAIL_PROVIDER=brevo but BREVO_API_KEY is missing.",
+          );
+        } else {
+          this.customLogger.warn(
+            "BREVO_API_KEY is missing. Email service will run in mock mode (logging to console).",
+            "EmailService",
+          );
+        }
+      } else {
+        this.brevo = new BrevoClient({
+          apiKey: config.brevo_api_key,
+          maxRetries: 3,
+          timeoutInSeconds: 30,
+        });
+        this.customLogger.log("Email provider: Brevo", "EmailService");
+      }
     }
   }
 
   /**
-   * Send an email via Brevo transactional API
+   * Send an email via the configured provider (Brevo or Gmail SMTP).
+   * Falls back to console logging if no provider is configured (dev mode).
    */
   async sendEmail(options: EmailOptions): Promise<void> {
-    this.customLogger.log(
-      `[MOCK EMAIL] To: ${options.to}, Subject: ${options.subject}`,
-      "EmailService",
-    );
-
-    if (!this.brevo) {
+    // Mock mode — no credentials configured
+    if (!this.brevo && !this.gmailTransporter) {
       this.customLogger.log(
-        `Email mock: Would have sent to ${options.to}`,
+        `[MOCK EMAIL] To: ${options.to} | Subject: ${options.subject}`,
         "EmailService",
       );
       return;
     }
 
     try {
-      await this.brevo.transactionalEmails.sendTransacEmail({
-        sender: {
-          name: config.email_from_name || "Atlas ERP",
-          email: config.email_from,
-        },
-        to: [{ email: options.to }],
-        subject: options.subject,
-        textContent: options.text,
-        htmlContent: options.html,
-      });
+      if (config.email_provider === "gmail" && this.gmailTransporter) {
+        await this.gmailTransporter.sendMail({
+          from: `"${config.email_from_name || "Atlas ERP"}" <${config.gmail_user}>`,
+          to: options.to,
+          subject: options.subject,
+          text: options.text,
+          html: options.html,
+        });
+      } else if (this.brevo) {
+        await this.brevo.transactionalEmails.sendTransacEmail({
+          sender: {
+            name: config.email_from_name || "Atlas ERP",
+            email: config.email_from,
+          },
+          to: [{ email: options.to }],
+          subject: options.subject,
+          textContent: options.text,
+          htmlContent: options.html,
+        });
+      }
 
       this.customLogger.log(
-        `Email sent successfully to: ${options.to}`,
+        `Email sent successfully to: ${options.to} (via ${config.email_provider})`,
         "EmailService",
       );
     } catch (error) {
       this.customLogger.error(
-        `Error sending email to ${options.to}`,
+        `Error sending email to ${options.to} (via ${config.email_provider})`,
         error instanceof Error ? error.stack : undefined,
         "EmailService",
       );

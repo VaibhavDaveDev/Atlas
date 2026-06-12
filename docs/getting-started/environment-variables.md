@@ -59,13 +59,26 @@ openssl rand -base64 32
 node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 ```
 
-### Email (Brevo)
+### Email Configuration
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `BREVO_API_KEY` | ✅ Yes | — | Brevo API key for transactional emails |
-| `EMAIL_FROM` | ✅ Yes | — | Sender email address (must be verified in Brevo) |
+| `EMAIL_PROVIDER` | ❌ No | `brevo` | The email provider to use: `brevo` or `gmail`. |
 | `EMAIL_FROM_NAME` | ❌ No | `Atlas ERP` | Sender display name |
+
+**Option A: Gmail SMTP (No domain needed)**
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `GMAIL_USER` | ✅ Yes* | — | Your Gmail address (e.g. `you@gmail.com`) |
+| `GMAIL_APP_PASSWORD`| ✅ Yes* | — | 16-character App Password (not normal password) |
+*\*Required if `EMAIL_PROVIDER=gmail`.*
+
+**Option B: Brevo (Recommended for production)**
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `BREVO_API_KEY` | ✅ Yes* | — | Brevo API key for transactional emails |
+| `EMAIL_FROM` | ✅ Yes* | — | Sender email address (must be verified in Brevo) |
+*\*Required if `EMAIL_PROVIDER=brevo`.*
 
 **Setup guide:** [Integrations → Brevo Email](../integrations/brevo-email.md)
 
@@ -201,9 +214,17 @@ REDIS_HOST="your-redis.upstash.io"
 REDIS_PORT="6379"
 REDIS_PASSWORD="<upstash-password>"
 
+# Email (Choose one provider)
+# Option A: Brevo (Recommended)
+EMAIL_PROVIDER="brevo"
 BREVO_API_KEY="<production-key>"
 EMAIL_FROM="noreply@yourapp.com"
 EMAIL_FROM_NAME="Your App"
+
+# Option B: Gmail SMTP
+# EMAIL_PROVIDER="gmail"
+# GMAIL_USER="<your-gmail>"
+# GMAIL_APP_PASSWORD="<app-password>"
 
 GOOGLE_CLIENT_ID="<google-client-id>"
 GOOGLE_CLIENT_SECRET="<google-secret>"
