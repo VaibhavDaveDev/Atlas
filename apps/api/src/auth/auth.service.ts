@@ -724,8 +724,8 @@ export class AuthService {
     }
 
     if (user.status === "DELETED" || user.status === "INACTIVE") {
-      // Run bcrypt to maintain consistent timing
-      await bcrypt.compare(password, user.password);
+      // Run bcrypt to maintain consistent timing (use fake hash — no real password needed here)
+      await bcrypt.compare(password, fakePasswordHash);
       throw invalidCredentialsError;
     }
 
@@ -750,6 +750,10 @@ export class AuthService {
     }
 
     // Verify password (bcrypt uses constant-time comparison internally)
+    if (!user.password) {
+      // No local password set — likely an OAuth account without a local password
+      throw AppError.badRequest(`Please login using ${user.provider} authentication`);
+    }
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
