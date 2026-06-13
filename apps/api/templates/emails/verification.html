@@ -18,15 +18,23 @@
     .code-label { font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
     .code { font-size: 40px; font-weight: 800; letter-spacing: 12px; color: #1a1a2e; font-family: 'Courier New', monospace; }
     .expiry { font-size: 12px; color: #aaa; margin-top: 8px; }
+    .spam-hint { font-size: 12px; color: #888; text-align: center; margin-bottom: 24px; padding: 10px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; }
     .divider { border: none; border-top: 1px solid #eee; margin: 24px 0; }
     .footer-text { font-size: 12px; color: #aaa; line-height: 1.6; text-align: center; }
-    .footer { background: #f8f9fc; padding: 20px 32px; text-align: center; }
-    .footer p { font-size: 11px; color: #bbb; }
+    .footer { background: #f8f9fc; padding: 32px; text-align: center; }
+    .footer p { font-size: 11px; color: #888; margin-bottom: 4px; }
+
+    @media only screen and (max-width: 600px) {
+      .wrapper { margin: 0 auto !important; border-radius: 0 !important; width: 100% !important; max-width: 100% !important; }
+      .header, .body, .footer { padding: 24px 20px !important; }
+      .code { font-size: 32px !important; letter-spacing: 8px !important; }
+    }
   </style>
 </head>
 <body>
   <div class="wrapper">
     <div class="header">
+      <img src="https://atlas-erp-docs.pages.dev/assets/logo.png" alt="Atlas ERP" style="height: 40px; margin-bottom: 8px;">
       <h1>Atlas ERP</h1>
       <p>Enterprise Resource Planning</p>
     </div>
@@ -42,6 +50,10 @@
         <div class="expiry">Expires in 24 hours</div>
       </div>
 
+      <div class="spam-hint">
+        💡 <strong>Tip:</strong> If you didn't receive this email in your inbox, please check your <strong>spam or junk</strong> folder.
+      </div>
+
       <p class="text">
         If you didn&apos;t create an account with Atlas ERP, you can safely ignore this email.
       </p>
@@ -52,7 +64,12 @@
       </p>
     </div>
     <div class="footer">
+      <p>This email was securely sent by <strong>Atlas ERP</strong> on behalf of your workspace.</p>
       <p>&copy; {{year}} Atlas ERP. All rights reserved.</p>
+      <p style="margin-top: 8px;">
+        <a href="https://atlas-erp-docs.pages.dev" style="color: #1a1a2e; text-decoration: underline; font-size: 11px;">Documentation</a> | 
+        <a href="https://github.com/VaibhavDaveDev/Atlas" style="color: #1a1a2e; text-decoration: underline; font-size: 11px;">GitHub</a>
+      </p>
     </div>
   </div>
 </body>

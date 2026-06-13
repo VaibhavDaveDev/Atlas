@@ -183,6 +183,7 @@ nav:
     - Error Responses: api/error-responses.md
   - Integrations:
     - integrations/index.md
+    - Atlas Mailer: integrations/atlas-mailer.md
     - Better Auth: integrations/better-auth.md
     - Google OAuth: integrations/google-oauth.md
     - Brevo Email: integrations/brevo-email.md

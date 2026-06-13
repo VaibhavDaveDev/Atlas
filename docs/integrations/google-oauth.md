@@ -2,6 +2,9 @@
 
 Atlas ERP supports Single Sign-On (SSO) via Google, allowing users to log in quickly without creating a new password. This is powered by Better Auth's social provider plugins.
 
+!!! tip "Admin Configuration Required"
+    The **Sign in with Google** button on the login page will not work until an administrator completes the configuration steps below. You must set up a Google Cloud project and configure the corresponding environment variables in your API service.
+
 ## Configuration Steps
 
 ### 1. Create Google Cloud Project

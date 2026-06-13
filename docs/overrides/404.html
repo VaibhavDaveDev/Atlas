@@ -10,6 +10,14 @@
       <p style="font-size: 1.2rem; color: var(--md-default-fg-color--light); margin-bottom: 2rem;">
         The page you're looking for doesn't exist or may have been moved.
       </p>
+      <div style="display: flex; gap: 1rem; justify-content: center;">
+        <a href="{{ config.site_url }}" class="md-button md-button--primary">
+          Return Home
+        </a>
+        <button onclick="window.history.back()" class="md-button">
+          Go Back
+        </button>
+      </div>
     </div>
 
     <div class="grid cards" markdown>
@@ -22,24 +30,26 @@
 
         [:octicons-arrow-right-24: Go to Home]({{ config.site_url }})
 
-    -   :books:{ .lg .middle } __Browse Documentation__
+    -   :mag:{ .lg .middle } __Use Search__
 
         ---
 
-        Explore our comprehensive documentation sections:
+        Find what you need by searching. Press <kbd>/</kbd> or <kbd>S</kbd> to open the search bar.
+
+        <button onclick="document.querySelector('.md-search__input').focus()" class="md-button md-button--small" style="margin-top: 1rem; width: 100%;">
+          Open Search Bar
+        </button>
+
+    -   :books:{ .lg .middle } __Browse Sections__
+
+        ---
+
+        Explore our comprehensive documentation:
 
         - [Getting Started]({{ config.site_url }}/getting-started/)
         - [Architecture]({{ config.site_url }}/architecture/)
         - [API Reference]({{ config.site_url }}/api/)
         - [ERP Modules]({{ config.site_url }}/modules/)
-
-    -   :mag:{ .lg .middle } __Try Searching__
-
-        ---
-
-        Use the search bar at the top of this page to find specific topics, modules, or guides.
-
-        Press <kbd>/</kbd> or <kbd>S</kbd> to focus the search
 
     -   :bug:{ .lg .middle } __Report an Issue__
 
