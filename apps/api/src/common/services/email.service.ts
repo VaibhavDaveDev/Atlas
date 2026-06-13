@@ -77,12 +77,13 @@ export class EmailService {
   }
 
   /**
-   * Send an email via the configured provider (Brevo or Gmail SMTP).
+   * Send an email via the configured provider (Brevo, Gmail SMTP, or Atlas Mailer).
    * Falls back to console logging if no provider is configured (dev mode).
    */
   async sendEmail(options: EmailOptions): Promise<void> {
-    // Mock mode — no credentials configured
-    if (!this.brevo && !this.gmailTransporter) {
+    // Mock mode — no credentials configured (except for atlas-mailer which only needs URL/Key)
+    const isAtlasMailer = config.email_provider === "atlas-mailer";
+    if (!this.brevo && !this.gmailTransporter && !isAtlasMailer) {
       this.customLogger.log(
         `[MOCK EMAIL] To: ${options.to} | Subject: ${options.subject}`,
         "EmailService",
@@ -99,6 +100,34 @@ export class EmailService {
           text: options.text,
           html: options.html,
         });
+      } else if (config.email_provider === "atlas-mailer") {
+        if (!config.atlas_mailer_url || !config.atlas_mailer_api_key) {
+          throw new Error(
+            "Atlas Mailer configuration missing (URL or API Key)",
+          );
+        }
+
+        const response = await fetch(`${config.atlas_mailer_url}/send`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${config.atlas_mailer_api_key}`,
+          },
+          body: JSON.stringify({
+            to: options.to,
+            subject: options.subject,
+            text: options.text,
+            html: options.html,
+          }),
+        });
+
+        const result = (await response.json()) as any;
+
+        if (!response.ok || !result.success) {
+          throw new Error(
+            result.error || `Mailer microservice returned ${response.status}`,
+          );
+        }
       } else if (this.brevo) {
         await this.brevo.transactionalEmails.sendTransacEmail({
           sender: {
@@ -126,6 +155,7 @@ export class EmailService {
       throw AppError.badRequest(`Email sending failed: ${errMsg}`);
     }
   }
+
 
   /**
    * Load and parse email template
