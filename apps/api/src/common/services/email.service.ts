@@ -52,6 +52,25 @@ export class EmailService {
           "EmailService",
         );
       }
+    } else if (provider === "atlas-mailer") {
+      // ── Atlas Mailer Microservice ─────────────────────────────────────────
+      if (!config.atlas_mailer_url || !config.atlas_mailer_api_key) {
+        if (config.node_env === "production") {
+          throw new Error(
+            "Invalid email config: EMAIL_PROVIDER=atlas-mailer but ATLAS_MAILER_URL or ATLAS_MAILER_API_KEY is missing.",
+          );
+        } else {
+          this.customLogger.warn(
+            "Atlas Mailer credentials missing. Email service will run in mock mode.",
+            "EmailService",
+          );
+        }
+      } else {
+        this.customLogger.log(
+          `Email provider: Atlas Mailer (${config.atlas_mailer_url})`,
+          "EmailService",
+        );
+      }
     } else {
       // ── Brevo transactional API (default) ─────────────────────────────────
       if (!config.brevo_api_key) {
