@@ -10,7 +10,7 @@ import * as bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 // ─── Credentials ────────────────────────────────────────────────────────────
-// These are the ONLY place passwords are defined. Do NOT commit this file.
+// These are the ONLY place passwords are defined. Do NOT commit this file with actual passwords.
 const CREDENTIALS = {
   superAdmin: { email: "admin@atlas.com", password: "Password123!" },
   john: { email: "employee@atlas.com", password: "Password123!" },

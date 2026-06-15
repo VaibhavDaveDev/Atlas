@@ -18,7 +18,7 @@ export function Topbar({ setMobileOpen }: { setMobileOpen?: React.Dispatch<React
     : user?.email?.slice(0, 2).toUpperCase() ?? '?';
 
   return (
-    <header className="flex h-14 items-center justify-between border-b border-[#d3cec6] dark:border-[#27272a] px-4 sm:px-6 bg-[#f5f1ec]/80 dark:bg-[#09090b]/80 backdrop-blur-md shrink-0 sticky top-0 z-30">
+    <header className="flex h-14 items-center justify-between border-b border-[#d3cec6] dark:border-[#27272a] px-4 sm:px-6 bg-[#f5f1ec]/80 dark:bg-[#09090b]/80 backdrop-blur-md shrink-0 sticky top-0 z-40">
       {/* Left — breadcrumb / search stub */}
       <div className="flex items-center gap-3">
         <Button

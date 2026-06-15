@@ -69,6 +69,16 @@ export class EmailProcessor extends WorkerHost {
     const data = job.data as Extract<EmailJob, { type: "verification" }>;
     const { email, username, verificationCode, authId } = data;
 
+    // ─── DEV: Print code to console so you don't need an email service ───────
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`\n${'─'.repeat(60)}`);
+      console.log(`   [DEV] VERIFICATION CODE`);
+      console.log(`    To      : ${email}`);
+      console.log(`    Code    : ${verificationCode}`);
+      console.log(`${'─'.repeat(60)}\n`);
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     try {
       await this.emailService.sendVerificationEmail(
         email,
@@ -129,6 +139,16 @@ export class EmailProcessor extends WorkerHost {
   private async handlePasswordResetEmail(job: Job<EmailJob>): Promise<void> {
     const data = job.data as Extract<EmailJob, { type: "password-reset" }>;
     const { email, username, resetCode } = data;
+
+    // ─── DEV: Print code to console ──────────────────────────────────────────
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`\n${'─'.repeat(60)}`);
+      console.log(`   [DEV] PASSWORD RESET CODE`);
+      console.log(`    To      : ${email}`);
+      console.log(`    Code    : ${resetCode}`);
+      console.log(`${'─'.repeat(60)}\n`);
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     try {
       await this.emailService.sendPasswordResetEmail(email, username, resetCode);
@@ -209,6 +229,16 @@ export class EmailProcessor extends WorkerHost {
   private async handleOtpEmail(job: Job<EmailJob>): Promise<void> {
     const data = job.data as Extract<EmailJob, { type: "otp" }>;
     const { email, otp, otpType } = data;
+
+    // ─── DEV: Print code to console ──────────────────────────────────────────
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`\n${'─'.repeat(60)}`);
+      console.log(`   [DEV] OTP CODE (${otpType})`);
+      console.log(`    To      : ${email}`);
+      console.log(`    OTP     : ${otp}`);
+      console.log(`${'─'.repeat(60)}\n`);
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     try {
       await this.emailService.sendOtpEmail(email, otp, otpType);

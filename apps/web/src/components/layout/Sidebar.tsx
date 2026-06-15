@@ -202,7 +202,7 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
 
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex h-full flex-col bg-[#f5f1ec] dark:bg-[#09090b] border-r border-[#d3cec6] dark:border-[#27272a] transition-all duration-300 md:relative',
+          'fixed inset-y-0 left-0 z-30 flex h-full flex-col bg-[#f5f1ec] dark:bg-[#09090b] border-r border-[#d3cec6] dark:border-[#27272a] transition-all duration-300 md:relative',
           collapsed ? 'w-[60px]' : 'w-[220px]',
           mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         )}

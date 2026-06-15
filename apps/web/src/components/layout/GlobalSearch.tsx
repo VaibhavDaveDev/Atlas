@@ -161,7 +161,7 @@ export function GlobalSearch() {
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-2xl p-0 overflow-hidden border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] shadow-2xl sm:top-[50%] sm:translate-y-[-50%] top-0 translate-y-0 sm:left-[50%] sm:translate-x-[-50%] left-0 translate-x-0 w-full max-w-none rounded-none sm:rounded-xl border-x-0 sm:border-x border-t-0 sm:border-t">
+        <DialogContent hideCloseButton className="sm:max-w-2xl p-0 overflow-hidden border-[#d3cec6] dark:border-[#27272a] bg-[#ffffff] dark:bg-[#121214] shadow-2xl sm:top-[50%] sm:translate-y-[-50%] top-0 translate-y-0 sm:left-[50%] sm:translate-x-[-50%] left-0 translate-x-0 w-full max-w-none rounded-none sm:rounded-xl border-x-0 sm:border-x border-t-0 sm:border-t">
           <DialogTitle className="sr-only">Global Search</DialogTitle>
           <DialogDescription className="sr-only">
             Search for pages, tools, or settings across Atlas.

@@ -81,7 +81,7 @@ export function KanbanColumn({ status, tasks, isGlobal }: KanbanColumnProps) {
           </span>
         </div>
         <div className="flex items-center gap-1 md:opacity-0 group-hover/column:opacity-100 transition-opacity">
-          {canManageTasks && (
+          {canManageTasks && !isGlobal && (
             <>
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCreateTaskModalOpen(true)}>
                 <Plus className="h-3.5 w-3.5" />

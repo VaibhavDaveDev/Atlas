@@ -2,7 +2,7 @@
 
 import { useState, Suspense, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { Eye, EyeOff, ArrowLeft, Loader2, Globe } from 'lucide-react';
+import { Eye, EyeOff, ArrowLeft, Loader2, Globe, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -157,6 +157,15 @@ function LoginForm() {
                 </div>
               </div>
             </>
+          )}
+
+          {isSsoMode && (
+            <div className="mb-4 rounded-lg border border-blue-200/50 bg-blue-50/50 dark:bg-blue-900/20 dark:border-blue-800/30 px-4 py-3 text-sm text-blue-700 dark:text-blue-400 flex items-start gap-3">
+              <Info className="h-4 w-4 mt-0.5 shrink-0" />
+              <p className="leading-snug">
+                <strong>Note:</strong> To use SSO, your Workspace Admin must have already configured your domain's Identity Provider settings in the admin dashboard.
+              </p>
+            </div>
           )}
 
           <form onSubmit={isSsoMode ? handleSsoLogin : handleSubmit} className="space-y-4">

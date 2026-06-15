@@ -32,7 +32,13 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
 export function useProject() {
   const context = useContext(ProjectContext);
   if (context === undefined) {
-    throw new Error('useProject must be used within a ProjectProvider');
+    // Return a dummy context to prevent crashes in global views that don't have a ProjectProvider
+    return {
+      isCreateTaskModalOpen: false,
+      setCreateTaskModalOpen: () => {},
+      refreshTrigger: 0,
+      triggerRefresh: () => {},
+    };
   }
   return context;
 }

@@ -530,7 +530,7 @@ export default function ProjectOverviewPage() {
               <div className="space-y-2">
                 <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Description</label>
                 <Textarea 
-                  value={editProject?.description} 
+                  value={editProject?.description || ''} 
                   onChange={(e) => setEditProject({ ...editProject, description: e.target.value })}
                   className="border-[#d3cec6] dark:border-[#27272a] rounded-xl min-h-[120px]"
                 />
